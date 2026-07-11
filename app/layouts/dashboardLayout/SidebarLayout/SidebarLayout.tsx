@@ -27,7 +27,7 @@ import {
   useTheme,
 } from "@chakra-ui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@chakra-ui/icons";
-import { getSidebarDataByRole, sidebarFooterData } from "./utils/SidebarItems";
+import { getSidebarDataByRole, getSidebarFooterDataByRole } from "./utils/SidebarItems";
 import { observer } from "mobx-react-lite";
 import { useRouter, usePathname } from "next/navigation";
 import SidebarLogo from "./component/SidebarLogo";
@@ -37,7 +37,6 @@ import {
   mediumSidebarWidth,
   sidebarWidth,
 } from "../../../component/config/utils/variable";
-import { hasPermission } from "@/app/config/utils/permissions";
 
 export interface SidebarItem {
   id: number;
@@ -485,11 +484,7 @@ const SidebarLayout: React.FC<SidebarProps> = observer(
           )
         );
         setSidebarData(getSidebarDataByRole(roles, user));
-        setFooterItems(
-          sidebarFooterData.filter(
-            (item: any) => !item.permissionKey || hasPermission(user, item.permissionKey)
-          )
-        );
+        setFooterItems(getSidebarFooterDataByRole(roles, user));
       }
 
       const companyColors = user?.companyDetails?.sidebarColors;

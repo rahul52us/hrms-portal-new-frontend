@@ -17,18 +17,27 @@ const Page = observer(() => {
   const isLoading = auth.isLoading || !auth.sessionReady;
 
   useEffect(() => {
-    if (!isLoading && (!role || !["admin", "superadmin", "departmenthead"].includes(role))) {
+    if (isLoading) {
+      return;
+    }
+
+    if (role === "admin" || role === "departmenthead") {
+      router.replace("/dashboard/users");
+      return;
+    }
+
+    if (!role || role !== "superadmin") {
       router.replace("/");
     }
   }, [isLoading, role, router]);
 
-  if (isLoading) {
+  if (isLoading || role === "admin" || role === "departmenthead") {
     return (
       <Center h="100vh">
         <VStack spacing={4}>
           <Spinner size="xl" color="blue.500" thickness="4px" />
           <Text color="gray.500" fontWeight="medium">
-            Loading your dashboard...
+            Opening your workspace...
           </Text>
         </VStack>
       </Center>

@@ -141,11 +141,11 @@ const DirectoryPage = observer(() => {
   );
 
   const openCompanyWorkspace = (companyId: string) => {
-    router.push(`/dashboard/admins?company=${companyId}`);
+    router.push(`/dashboard/companies?company=${companyId}`);
   };
 
   const closeCompanyWorkspace = () => {
-    router.push("/dashboard/admins");
+    router.push("/dashboard/companies");
   };
 
   const handleCreateCompany = async (values: any) => {
@@ -234,10 +234,10 @@ const DirectoryPage = observer(() => {
               bgClip="text"
               color={headingText}
             >
-              Company Directory
+              Companies
             </Text>
             <Text color={mutedText} fontSize="sm" mt={1}>
-              Manage and oversee all organizations in your ecosystem
+              Create tenant companies, manage company admins, and control company access
             </Text>
           </Box>
           <Button
@@ -279,7 +279,7 @@ const DirectoryPage = observer(() => {
             <HStack justify="space-between">
               <Box>
                 <Text fontSize="sm" fontWeight="600" color={mutedText} textTransform="uppercase" letterSpacing="wider">
-                  Total Organizations
+                  Companies
                 </Text>
                 <Text mt={2} fontSize="4xl" fontWeight="900" bgGradient="linear(to-r, blue.400, teal.400)" bgClip="text">
                   {totals.companies}
@@ -308,7 +308,7 @@ const DirectoryPage = observer(() => {
             <HStack justify="space-between">
               <Box>
                 <Text fontSize="sm" fontWeight="600" color={mutedText} textTransform="uppercase" letterSpacing="wider">
-                  System Admins
+                  Company Admins
                 </Text>
                 <Text mt={2} fontSize="4xl" fontWeight="900" bgGradient="linear(to-r, purple.400, pink.400)" bgClip="text">
                   {totals.admins}
@@ -371,7 +371,7 @@ const DirectoryPage = observer(() => {
               />
             </InputGroup>
             <Text fontSize="sm" color={mutedText} fontWeight="500">
-              {filteredCompanies.length} {filteredCompanies.length === 1 ? 'company' : 'companies'} found
+              {filteredCompanies.length} {filteredCompanies.length === 1 ? "company" : "companies"} found
             </Text>
           </Flex>
 
@@ -516,7 +516,7 @@ const DirectoryPage = observer(() => {
                         px={4}
                         _groupHover={{ bg: "blue.50", color: "blue.600" }}
                       >
-                        Open Workspace
+                        Manage Company
                       </Button>
                     </Box>
                   </Box>
@@ -549,10 +549,10 @@ const DirectoryPage = observer(() => {
                 <Icon as={FiSearch} boxSize={10} />
               </Flex>
               <Text fontWeight="800" fontSize="2xl" color={headingText}>
-                No organizations found
+                No companies found
               </Text>
               <Text mt={3} color={mutedText} maxW="md">
-                We couldn't find any organizations matching your current search criteria. Try adjusting your search or clear the filter.
+                No companies match the current search. Adjust the search or create a new company.
               </Text>
               <Button
                 mt={8}
@@ -580,10 +580,10 @@ const DirectoryPage = observer(() => {
           <DrawerCloseButton top={4} right={4} size="lg" />
           <DrawerHeader borderBottomWidth="1px" borderColor={borderColor} py={6} px={8}>
             <Text fontSize="2xl" fontWeight="800" bgGradient="linear(to-r, blue.500, teal.500)" bgClip="text">
-              Create New Company
+              Create Company
             </Text>
             <Text fontSize="sm" color={mutedText} mt={1}>
-              Fill in the details to register a new organization
+              Add the company profile, tenant slug, and primary contact details.
             </Text>
           </DrawerHeader>
           <DrawerBody pb={8} pt={6} px={8}>
@@ -591,6 +591,7 @@ const DirectoryPage = observer(() => {
               onSubmit={handleCreateCompany}
               onClose={() => setIsCompanyDrawerOpen(false)}
               isLoading={loading}
+              simpleCreate
             />
           </DrawerBody>
         </DrawerContent>

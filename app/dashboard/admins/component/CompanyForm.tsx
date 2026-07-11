@@ -167,7 +167,15 @@ const createCompanyFormValues = (company?: any) => ({
 });
 
 /* ================= FORM ================= */
-const CompanyForm = ({ onSubmit, onClose, isLoading, initialValues, submitLabel = "Create Company", children }: any) => {
+const CompanyForm = ({
+  onSubmit,
+  onClose,
+  isLoading,
+  initialValues,
+  submitLabel = "Create Company",
+  children,
+  simpleCreate = false,
+}: any) => {
   const [preview, setPreview] = useState<string | null>(null);
   const toast = useToast();
 
@@ -204,12 +212,14 @@ const CompanyForm = ({ onSubmit, onClose, isLoading, initialValues, submitLabel 
       .trim()
       .email("Enter a valid company email address")
       .required("Company email is required"),
-    managerLevels: Yup.number()
-      .typeError("Manager levels must be a number")
-      .integer("Manager levels must be a whole number")
-      .min(0, "Manager levels cannot be negative")
-      .max(20, "Manager levels must be 20 or less")
-      .required("Manager levels are required"),
+    managerLevels: simpleCreate
+      ? Yup.number().optional()
+      : Yup.number()
+          .typeError("Manager levels must be a number")
+          .integer("Manager levels must be a whole number")
+          .min(0, "Manager levels cannot be negative")
+          .max(20, "Manager levels must be 20 or less")
+          .required("Manager levels are required"),
     mobileNo: Yup.string()
       .trim()
       .matches(/^[0-9+()\-\s]{7,20}$/, "Enter a valid primary phone number")
@@ -221,10 +231,12 @@ const CompanyForm = ({ onSubmit, onClose, isLoading, initialValues, submitLabel 
         "Enter a valid website URL",
         (value) => !value || Yup.string().url().isValidSync(value)
       ),
-    bio: Yup.string()
-      .trim()
-      .min(10, "Company description should be at least 10 characters")
-      .required("Company description is required"),
+    bio: simpleCreate
+      ? Yup.string().trim().optional()
+      : Yup.string()
+          .trim()
+          .min(10, "Company description should be at least 10 characters")
+          .required("Company description is required"),
     primaryThemeColor: Yup.string()
       .matches(/^#(?:[0-9A-Fa-f]{3}){1,2}$/, "Enter a valid hex color")
       .required("Primary theme color is required"),
@@ -237,7 +249,18 @@ const CompanyForm = ({ onSubmit, onClose, isLoading, initialValues, submitLabel 
       validationSchema={validationSchema}
       onSubmit={async (values, helpers) => {
         try {
-          await onSubmit(values);
+          const normalizedValues = simpleCreate
+            ? {
+                ...values,
+                customDomain: "",
+                managerLevels: Number(values.managerLevels) || 3,
+                webLink: "",
+                bio: String(values.bio || "").trim() || `${values.company_name} HRMS workspace`,
+                primaryThemeColor: normalizeHexColor(values.primaryThemeColor, DEFAULT_LEARNER_PRIMARY_COLOR),
+                verified_email_allowed: false,
+              }
+            : values;
+          await onSubmit(normalizedValues);
         } catch (error: any) {
           toast({
             title: "Unable to save company",
@@ -293,7 +316,7 @@ const CompanyForm = ({ onSubmit, onClose, isLoading, initialValues, submitLabel 
             <Flex direction="column" gap={6}>
 
               {/* TENANT */}
-              <SectionCard title="Tenant Configuration" icon={Globe} color="purple">
+              <SectionCard title={simpleCreate ? "Company Basics" : "Tenant Configuration"} icon={Globe} color="purple">
                 <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                   <CustomInput
                     label="Company Name"
@@ -331,72 +354,78 @@ const CompanyForm = ({ onSubmit, onClose, isLoading, initialValues, submitLabel 
                     error={fieldError("tenantSlug")}
                     showError={showFieldError("tenantSlug")}
                   />
-                  <CustomInput
-                    label="Custom Domain"
-                    name="customDomain"
-                    placeholder="portal.example.com"
-                    value={values.customDomain}
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                    error={fieldError("customDomain")}
-                    showError={showFieldError("customDomain")}
-                  />
-                  <CustomInput
-                    label="Manager Levels"
-                    name="managerLevels"
-                    type="number"
-                    placeholder="Enter number of manager levels"
-                    value={values.managerLevels}
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                    error={fieldError("managerLevels")}
-                    showError={showFieldError("managerLevels")}
-                  />
+                  {!simpleCreate && (
+                    <>
+                      <CustomInput
+                        label="Custom Domain"
+                        name="customDomain"
+                        placeholder="portal.example.com"
+                        value={values.customDomain}
+                        onBlur={handleBlur}
+                        onChange={handleChange}
+                        error={fieldError("customDomain")}
+                        showError={showFieldError("customDomain")}
+                      />
+                      <CustomInput
+                        label="Manager Levels"
+                        name="managerLevels"
+                        type="number"
+                        placeholder="Enter number of manager levels"
+                        value={values.managerLevels}
+                        onBlur={handleBlur}
+                        onChange={handleChange}
+                        error={fieldError("managerLevels")}
+                        showError={showFieldError("managerLevels")}
+                      />
+                    </>
+                  )}
                 </SimpleGrid>
 
                 <Flex mt={4} gap={3} align="center">
                   <Text fontSize="sm">Preview:</Text>
                   <Badge colorScheme="purple">{previewUrl || "—"}</Badge>
-                  <Badge colorScheme="blue">{values.managerLevels || 3} levels</Badge>
+                  {!simpleCreate && <Badge colorScheme="blue">{values.managerLevels || 3} levels</Badge>}
                 </Flex>
               </SectionCard>
 
-              <SectionCard title="Learner Branding" icon={Palette} color="blue">
-                <BrandColorField
-                  value={resolvedThemeColor}
-                  onChange={(nextColor) => setFieldValue("primaryThemeColor", nextColor)}
-                  helperText="This applies only to the learner-side portal for now. The admin dashboard keeps its current styling."
-                  error={fieldError("primaryThemeColor")}
-                  showError={showFieldError("primaryThemeColor")}
-                />
+              {!simpleCreate && (
+                <SectionCard title="Company Branding" icon={Palette} color="blue">
+                  <BrandColorField
+                    value={resolvedThemeColor}
+                    onChange={(nextColor) => setFieldValue("primaryThemeColor", nextColor)}
+                    helperText="This color will be used for employee-facing company pages and future HRMS branding."
+                    error={fieldError("primaryThemeColor")}
+                    showError={showFieldError("primaryThemeColor")}
+                  />
 
-                <HStack mt={4} spacing={3} flexWrap="wrap">
-                  <Text fontSize="sm">Preview:</Text>
-                  <Badge
-                    px={4}
-                    py={2}
-                    borderRadius="full"
-                    bg={resolvedThemeColor}
-                    color={previewTextColor}
-                    textTransform="none"
-                  >
-                    Learning Portal
-                  </Badge>
-                  <Badge
-                    px={3}
-                    py={2}
-                    borderRadius="full"
-                    variant="outline"
-                    borderColor={resolvedThemeColor}
-                    color={resolvedThemeColor}
-                  >
-                    {resolvedThemeColor}
-                  </Badge>
-                </HStack>
-              </SectionCard>
+                  <HStack mt={4} spacing={3} flexWrap="wrap">
+                    <Text fontSize="sm">Preview:</Text>
+                    <Badge
+                      px={4}
+                      py={2}
+                      borderRadius="full"
+                      bg={resolvedThemeColor}
+                      color={previewTextColor}
+                      textTransform="none"
+                    >
+                      HRMS Portal
+                    </Badge>
+                    <Badge
+                      px={3}
+                      py={2}
+                      borderRadius="full"
+                      variant="outline"
+                      borderColor={resolvedThemeColor}
+                      color={resolvedThemeColor}
+                    >
+                      {resolvedThemeColor}
+                    </Badge>
+                  </HStack>
+                </SectionCard>
+              )}
 
               {/* PROFILE */}
-              <SectionCard title="Company Profile" icon={Building2} color="blue">
+              <SectionCard title={simpleCreate ? "Contact & Logo" : "Company Profile"} icon={Building2} color="blue">
                 {preview ? (
                   <Flex direction="column" gap={3}>
                     <Box
@@ -454,46 +483,52 @@ const CompanyForm = ({ onSubmit, onClose, isLoading, initialValues, submitLabel 
                     error={fieldError("mobileNo")}
                     showError={showFieldError("mobileNo")}
                   />
-                  <CustomInput
-                    label="Website"
-                    name="webLink"
-                    placeholder="https://example.com"
-                    value={values.webLink}
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                    error={fieldError("webLink")}
-                    showError={showFieldError("webLink")}
-                  />
+                  {!simpleCreate && (
+                    <CustomInput
+                      label="Website"
+                      name="webLink"
+                      placeholder="https://example.com"
+                      value={values.webLink}
+                      onBlur={handleBlur}
+                      onChange={handleChange}
+                      error={fieldError("webLink")}
+                      showError={showFieldError("webLink")}
+                    />
+                  )}
                 </SimpleGrid>
 
-                <Box mt={4}>
-                  <Checkbox
-                    isChecked={Boolean(values.verified_email_allowed)}
-                    onChange={(e) =>
-                      setFieldValue("verified_email_allowed", e.target.checked)
-                    }
-                  >
-                    Require email verification before activating users
-                  </Checkbox>
-                </Box>
+                {!simpleCreate && (
+                  <>
+                    <Box mt={4}>
+                      <Checkbox
+                        isChecked={Boolean(values.verified_email_allowed)}
+                        onChange={(e) =>
+                          setFieldValue("verified_email_allowed", e.target.checked)
+                        }
+                      >
+                        Require email verification before activating users
+                      </Checkbox>
+                    </Box>
 
-                <Box mt={4}>
-                  <CustomInput
-                    label="Description"
-                    name="bio"
-                    type="textarea"
-                    placeholder="Enter company description"
-                    value={values.bio}
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                    error={fieldError("bio")}
-                    showError={showFieldError("bio")}
-                  />
-                </Box>
+                    <Box mt={4}>
+                      <CustomInput
+                        label="Description"
+                        name="bio"
+                        type="textarea"
+                        placeholder="Enter company description"
+                        value={values.bio}
+                        onBlur={handleBlur}
+                        onChange={handleChange}
+                        error={fieldError("bio")}
+                        showError={showFieldError("bio")}
+                      />
+                    </Box>
+                  </>
+                )}
               </SectionCard>
 
               {/* ADDRESS */}
-              <SectionCard title="Address" icon={MapPin} color="orange">
+              <SectionCard title={simpleCreate ? "Address (Optional)" : "Address"} icon={MapPin} color="orange">
                 <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={4}>
                   <GridItem colSpan={2}>
                     <CustomInput

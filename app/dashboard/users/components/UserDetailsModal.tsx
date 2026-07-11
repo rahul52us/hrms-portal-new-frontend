@@ -86,12 +86,12 @@ const UserDetailsModal = ({
                 {statusMeta.label}
               </Badge>
               <Badge
-                colorScheme="green"
+                colorScheme={user?.passwordStatus === "SET" ? "green" : "orange"}
                 borderRadius="full"
                 px={3}
                 py={1}
               >
-                Phone OTP
+                {user?.passwordStatus === "SET" ? "Password" : "Setup Pending"}
               </Badge>
             </HStack>
           </Flex>

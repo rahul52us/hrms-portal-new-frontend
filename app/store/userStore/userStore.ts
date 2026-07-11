@@ -237,6 +237,18 @@ class UserStore {
     }
   };
 
+  createCompanyAdmin = async (payload: any) => {
+    this.submitting = true;
+    try {
+      const response = await axios.post("/admin/users/company-admin", payload);
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    } finally {
+      this.submitting = false;
+    }
+  };
+
   updateManagedUser = async (id: string, payload: any) => {
     this.submitting = true;
     try {

@@ -86,10 +86,10 @@ const UsersHeader = ({
                   bgGradient={`linear(to-r, ${gradientFrom}, ${gradientTo})`}
                   bgClip="text"
                 >
-                  Users Management
+                  Employees
                 </Text>
                 <Text color={muted} fontSize="sm" mt={1} display={{ base: "none", sm: "block" }}>
-                  Manage users, managers, hierarchy and onboarding
+                  Manage employees, managers, hierarchy and onboarding
                 </Text>
               </Box>
             </Flex>
@@ -190,7 +190,7 @@ const UsersHeader = ({
                 boxShadow="md"
                 w={{ base: "full", md: "auto" }}
               >
-                Add User
+                Add Employee
               </Button>
             )}
           </HStack>

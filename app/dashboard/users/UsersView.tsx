@@ -52,6 +52,7 @@ type UserFormState = {
   email: string;
   password: string;
   confirmPassword: string;
+  sendInvite: boolean;
   pic: any;
   mobileNumber: string;
   department: string;
@@ -205,6 +206,7 @@ const initialForm = (): UserFormState => ({
   email: "",
   password: "",
   confirmPassword: "",
+  sendInvite: true,
   pic: { file: null, isAdd: 0, isDeleted: 0, url: "" },
   mobileNumber: "",
   department: "",
@@ -237,6 +239,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const [deleteDialog, setDeleteDialog] = useState<any | null>(null);
   const [uploadResults, setUploadResults] = useState<any | null>(null);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+  const [setupNotice, setSetupNotice] = useState<any | null>(null);
   const [userForm, setUserForm] = useState<UserFormState>(initialForm());
   const [bulkForm, setBulkForm] = useState<BulkFormState>({
     companyId: "",
@@ -341,10 +344,10 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       value: item,
       label: formatRoleLabel(item),
     }));
-  }, [canCreateManagers, canCreateUsers, selectedUserManagerLevels, userForm.role]);
+  }, [canCreateDepartmentHeads, canCreateManagers, canCreateUsers, selectedUserManagerLevels, userForm.role]);
 
   const listTabs = useMemo(() => {
-    const tabs = [{ label: "Users", value: "user" }];
+    const tabs = [{ label: "Employees", value: "user" }];
 
     visibleManagerLevels.forEach((level) => {
       tabs.push({
@@ -565,6 +568,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       email: user.email || user.username || "",
       password: "",
       confirmPassword: "",
+      sendInvite: false,
       pic: user.pic ? { ...user.pic, file: null, isAdd: 0, isDeleted: 0, url: user.pic.url || "" } : { file: null, isAdd: 0, isDeleted: 0, url: "" },
       mobileNumber: user.mobileNumber || "",
       department: user.department || "",
@@ -641,29 +645,29 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       }))
       .filter((manager) => manager.managerEmail);
 
-    const isDepartmentRequired = roleValue === "departmenthead";
+    const isDepartmentRequired = roleValue === "departmenthead" || Boolean(parseManagerLevel(roleValue));
 
-    if (!code || !name || !roleValue || !designation || !mobileNumber || (!userForm.id && !gender) || (isDepartmentRequired && !department)) {
+    if (!code || !name || !email || !roleValue || (isDepartmentRequired && !department)) {
       showToast({
         title: "Missing details",
-        description: `Employee code, full name, mobile number, designation, ${!userForm.id ? "gender, " : ""}${isDepartmentRequired ? "department, " : ""}and role are required.`,
+        description: `Employee code, full name, email, ${isDepartmentRequired ? "department, " : ""}and role are required.`,
         status: "warning",
         duration: 3000,
       });
       return;
     }
 
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       showToast({
         title: "Invalid email address",
-        description: "Enter a valid email address or leave it empty.",
+        description: "Enter a valid email address.",
         status: "warning",
         duration: 3000,
       });
       return;
     }
 
-    if (!/^[0-9+()\-\s]{7,20}$/.test(mobileNumber)) {
+    if (mobileNumber && !/^[0-9+()\-\s]{7,20}$/.test(mobileNumber)) {
       showToast({
         title: "Invalid mobile number",
         description: "Enter a valid mobile number before saving.",
@@ -682,6 +686,31 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
         showToast({
           title: "Invalid date of birth",
           description: "Date of birth cannot be in the future.",
+          status: "warning",
+          duration: 3000,
+        });
+        return;
+      }
+    }
+
+    if (!userForm.id) {
+      const password = String(userForm.password || "");
+      const confirmPassword = String(userForm.confirmPassword || "");
+
+      if (password && password !== confirmPassword) {
+        showToast({
+          title: "Password mismatch",
+          description: "Initial password and confirmation password must match.",
+          status: "warning",
+          duration: 3000,
+        });
+        return;
+      }
+
+      if (!password && userForm.sendInvite === false) {
+        showToast({
+          title: "Authentication required",
+          description: "Enter an initial password or keep setup invite enabled.",
           status: "warning",
           duration: 3000,
         });
@@ -756,6 +785,15 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       managers,
     };
 
+    if (!userForm.id) {
+      const password = String(userForm.password || "");
+      if (password) {
+        payload.password = password;
+      } else {
+        payload.sendInvite = userForm.sendInvite !== false;
+      }
+    }
+
     if (userForm.pic?.isDeleted) {
       payload.pic = {
         isDeleted: 1,
@@ -810,11 +848,36 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       const response = userForm.id
         ? await userStore.updateManagedUser(userForm.id, payload)
         : await userStore.createManagedUser(payload);
+      const setup = response?.data?.setup;
+      const setupLinkCopied =
+        setup?.emailSent === false &&
+        setup?.setupUrl &&
+        typeof navigator !== "undefined"
+          ? await navigator.clipboard.writeText(setup.setupUrl).then(() => true).catch(() => false)
+          : false;
+
+      if (setup?.emailSent === false && setup?.setupUrl) {
+        setSetupNotice({
+          name,
+          email,
+          setupUrl: setup.setupUrl,
+          emailError: setup.emailError,
+          copied: setupLinkCopied,
+        });
+      } else {
+        setSetupNotice(null);
+      }
+
       showToast({
-        title: userForm.id ? "User updated" : "User created",
-        description: response?.message || "Saved successfully.",
+        title: userForm.id ? "Employee updated" : "Employee created",
+        description:
+          setup?.emailSent === false && setup?.setupUrl
+            ? setupLinkCopied
+              ? "SMTP did not send the email, so the setup link was copied to clipboard."
+              : `Setup link: ${setup.setupUrl}`
+            : response?.message || "Saved successfully.",
         status: "success",
-        duration: 3500,
+        duration: setup?.emailSent === false ? 9000 : 3500,
       });
       setIsUserDrawerOpen(false);
       resetForm();
@@ -1123,13 +1186,35 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   };
 
   const activeTabLabel =
-    listTabs.find((item) => item.value === listTab)?.label || "Users";
+    listTabs.find((item) => item.value === listTab)?.label || "Employees";
+
+  const copySetupLink = async () => {
+    if (!setupNotice?.setupUrl || typeof navigator === "undefined") {
+      return;
+    }
+
+    const copied = await navigator.clipboard
+      .writeText(setupNotice.setupUrl)
+      .then(() => true)
+      .catch(() => false);
+
+    showToast({
+      title: copied ? "Setup link copied" : "Unable to copy setup link",
+      description: copied ? "Share this link with the employee." : setupNotice.setupUrl,
+      status: copied ? "success" : "warning",
+      duration: 3500,
+    });
+
+    if (copied) {
+      setSetupNotice((prev: any) => (prev ? { ...prev, copied: true } : prev));
+    }
+  };
 
   return (
     <PermissionGate
       allowed={canViewUsers}
-      title="Users module is disabled"
-      description="This account does not currently have access to the users workspace."
+      title="Employees module is disabled"
+      description="This account does not currently have access to the employees workspace."
       fallbackHref="/dashboard/profile"
     >
     <Box minH={embedded ? "auto" : "100vh"} p={embedded ? 0 : { base: 4, md: 6 }}>
@@ -1141,6 +1226,35 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
             <Box>
               <AlertTitle>Company is inactive</AlertTitle>
               <AlertDescription>{managementBlockedMessage}</AlertDescription>
+            </Box>
+          </Alert>
+        ) : null}
+
+        {setupNotice?.setupUrl ? (
+          <Alert status="warning" borderRadius="2xl" alignItems="start">
+            <AlertIcon mt={1} />
+            <Box flex="1" minW={0}>
+              <AlertTitle>Setup email was not sent</AlertTitle>
+              <AlertDescription>
+                Share this setup link with {setupNotice.name || setupNotice.email || "the employee"} so they can set their password.
+                {setupNotice.emailError ? ` ${setupNotice.emailError}` : ""}
+              </AlertDescription>
+              <Box
+                mt={3}
+                p={3}
+                borderWidth="1px"
+                borderColor="orange.200"
+                borderRadius="lg"
+                bg="orange.50"
+                color="orange.900"
+                wordBreak="break-all"
+                fontSize="sm"
+              >
+                {setupNotice.setupUrl}
+              </Box>
+              <Button mt={3} size="sm" colorScheme="orange" onClick={copySetupLink}>
+                {setupNotice.copied ? "Copy Again" : "Copy Setup Link"}
+              </Button>
             </Box>
           </Alert>
         ) : null}

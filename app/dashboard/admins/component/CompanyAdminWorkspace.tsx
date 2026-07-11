@@ -50,7 +50,6 @@ import { useRef, useState } from "react";
 import {
   FiAlertTriangle,
   FiArrowLeft,
-  FiBookOpen,
   FiBriefcase,
   FiCheckCircle,
   FiEdit2,
@@ -119,6 +118,7 @@ const createMemberForm = (companyId: string, role = "admin") => ({
   companyManagerLevels: 3,
   createCompany: false,
   resendSetupEmail: false,
+  sendInvite: role === "admin",
   managers: reconcileManagersForRole(role, [], 3),
 });
 const isRealFile = (value: unknown): value is File => typeof File !== "undefined" && value instanceof File;
@@ -237,9 +237,11 @@ const CompanyAdminWorkspace = ({
   const borderColor = useColorModeValue("gray.200", "gray.700");
   const mutedText = useColorModeValue("gray.500", "gray.400");
   const cardBg = useColorModeValue("white", "gray.800");
+  const setupNoticeBg = useColorModeValue("orange.50", "orange.900");
+  const setupNoticeBorderColor = useColorModeValue("orange.200", "orange.700");
 
   const {
-    userStore: { createManagedUser, updateManagedUser, deleteManagedUser },
+    userStore: { createCompanyAdmin, createManagedUser, updateManagedUser, deleteManagedUser },
     auth: { user: currentUser },
     companyStore: { deleteManagedCompany, setSelectedCompanyId, updateManagedCompany },
   } = stores;
@@ -255,6 +257,7 @@ const CompanyAdminWorkspace = ({
   const [isEditCompanyOpen, setIsEditCompanyOpen] = useState(false);
   const [isDeleteCompanyOpen, setIsDeleteCompanyOpen] = useState(false);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+  const [setupNotice, setSetupNotice] = useState<any>(null);
   const [statusActionScope, setStatusActionScope] = useState<CompanyStatusScope>("company_admin");
   const cancelStatusRef = useRef<HTMLButtonElement | null>(null);
   const showToast = (options: any) =>
@@ -267,20 +270,34 @@ const CompanyAdminWorkspace = ({
   const companyRestrictionMessage = `${company?.company_name || "This company"} is inactive. Management actions are disabled until the company is reactivated. User login access depends on each account's status.`;
   const companyStatusActionLabel = isCompanyInactive ? "Activate" : "Deactivate";
   const companyStatusActionLabelLower = companyStatusActionLabel.toLowerCase();
-  const usersTabIndex = currentUser?.role === "departmenthead" ? 0 : 2;
+  const usersTabIndex = 1;
   const isUsersTab = activeTab === usersTabIndex;
   const selectedStatusActionSummary =
     statusActionScope === "all_users"
       ? isCompanyInactive
-        ? `${company?.company_name || "This company"} and every company user will be activated. Admins, department heads, managers, and learners will be able to use their accounts again if they have already completed setup.`
-        : `${company?.company_name || "This company"} and every company user will be deactivated. Admins, department heads, managers, and learners will no longer be able to log in until they are reactivated.`
+        ? `${company?.company_name || "This company"} and every company user will be activated. Admins, department heads, managers, and employees will be able to use their accounts again if they have already completed setup.`
+        : `${company?.company_name || "This company"} and every company user will be deactivated. Admins, department heads, managers, and employees will no longer be able to log in until they are reactivated.`
       : isCompanyInactive
-        ? `${company?.company_name || "This company"} will be reactivated for company admin activity. Management actions such as adding users, assigning courses, and creating batches will work again, but existing user account statuses will stay exactly as they are.`
-        : `${company?.company_name || "This company"} will be deactivated for company admin activity. Management actions such as adding users, assigning courses, and creating batches will be blocked, but existing user account statuses will stay exactly as they are.`;
+        ? `${company?.company_name || "This company"} will be reactivated for company admin activity. Management actions such as adding users and managing HR setup will work again, but existing user account statuses will stay exactly as they are.`
+        : `${company?.company_name || "This company"} will be deactivated for company admin activity. Management actions such as adding users and managing HR setup will be blocked, but existing user account statuses will stay exactly as they are.`;
 
   const refreshAll = async () => {
     await onCompanyRefresh();
     setAdminRefreshKey((prev) => prev + 1);
+  };
+
+  const copySetupLink = async (setupUrl: string) => {
+    if (!setupUrl || typeof navigator === "undefined") {
+      return;
+    }
+
+    const copied = await navigator.clipboard.writeText(setupUrl).then(() => true).catch(() => false);
+    showToast({
+      title: copied ? "Setup link copied" : "Unable to copy setup link",
+      description: copied ? "Share this link with the company admin." : setupUrl,
+      status: copied ? "success" : "warning",
+      duration: copied ? 3000 : 7000,
+    });
   };
 
   const openStatusDialog = () => {
@@ -316,22 +333,53 @@ const CompanyAdminWorkspace = ({
         };
       }
 
-      await createManagedUser({
-        ...payload,
-      });
+      const isCompanyAdmin = String(payload.role || "").toLowerCase() === "admin";
+      const response = isCompanyAdmin
+        ? await createCompanyAdmin({
+            ...payload,
+            sendInvite: payload.sendInvite !== false,
+          })
+        : await createManagedUser({
+            ...payload,
+            sendInvite: payload.sendInvite === true,
+          });
       await refreshAll();
       setDrawerState({ type: "admin-add", isOpen: false, data: null });
 
+      const setup = response?.data?.setup;
+      const setupLinkCopied =
+        setup?.emailSent === false &&
+        setup?.setupUrl &&
+        typeof navigator !== "undefined"
+          ? await navigator.clipboard.writeText(setup.setupUrl).then(() => true).catch(() => false)
+          : false;
+      if (setup?.emailSent === false && setup?.setupUrl) {
+        setSetupNotice({
+          name: formData.name,
+          email: formData.email,
+          setupUrl: setup.setupUrl,
+          emailError: setup.emailError,
+          copied: setupLinkCopied,
+        });
+      } else {
+        setSetupNotice(null);
+      }
+      const createdRoleLabel = isCompanyAdmin ? "Company admin" : "Department head";
       showToast({
-        title: "Member added",
-        description: `${formData.name} now belongs to ${company.company_name}.`,
+        title: `${createdRoleLabel} added`,
+        description:
+          setup?.emailSent === false && setup?.setupUrl
+            ? setupLinkCopied
+              ? "Account created. SMTP did not send email, so the setup link was copied to clipboard."
+              : `Account created. Setup link: ${setup.setupUrl}`
+            : `${formData.name} can now access ${company.company_name}.`,
         status: "success",
-        duration: 4000,
+        duration: setup?.emailSent === false ? 9000 : 4000,
       });
     } catch (err: any) {
       showToast({
-        title: "Failed to create member",
-        description: getApiErrorMessage(err, "Please review the member details and try again."),
+        title: "Failed to create account",
+        description: getApiErrorMessage(err, "Please review the account details and try again."),
         status: "error",
         duration: 5000,
       });
@@ -369,14 +417,14 @@ const CompanyAdminWorkspace = ({
       setDrawerState({ type: "admin-add", isOpen: false, data: null });
 
       showToast({
-        title: "Member updated",
+        title: "Account updated",
         description: `${values.name} has been updated successfully.`,
         status: "success",
         duration: 4000,
       });
     } catch (err: any) {
       showToast({
-        title: "Failed to update member",
+        title: "Failed to update account",
         description: getApiErrorMessage(err),
         status: "error",
         duration: 5000,
@@ -387,8 +435,7 @@ const CompanyAdminWorkspace = ({
   };
 
   const memberRoleOptions = [
-    { label: "Admin", value: "admin" },
-    { label: "Department Head", value: "departmenthead" },
+    { label: "Company Admin", value: "admin" },
   ];
 
   const updateRole = (nextRole: string) => {
@@ -398,6 +445,7 @@ const CompanyAdminWorkspace = ({
         ...(prev.data || createMemberForm(company._id, nextRole)),
         role: nextRole,
         resendSetupEmail: nextRole !== "admin" && nextRole !== "departmenthead",
+        sendInvite: nextRole === "admin" ? prev.data?.sendInvite !== false : false,
         managers: reconcileManagersForRole(nextRole, prev.data?.managers || [], 3),
       },
     }));
@@ -426,20 +474,6 @@ const CompanyAdminWorkspace = ({
     }
     setSelectedCompanyId(company._id);
     router.push("/dashboard/users");
-  };
-
-  const openAssignedCourses = () => {
-    if (isCompanyInactive) {
-      showToast({
-        title: "Company is inactive",
-        description: companyRestrictionMessage,
-        status: "warning",
-        duration: 4000,
-      });
-      return;
-    }
-    setSelectedCompanyId(company._id);
-    router.push("/dashboard/course/assigned");
   };
 
   const handleCompanyStatusToggle = async () => {
@@ -559,14 +593,14 @@ const CompanyAdminWorkspace = ({
       await refreshAll();
       setDrawerState({ type: "admin-add", isOpen: false, data: null });
       showToast({
-        title: "Member deleted",
-        description: response?.message || "Member deleted successfully.",
+        title: "Account deleted",
+        description: response?.message || "Account deleted successfully.",
         status: "success",
         duration: 4000,
       });
     } catch (err: any) {
       showToast({
-        title: "Unable to delete member",
+        title: "Unable to delete account",
         description: getApiErrorMessage(err),
         status: "error",
         duration: 5000,
@@ -634,6 +668,43 @@ const CompanyAdminWorkspace = ({
               <Box>
                 <AlertTitle>Management is paused for this company</AlertTitle>
                 <AlertDescription>{companyRestrictionMessage}</AlertDescription>
+              </Box>
+            </Alert>
+          ) : null}
+
+          {setupNotice?.setupUrl ? (
+            <Alert status="warning" borderRadius="2xl" alignItems="start">
+              <AlertIcon mt={1} />
+              <Box flex="1">
+                <AlertTitle>Setup email was not sent</AlertTitle>
+                <AlertDescription>
+                  <VStack align="stretch" spacing={3} mt={1}>
+                    <Text>
+                      Share this setup link with {setupNotice.name || setupNotice.email || "the company admin"} so they can set their password.
+                      {setupNotice.emailError ? ` ${setupNotice.emailError}` : ""}
+                    </Text>
+                    <Box
+                      p={3}
+                      borderRadius="lg"
+                      bg={setupNoticeBg}
+                      border="1px solid"
+                      borderColor={setupNoticeBorderColor}
+                      wordBreak="break-all"
+                      fontSize="sm"
+                      fontWeight="600"
+                    >
+                      {setupNotice.setupUrl}
+                    </Box>
+                    <HStack spacing={3}>
+                      <Button size="sm" colorScheme="orange" onClick={() => copySetupLink(setupNotice.setupUrl)}>
+                        Copy Setup Link
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setSetupNotice(null)}>
+                        Dismiss
+                      </Button>
+                    </HStack>
+                  </VStack>
+                </AlertDescription>
               </Box>
             </Alert>
           ) : null}
@@ -708,18 +779,6 @@ const CompanyAdminWorkspace = ({
               >
                 Delete Company
               </Button>
-              <Tooltip label="Assigned Courses" placement="top">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  borderRadius="full"
-                  leftIcon={<FiBookOpen />}
-                  onClick={openAssignedCourses}
-                  isDisabled={isCompanyInactive}
-                >
-                  Courses
-                </Button>
-              </Tooltip>
               <Button
                 colorScheme="blue"
                 size="sm"
@@ -728,13 +787,17 @@ const CompanyAdminWorkspace = ({
                 onClick={() =>
                   isUsersTab
                     ? openUsersManagement()
-                    : setDrawerState({ type: "admin-add", isOpen: true, data: null })
+                    : setDrawerState({
+                        type: "admin-add",
+                        isOpen: true,
+                        data: createMemberForm(company._id, "admin"),
+                      })
                 }
                 isDisabled={isCompanyInactive}
               >
                 {isUsersTab
-                  ? "Manage Users"
-                  : "Add Member"}
+                  ? "Manage Employees"
+                  : "Add Company Admin"}
               </Button>
             </HStack>
           </Flex>
@@ -742,7 +805,7 @@ const CompanyAdminWorkspace = ({
           {/* Stats Row - Modern Cards */}
           <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing={5}>
             <StatCard
-              label="Total Users"
+              label="Total Accounts"
               value={company?.userCount || 0}
               icon={FiUsers}
               subtext={`${company?.activeUserCount || 0} active`}
@@ -780,16 +843,7 @@ const CompanyAdminWorkspace = ({
                     fontSize="sm"
                     fontWeight="500"
                   >
-                    Admins
-                  </Tab>
-                )}
-                {currentUser?.role !== "departmenthead" && (
-                  <Tab
-                    _selected={{ color: "blue.500", borderBottom: "2px solid", borderBottomColor: "blue.500", fontWeight: "600" }}
-                    fontSize="sm"
-                    fontWeight="500"
-                  >
-                    Dept Heads
+                    Company Admins
                   </Tab>
                 )}
                 <Tab
@@ -797,7 +851,7 @@ const CompanyAdminWorkspace = ({
                   fontSize="sm"
                   fontWeight="500"
                 >
-                  Users
+                  Employees
                 </Tab>
               </TabList>
 
@@ -810,7 +864,7 @@ const CompanyAdminWorkspace = ({
                           key={`admin-${company._id}-${adminRefreshKey}`}
                           companyId={company._id}
                           companyName={company.company_name}
-                          title={`${company.company_name} - Admins`}
+                          title={`${company.company_name} - Company Admins`}
                           filterRole="admin"
                           filterType="admin"
                           onAdd={() =>
@@ -841,58 +895,6 @@ const CompanyAdminWorkspace = ({
                                 dateOfBirth: entry.dateOfBirth ? String(entry.dateOfBirth).slice(0, 10) : "",
                                 gender: typeof entry.gender === "number" ? entry.gender : "",
                                 role: entry.role || "admin",
-                                companyId: company._id,
-                              },
-                            })
-                          }
-                          onDelete={(entry: any) =>
-                            setDrawerState({ type: "delete", isOpen: true, data: entry })
-                          }
-                          showAddButton={false}
-                        />
-                      </Box>
-                    )}
-                  </TabPanel>
-                )}
-                {currentUser?.role !== "departmenthead" && (
-                  <TabPanel px={0}>
-                    {activeTab === 1 && (
-                      <Box>
-                        <UserTable
-                          key={`depthead-${company._id}-${adminRefreshKey}`}
-                          companyId={company._id}
-                          companyName={company.company_name}
-                          title={`${company.company_name} - Dept Heads`}
-                          filterRole="departmenthead"
-                          filterType="admin"
-                          onAdd={() =>
-                            setDrawerState({
-                              type: "admin-add",
-                              isOpen: true,
-                              data: createMemberForm(company._id, "departmenthead"),
-                            })
-                          }
-                          onEdit={(entry: any) =>
-                            setDrawerState({
-                              type: "admin-edit",
-                              isOpen: true,
-                              data: {
-                                ...createMemberForm(company._id, "departmenthead"),
-                                id: entry._id,
-                                code: entry.code || "",
-                                profileId: entry.profileId || "",
-                                name: entry.name || "",
-                                email: entry.email || entry.username || "",
-                                pic: entry.pic ? { ...entry.pic, file: null, isAdd: 0, isDeleted: 0, url: entry.pic.url || "" } : { file: null, isAdd: 0, isDeleted: 0, url: "" },
-                                mobileNumber: entry.mobileNumber || "",
-                                department: entry.department || "",
-                                city: entry.city || "",
-                                state: entry.state || "",
-                                designation: entry.designation || "",
-                                joiningDate: entry.joiningDate ? String(entry.joiningDate).slice(0, 10) : "",
-                                dateOfBirth: entry.dateOfBirth ? String(entry.dateOfBirth).slice(0, 10) : "",
-                                gender: typeof entry.gender === "number" ? entry.gender : "",
-                                role: entry.role || "departmenthead",
                                 companyId: company._id,
                               },
                             })
@@ -953,14 +955,14 @@ const CompanyAdminWorkspace = ({
         onClose={() => setDrawerState({ type: "admin-add", isOpen: false, data: null })}
         userForm={
           drawerState.data ||
-          createMemberForm(company._id, activeTab === 1 ? "departmenthead" : "admin")
+          createMemberForm(company._id, "admin")
         }
         setUserForm={(updater: any) =>
           setDrawerState((prev: any) => ({
             ...prev,
             data:
               typeof updater === "function"
-                ? updater(prev.data || createMemberForm(company._id, activeTab === 1 ? "departmenthead" : "admin"))
+                ? updater(prev.data || createMemberForm(company._id, "admin"))
                 : updater,
           }))
         }
@@ -987,10 +989,10 @@ const CompanyAdminWorkspace = ({
         isOpen={drawerState.type === "delete" && drawerState.isOpen}
         onClose={() => setDrawerState({ type: "admin-add", isOpen: false, data: null })}
         onConfirm={handleMemberDelete}
-        title="Delete member?"
-        description={`${drawerState?.data?.name || "This member"} will be removed from active management.`}
+        title="Delete account?"
+        description={`${drawerState?.data?.name || "This account"} will be removed from active management.`}
         // note="This is a soft delete for audit purposes. The member record remains in the database, but it will no longer appear in the UI."
-        confirmText="Delete Member"
+        confirmText="Delete Account"
         isLoading={loading && drawerState.type === "delete"}
         tone="danger"
       />
@@ -1244,7 +1246,7 @@ const CompanyAdminWorkspace = ({
 
           <Text fontSize="sm" color="gray.700" fontWeight="500">
             {statusActionScope === "all_users"
-              ? "This will affect admins, managers, and learners."
+              ? "This will affect admins, managers, and employees."
               : "Only company admin access will be changed."}
           </Text>
         </HStack>

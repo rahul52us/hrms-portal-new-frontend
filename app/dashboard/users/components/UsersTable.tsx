@@ -69,7 +69,7 @@ type Props = {
   canEdit?: boolean;
   canDelete?: boolean;
   canToggleStatus?: boolean;
-  // User source separation (admin self-signup)
+  // User source separation for admin-created vs externally linked accounts.
   showUserSourceTabs?: boolean;
   userSourceTab?: "all" | "manual" | "public_enrolled";
   setUserSourceTab?: (v: "all" | "manual" | "public_enrolled") => void;
@@ -136,7 +136,7 @@ const UsersTable = ({
     active: users.filter((u: any) => getUserStatusMeta(u).label === "Active").length,
     inactive: users.filter((u: any) => getUserStatusMeta(u).label === "Inactive").length,
     pending: users.filter((u: any) => getUserStatusMeta(u).label === "Pending").length,
-    otpEnabled: users.filter((u: any) => u.authMethod === "PHONE_OTP").length,
+    passwordReady: users.filter((u: any) => u.passwordStatus === "SET").length,
   };
 
   const cardBg = useColorModeValue("white", "gray.800");
@@ -389,14 +389,16 @@ const UsersTable = ({
       type: "component",
       width: "120px",
       metaData: {
-        component: (user: any) => (
+        component: (user: any) => {
+          const isPasswordSet = user?.passwordStatus === "SET";
+          return (
           <Tooltip
-            label="Phone number + OTP authentication"
+            label={isPasswordSet ? "Email and password login is ready" : "Password setup is pending"}
             hasArrow
           >
             <Badge
               variant="solid"
-              colorScheme="green"
+              colorScheme={isPasswordSet ? "green" : "orange"}
               px={2.5}
               py={1}
               borderRadius="full"
@@ -404,11 +406,12 @@ const UsersTable = ({
             >
               <HStack spacing={1}>
                 <Icon as={FiShield} boxSize={3} />
-                <Text>Phone OTP</Text>
+                <Text>{isPasswordSet ? "Password" : "Setup Pending"}</Text>
               </HStack>
             </Badge>
           </Tooltip>
-        ),
+        );
+        },
       },
     },
     {
@@ -511,14 +514,14 @@ const UsersTable = ({
         >
           <Stat>
             <StatLabel color={muted} fontSize="sm">
-              Phone OTP Ready
+              Password Ready
             </StatLabel>
             <StatNumber fontSize="2xl" fontWeight="bold" color={secureNumberColor}>
-              {stats.otpEnabled}
+              {stats.passwordReady}
             </StatNumber>
             <StatHelpText fontSize="xs" color={muted}>
               <Icon as={FiShield} mr={1} />
-              {stats.total > 0 ? ((stats.otpEnabled / stats.total) * 100).toFixed(1) : "0"}% using OTP
+              {stats.total > 0 ? ((stats.passwordReady / stats.total) * 100).toFixed(1) : "0"}% ready
             </StatHelpText>
           </Stat>
         </Box>
@@ -579,7 +582,7 @@ const UsersTable = ({
           </Box>
         </Flex>
 
-        {/* User Source Sub-filter for Admin (Manually Created vs Public Enrolled) */}
+        {/* User source filter for admin-created vs externally linked accounts. */}
         {showUserSourceTabs && (
           <Box mb={4}>
             <HStack spacing={2} flexWrap="wrap">
@@ -589,7 +592,7 @@ const UsersTable = ({
               {([
                 { value: "all", label: "All Users" },
                 { value: "manual", label: "Manually Created" },
-                { value: "public_enrolled", label: "Public Course Enrolled" },
+                { value: "public_enrolled", label: "Externally Linked" },
               ] as const).map((opt) => (
                 <Button
                   key={opt.value}
@@ -748,7 +751,9 @@ const UsersTable = ({
                       </Box>
                       <Box>
                         <Text fontSize="10px" textTransform="uppercase" color={muted}>Security</Text>
-                        <Text fontSize="xs" fontWeight="medium">Phone OTP</Text>
+                        <Text fontSize="xs" fontWeight="medium">
+                          {user.passwordStatus === "SET" ? "Password" : "Setup Pending"}
+                        </Text>
                       </Box>
                     </SimpleGrid>
 

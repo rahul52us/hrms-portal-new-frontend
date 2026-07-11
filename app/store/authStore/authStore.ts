@@ -15,54 +15,9 @@ interface Notification {
   duration?:number
 }
 
-export interface LearnerRegistrationPayload {
-  name: string;
-  phone: string;
-  email?: string;
-  verificationToken: string;
-  invitationToken?: string;
-  courseId?: string;
-  location?: RegistrationLocationPayload;
-}
-
-export interface AdminRegistrationPayload {
-  name: string;
-  phone: string;
-  email?: string;
-  verificationToken: string;
-  companyName: string;
-  companyEmail?: string;
-  location?: RegistrationLocationPayload;
-}
-
-export interface RegistrationLocationPayload {
-  address: string;
-  city: string;
-  state: string;
-  country: string;
-  postalCode: string;
-  formattedAddress?: string;
-  placeId?: string;
-  lat?: number | null;
-  lng?: number | null;
-}
-
-export interface GlobalLoginPayload {
-  phone: string;
-  otp: string;
-  token?: string;
-}
-
-export interface OtpRequestPayload {
-  phone: string;
-  purpose: "login" | "register";
-}
-
-export interface OtpVerifyPayload {
-  phone: string;
-  otp: string;
-  purpose: "login" | "register";
-  token?: string;
+export interface PasswordLoginPayload {
+  email: string;
+  password: string;
 }
 
 class AuthStore {
@@ -149,6 +104,24 @@ class AuthStore {
     }
   };
 
+  setPassword = async (value: { token: string; password: string }) => {
+    try {
+      const { data } = await axios.post("/auth/set-password", value);
+      return data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err?.message);
+    }
+  };
+
+  resetPassword = async (value: { token: string; password: string }) => {
+    try {
+      const { data } = await axios.post("/auth/reset-password", value);
+      return data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err?.message);
+    }
+  };
+
   openNotification = (data: {
     title: any;
     message: string;
@@ -170,83 +143,6 @@ class AuthStore {
     this.notification = null;
   };
 
-  requestOtp = async (payload: OtpRequestPayload) => {
-    try {
-      const response = await axios.post("/auth/otp/request", payload);
-      return response?.data;
-    } catch (err: any) {
-      return Promise.reject(err?.response?.data || err);
-    }
-  };
-
-  verifyOtp = async (payload: OtpVerifyPayload) => {
-    try {
-      const response = await axios.post("/auth/otp/verify", payload);
-      return response?.data;
-    } catch (err: any) {
-      return Promise.reject(err?.response?.data || err);
-    }
-  };
-
-  registerLearner = async (payload: LearnerRegistrationPayload) => {
-    this.isLoading = true;
-    this.error = null;
-    try {
-      const response = await axios.post("/auth/register/learner", payload);
-      const responseToken =
-        response?.data?.data?.authorization_token ||
-        response?.data?.data?.accessToken ||
-        response?.data?.data?.token ||
-        response?.data?.accessToken ||
-        response?.data?.token ||
-        null;
-
-      if (responseToken) {
-        this.token = responseToken;
-        if (typeof window !== "undefined") {
-          localStorage.setItem(AUTH_TOKEN, responseToken);
-        }
-        await this.fetchUser();
-      }
-
-      return response?.data;
-    } catch (err: any) {
-      this.error = err?.response?.data?.message || err?.response?.data?.error || "Registration failed.";
-      return Promise.reject(err?.response?.data || err);
-    } finally {
-      this.isLoading = false;
-    }
-  };
-
-  registerAdmin = async (payload: AdminRegistrationPayload) => {
-    this.isLoading = true;
-    this.error = null;
-    try {
-      const response = await axios.post("/auth/register/admin", payload);
-      const responseToken =
-        response?.data?.data?.authorization_token ||
-        response?.data?.data?.accessToken ||
-        response?.data?.data?.token ||
-        response?.data?.accessToken ||
-        response?.data?.token ||
-        null;
-
-      if (responseToken) {
-        this.token = responseToken;
-        if (typeof window !== "undefined") {
-          localStorage.setItem(AUTH_TOKEN, responseToken);
-        }
-        await this.fetchUser();
-      }
-
-      return response?.data;
-    } catch (err: any) {
-      this.error = err?.response?.data?.message || err?.response?.data?.error || "Registration failed.";
-      return Promise.reject(err?.response?.data || err);
-    } finally {
-      this.isLoading = false;
-    }
-  };
 
   restoreUser = () => {
     try {
@@ -282,14 +178,13 @@ class AuthStore {
     );
     sessionStorage.removeItem(USER_SESSION_DATA!);
   };
-  // Login user
-  login = async (payload: GlobalLoginPayload) => {
+  loginWithPassword = async (payload: PasswordLoginPayload) => {
     this.isLoading = true;
     this.error = null;
     try {
-      const response = await axios.post("/auth/otp/verify", {
-        ...payload,
-        purpose: "login",
+      const response = await axios.post("/auth/login/password", {
+        email: payload.email,
+        password: payload.password,
       });
       this.token =
         response?.data?.data?.authorization_token ||
@@ -305,7 +200,7 @@ class AuthStore {
 
       await this.fetchUser();
       this.sessionReady = true;
-      return response?.data
+      return response?.data;
     } catch (err: any) {
       this.error = err?.response?.data?.message || "Login failed.";
       return Promise.reject(err?.response?.data || err);

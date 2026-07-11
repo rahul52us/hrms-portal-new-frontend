@@ -49,7 +49,7 @@ const Header: React.FC = observer(() => {
   const isLearner = isLoggedIn && isLearnerRole(role);
   const isManagerUser = isLoggedIn && isManagerRole(role);
   const appHref = role === 'superadmin'
-    ? '/dashboard/admins'
+    ? '/dashboard/companies'
     : hasPermission(user, PERMISSION_KEYS.VIEW_USERS)
       ? '/dashboard/users'
       : hasAnyCourseViewPermission(user)

@@ -2,16 +2,11 @@ import { makeAutoObservable } from "mobx";
 import axios from "axios";
 import { authStore } from "../authStore/authStore";
 
-const COMPANY_CONTEXT_KEY = "lms:selected-company-context";
+const COMPANY_CONTEXT_KEY = "hrms:selected-company-context";
 
 class CompanyStores {
-  fetchCompanies() {
-    throw new Error("Method not implemented.");
-  }
-  therapist: any = {
-    loading : false,
-    data : [],
-    page : 1
+  fetchCompanies(params: any = {}) {
+    return this.getManagedCompanies(params);
   }
   companies: any = {
     loading: false,

@@ -4,6 +4,7 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
   Drawer,
   DrawerBody,
   DrawerCloseButton,
@@ -13,6 +14,7 @@ import {
   DrawerOverlay,
   Flex,
   Icon,
+  Input,
   SimpleGrid,
   Text,
   VStack,
@@ -98,11 +100,14 @@ const buildUserFormErrors = ({
   const trimmedName = String(userForm.name || "").trim();
   const trimmedEmail = String(userForm.email || "").trim().toLowerCase();
   const trimmedMobile = String(userForm.mobileNumber || "").trim();
-  const trimmedDesignation = String(userForm.designation || "").trim();
   const trimmedDepartment = String(userForm.department || "").trim();
-  const requiresGender = !userForm.id;
+  const normalizedRole = String(userForm.role || "").trim().toLowerCase();
+  const isCompanyAdminRole = normalizedRole === "admin";
+  const trimmedPassword = String(userForm.password || "");
+  const trimmedConfirmPassword = String(userForm.confirmPassword || "");
+  const requiresEmployeeCode = !isCompanyAdminRole;
 
-  if (!trimmedCode) {
+  if (requiresEmployeeCode && !trimmedCode) {
     errors.code = "Employee code is required.";
   }
 
@@ -110,18 +115,14 @@ const buildUserFormErrors = ({
     errors.name = "Full name is required.";
   }
 
-  if (trimmedEmail && !EMAIL_PATTERN.test(trimmedEmail)) {
+  if (!trimmedEmail) {
+    errors.email = "Email is required for account access.";
+  } else if (trimmedEmail && !EMAIL_PATTERN.test(trimmedEmail)) {
     errors.email = "Enter a valid email address.";
   }
 
-  if (!trimmedMobile) {
-    errors.mobileNumber = "Mobile number is required.";
-  } else if (!PHONE_PATTERN.test(trimmedMobile)) {
+  if (trimmedMobile && !PHONE_PATTERN.test(trimmedMobile)) {
     errors.mobileNumber = "Enter a valid mobile number.";
-  }
-
-  if (!trimmedDesignation) {
-    errors.designation = "Designation is required.";
   }
 
   if (!String(userForm.role || "").trim()) {
@@ -142,8 +143,17 @@ const buildUserFormErrors = ({
     errors.department = "Select a valid department for the chosen company.";
   }
 
-  if (requiresGender && !userForm.gender) {
-    errors.gender = "Gender is required.";
+  if (trimmedPassword && !/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/.test(trimmedPassword)) {
+    errors.password =
+      "Password must be 8+ characters with uppercase, lowercase, and a number.";
+  }
+
+  if (trimmedPassword && trimmedPassword !== trimmedConfirmPassword) {
+    errors.confirmPassword = "Passwords do not match.";
+  }
+
+  if (!userForm.id && !trimmedPassword && userForm.sendInvite === false) {
+    errors.password = "Enter a password or send a setup invite.";
   }
 
   if (userForm.dateOfBirth && isFutureDate(userForm.dateOfBirth)) {
@@ -178,7 +188,8 @@ const UserDrawer = ({
   const availableDepartments = isSuperadmin
     ? filteredCompanies.find((company: any) => company?._id === userForm.companyId)?.departments || []
     : currentCompanyDepartments || [];
-  const isDepartmentRequired = userForm.role === "departmenthead";
+  const isDepartmentRequired =
+    userForm.role === "departmenthead" || /^l\d+-manager$/i.test(String(userForm.role || ""));
   const validationErrors = useMemo(
     () =>
       buildUserFormErrors({
@@ -206,6 +217,24 @@ const UserDrawer = ({
   }, [userForm?.pic]);
 
   const todayDate = getTodayDateValue();
+  const isCompanyAdminRole = String(userForm.role || "").trim().toLowerCase() === "admin";
+  const drawerTitle = userForm.id
+    ? isCompanyAdminRole
+      ? "Edit Company Admin"
+      : "Edit Employee"
+    : isCompanyAdminRole
+      ? "Add Company Admin"
+      : "Add Employee";
+  const submitLabel = userForm.id
+    ? isCompanyAdminRole
+      ? "Update Company Admin"
+      : "Update Employee"
+    : isCompanyAdminRole
+      ? "Create Company Admin"
+      : "Create Employee";
+  const roleLabel =
+    roleOptions.find((roleOption: any) => roleOption.value === userForm.role)?.label ||
+    userForm.role;
 
   useEffect(() => {
     if (!isOpen) {
@@ -233,11 +262,11 @@ const UserDrawer = ({
         <DrawerHeader borderBottom="1px solid" borderColor="gray.200">
           <Flex align="center" justify="space-between">
             <Text fontWeight="bold">
-              {userForm.id ? "Edit User" : "Add User"}
+              {drawerTitle}
             </Text>
 
             <Badge colorScheme="blue" px={3} py={1} borderRadius="full">
-              {userForm.role}
+              {roleLabel}
             </Badge>
           </Flex>
         </DrawerHeader>
@@ -245,94 +274,100 @@ const UserDrawer = ({
         {/* BODY */}
         <DrawerBody>
           <VStack align="stretch" spacing={6}>
-            <SectionCard title="Profile Image" icon={ImageIcon} color="purple">
-              {preview ? (
-                <Flex direction="column" gap={4}>
-                  <Box
-                    borderRadius="lg"
-                    overflow="hidden"
-                    border="1px solid"
-                    borderColor="gray.200"
-                    maxW="200px"
-                  >
-                    <img
-                      src={preview}
-                      alt="preview"
-                      style={{
-                        width: "100%",
-                        height: "150px",
-                        objectFit: "cover",
-                      }}
-                    />
-                  </Box>
-                  <Button
-                    size="sm"
-                    colorScheme="red"
-                    variant="outline"
-                    onClick={() =>
+            {!isCompanyAdminRole && (
+              <SectionCard title="Profile Image" icon={ImageIcon} color="purple">
+                {preview ? (
+                  <Flex direction="column" gap={4}>
+                    <Box
+                      borderRadius="lg"
+                      overflow="hidden"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      maxW="200px"
+                    >
+                      <img
+                        src={preview}
+                        alt="preview"
+                        style={{
+                          width: "100%",
+                          height: "150px",
+                          objectFit: "cover",
+                        }}
+                      />
+                    </Box>
+                    <Button
+                      size="sm"
+                      colorScheme="red"
+                      variant="outline"
+                      onClick={() =>
+                        setUserForm((p: any) => ({
+                          ...p,
+                          pic: {
+                            ...p.pic,
+                            file: null,
+                            url: "",
+                            isDeleted: 1,
+                            isAdd: 0,
+                          },
+                        }))
+                      }
+                    >
+                      Remove Image
+                    </Button>
+                  </Flex>
+                ) : (
+                  <CustomInput
+                    type="file-drag"
+                    name="pic"
+                    accept="image/*"
+                    onChange={(e: any) => {
+                      const file = e.target.files?.[0];
+                      if (!file) {
+                        return;
+                      }
+
                       setUserForm((p: any) => ({
                         ...p,
                         pic: {
                           ...p.pic,
-                          file: null,
+                          file,
+                          isAdd: 1,
+                          isDeleted: 0,
                           url: "",
-                          isDeleted: 1,
-                          isAdd: 0,
                         },
-                      }))
-                    }
-                  >
-                    Remove Image
-                  </Button>
-                </Flex>
-              ) : (
-                <CustomInput
-                  type="file-drag"
-                  name="pic"
-                  accept="image/*"
-                  onChange={(e: any) => {
-                    const file = e.target.files?.[0];
-                    if (!file) {
-                      return;
-                    }
-
-                    setUserForm((p: any) => ({
-                      ...p,
-                      pic: {
-                        ...p.pic,
-                        file,
-                        isAdd: 1,
-                        isDeleted: 0,
-                        url: "",
-                      },
-                    }));
-                  }}
-                />
-              )}
-            </SectionCard>
+                      }));
+                    }}
+                  />
+                )}
+              </SectionCard>
+            )}
 
             {/* EMPLOYEE */}
-            <SectionCard title="Employee Details" icon={User} color="blue">
+            <SectionCard title={isCompanyAdminRole ? "Company Admin Details" : "Employee Details"} icon={User} color="blue">
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                <CustomInput
-                  label="Employee Code"
-                  name="code"
-                  placeholder="Enter employee code"
-                  value={userForm.code}
-                  error={validationErrors.code}
-                  showError={submitAttempted}
-                  onChange={(e: any) =>
-                    setUserForm((p: any) => ({ ...p, code: e.target.value }))
-                  }
-                />
-                <CustomInput
-                  label="Profile ID"
-                  name="profileId"
-                  placeholder="Generated automatically after creation"
-                  value={userForm.profileId || ""}
-                  disabled
-                  readOnly
-                />
+                {!isCompanyAdminRole && (
+                  <>
+                    <CustomInput
+                      label="Employee Code"
+                      name="code"
+                      placeholder="Enter employee code"
+                      value={userForm.code}
+                      error={validationErrors.code}
+                      showError={submitAttempted}
+                      onChange={(e: any) =>
+                        setUserForm((p: any) => ({ ...p, code: e.target.value }))
+                      }
+                    />
+                    <CustomInput
+                      label="Profile ID"
+                      name="profileId"
+                      placeholder="Generated automatically after creation"
+                      value={userForm.profileId || ""}
+                      disabled
+                      readOnly
+                    />
+                  </>
+                )}
                 <CustomInput
                   label="Full Name"
                   name="name"
@@ -345,7 +380,7 @@ const UserDrawer = ({
                   }
                 />
                 <CustomInput
-                  label="Email (Optional)"
+                  label="Email"
                   name="email"
                   placeholder="Enter email address"
                   value={userForm.email}
@@ -355,62 +390,66 @@ const UserDrawer = ({
                     setUserForm((p: any) => ({ ...p, email: e.target.value }))
                   }
                 />
-                <CustomInput
-                  label="Phone Number"
-                  name="mobileNumber"
-                  placeholder="Enter mobile number"
-                  value={userForm.mobileNumber}
-                  error={validationErrors.mobileNumber}
-                  showError={submitAttempted}
-                  onChange={(e: any) =>
-                    setUserForm((p: any) => ({ ...p, mobileNumber: e.target.value }))
-                  }
-                />
-                <CustomInput
-                  label="Designation"
-                  name="designation"
-                  placeholder="Enter designation"
-                  value={userForm.designation}
-                  error={validationErrors.designation}
-                  showError={submitAttempted}
-                  onChange={(e: any) =>
-                    setUserForm((p: any) => ({ ...p, designation: e.target.value }))
-                  }
-                />
-                <CustomInput
-                  label="Date of Birth"
-                  name="dateOfBirth"
-                  type="date"
-                  maxDate={todayDate}
-                  value={userForm.dateOfBirth}
-                  error={validationErrors.dateOfBirth}
-                  showError={submitAttempted}
-                  onChange={(e: any) =>
-                    setUserForm((p: any) => ({ ...p, dateOfBirth: e.target.value }))
-                  }
-                />
-                <CustomInput
-                  type="select"
-                  label="Gender"
-                  name="gender"
-                  placeholder="Select gender"
-                  value={genderOptions.find((option: any) => option.value === userForm.gender) || null}
-                  error={validationErrors.gender}
-                  showError={submitAttempted}
-                  onChange={(option: any) =>
-                    setUserForm((p: any) => ({ ...p, gender: option?.value ?? "" }))
-                  }
-                  options={genderOptions}
-                />
-                <CustomInput
-                  label="Joining Date"
-                  name="joiningDate"
-                  type="date"
-                  value={userForm.joiningDate}
-                  onChange={(e: any) =>
-                    setUserForm((p: any) => ({ ...p, joiningDate: e.target.value }))
-                  }
-                />
+                {!isCompanyAdminRole && (
+                  <>
+                    <CustomInput
+                      label="Phone Number (Optional)"
+                      name="mobileNumber"
+                      placeholder="Enter mobile number"
+                      value={userForm.mobileNumber}
+                      error={validationErrors.mobileNumber}
+                      showError={submitAttempted}
+                      onChange={(e: any) =>
+                        setUserForm((p: any) => ({ ...p, mobileNumber: e.target.value }))
+                      }
+                    />
+                    <CustomInput
+                      label="Designation (Optional)"
+                      name="designation"
+                      placeholder="Enter designation"
+                      value={userForm.designation}
+                      error={validationErrors.designation}
+                      showError={submitAttempted}
+                      onChange={(e: any) =>
+                        setUserForm((p: any) => ({ ...p, designation: e.target.value }))
+                      }
+                    />
+                    <CustomInput
+                      label="Date of Birth"
+                      name="dateOfBirth"
+                      type="date"
+                      maxDate={todayDate}
+                      value={userForm.dateOfBirth}
+                      error={validationErrors.dateOfBirth}
+                      showError={submitAttempted}
+                      onChange={(e: any) =>
+                        setUserForm((p: any) => ({ ...p, dateOfBirth: e.target.value }))
+                      }
+                    />
+                    <CustomInput
+                      type="select"
+                      label="Gender"
+                      name="gender"
+                      placeholder="Select gender"
+                      value={genderOptions.find((option: any) => option.value === userForm.gender) || null}
+                      error={validationErrors.gender}
+                      showError={submitAttempted}
+                      onChange={(option: any) =>
+                        setUserForm((p: any) => ({ ...p, gender: option?.value ?? "" }))
+                      }
+                      options={genderOptions}
+                    />
+                    <CustomInput
+                      label="Joining Date"
+                      name="joiningDate"
+                      type="date"
+                      value={userForm.joiningDate}
+                      onChange={(e: any) =>
+                        setUserForm((p: any) => ({ ...p, joiningDate: e.target.value }))
+                      }
+                    />
+                  </>
+                )}
                 <CustomInput
                   type="select"
                   label="Role"
@@ -422,53 +461,119 @@ const UserDrawer = ({
                   onChange={(option: any) => updateRole(option?.value || "user")}
                   options={roleOptions}
                 />
-                <CustomInput
-                  type="select"
-                  label="Department"
-                  name="department"
-                  required={isDepartmentRequired}
-                  placeholder="Select department"
-                  value={
-                    userForm.department
-                      ? { label: userForm.department, value: userForm.department }
-                      : null
-                  }
-                  error={validationErrors.department}
-                  showError={submitAttempted}
-                  onChange={(option: any) =>
-                    setUserForm((p: any) => ({ ...p, department: option?.value || "" }))
-                  }
-                  options={availableDepartments.map((department: string) => ({
-                    label: department,
-                    value: department,
-                  }))}
-                />
-                <CustomInput
-                  label="City"
-                  name="city"
-                  placeholder="Enter city"
-                  value={userForm.city}
-                  onChange={(e: any) =>
-                    setUserForm((p: any) => ({ ...p, city: e.target.value }))
-                  }
-                />
-                <CustomInput
-                  label="State"
-                  name="state"
-                  placeholder="Enter state"
-                  value={userForm.state}
-                  onChange={(e: any) =>
-                    setUserForm((p: any) => ({ ...p, state: e.target.value }))
-                  }
-                />
+                {!isCompanyAdminRole && (
+                  <>
+                    <CustomInput
+                      type="select"
+                      label="Department"
+                      name="department"
+                      required={isDepartmentRequired}
+                      placeholder="Select department"
+                      value={
+                        userForm.department
+                          ? { label: userForm.department, value: userForm.department }
+                          : null
+                      }
+                      error={validationErrors.department}
+                      showError={submitAttempted}
+                      onChange={(option: any) =>
+                        setUserForm((p: any) => ({ ...p, department: option?.value || "" }))
+                      }
+                      options={availableDepartments.map((department: string) => ({
+                        label: department,
+                        value: department,
+                      }))}
+                    />
+                    <CustomInput
+                      label="City"
+                      name="city"
+                      placeholder="Enter city"
+                      value={userForm.city}
+                      onChange={(e: any) =>
+                        setUserForm((p: any) => ({ ...p, city: e.target.value }))
+                      }
+                    />
+                    <CustomInput
+                      label="State"
+                      name="state"
+                      placeholder="Enter state"
+                      value={userForm.state}
+                      onChange={(e: any) =>
+                        setUserForm((p: any) => ({ ...p, state: e.target.value }))
+                      }
+                    />
+                  </>
+                )}
               </SimpleGrid>
 
             </SectionCard>
 
             <SectionCard title="Authentication" icon={Lock} color="green">
-              <Text fontSize="sm" color={muted}>
-                All managed accounts now sign in with their phone number and OTP. No password setup or account emails are sent from this flow.
-              </Text>
+              {userForm.id ? (
+                <Text fontSize="sm" color={muted}>
+                  Existing accounts use email and password access. Use status controls from the table to activate or deactivate access.
+                </Text>
+              ) : (
+                <VStack align="stretch" spacing={4}>
+                  <Text fontSize="sm" color={muted}>
+                    {isCompanyAdminRole
+                      ? "Leave password blank to generate a setup link for this company admin. If SMTP is unavailable, the setup link will be shown after saving."
+                      : "Leave password blank to send a setup link. Enter a password only when you want to set initial access manually."}
+                  </Text>
+                  <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                    <Box>
+                      <Text mb={2} fontSize="sm" fontWeight="600">
+                        Initial Password
+                      </Text>
+                      <Input
+                        type="password"
+                        value={userForm.password || ""}
+                        placeholder="Optional"
+                        onChange={(event) =>
+                          setUserForm((p: any) => ({ ...p, password: event.target.value }))
+                        }
+                      />
+                      {submitAttempted && validationErrors.password ? (
+                        <Text mt={1} fontSize="xs" color="red.500">
+                          {validationErrors.password}
+                        </Text>
+                      ) : null}
+                    </Box>
+                    <Box>
+                      <Text mb={2} fontSize="sm" fontWeight="600">
+                        Confirm Password
+                      </Text>
+                      <Input
+                        type="password"
+                        value={userForm.confirmPassword || ""}
+                        placeholder="Confirm optional password"
+                        onChange={(event) =>
+                          setUserForm((p: any) => ({
+                            ...p,
+                            confirmPassword: event.target.value,
+                          }))
+                        }
+                      />
+                      {submitAttempted && validationErrors.confirmPassword ? (
+                        <Text mt={1} fontSize="xs" color="red.500">
+                          {validationErrors.confirmPassword}
+                        </Text>
+                      ) : null}
+                    </Box>
+                  </SimpleGrid>
+                  <Checkbox
+                    isChecked={userForm.sendInvite !== false}
+                    onChange={(event) =>
+                      setUserForm((p: any) => ({ ...p, sendInvite: event.target.checked }))
+                    }
+                    isDisabled={Boolean(userForm.password)}
+                  >
+                    {isCompanyAdminRole
+                      ? "Send setup invite email when no password is provided"
+                      : "Send setup invite email when no password is provided"}
+                  </Checkbox>
+                </VStack>
+              )}
             </SectionCard>
 
             {/* COMPANY */}
@@ -509,23 +614,25 @@ const UserDrawer = ({
             </SectionCard>
 
             {/* HIERARCHY */}
-            <SectionCard title="Manager Hierarchy" icon={Layers} color="orange">
-              {!canAssignManagers ? (
-                <Text fontSize="sm" color={muted}>
-                  Manager assignment is disabled for this account.
-                </Text>
-              ) : null}
-              <ManagerHierarchy
-                managers={userForm.managers}
-                role={userForm.role}
-                managerCompanyId={managerCompanyId}
-                createCompany={userForm.createCompany}
-                muted={muted}
-                borderColor={borderColor}
-                onChange={setManagerSelection}
-                isDisabled={!canAssignManagers}
-              />
-            </SectionCard>
+            {!isCompanyAdminRole && (
+              <SectionCard title="Manager Hierarchy" icon={Layers} color="orange">
+                {!canAssignManagers ? (
+                  <Text fontSize="sm" color={muted}>
+                    Manager assignment is disabled for this account.
+                  </Text>
+                ) : null}
+                <ManagerHierarchy
+                  managers={userForm.managers}
+                  role={userForm.role}
+                  managerCompanyId={managerCompanyId}
+                  createCompany={userForm.createCompany}
+                  muted={muted}
+                  borderColor={borderColor}
+                  onChange={setManagerSelection}
+                  isDisabled={!canAssignManagers}
+                />
+              </SectionCard>
+            )}
 
           </VStack>
         </DrawerBody>
@@ -536,7 +643,7 @@ const UserDrawer = ({
             Cancel
           </Button>
           <Button colorScheme="blue" onClick={handleValidatedSubmit} isLoading={loading}>
-            {userForm.id ? "Update User" : "Create User"}
+            {submitLabel}
           </Button>
         </DrawerFooter>
       </DrawerContent>
