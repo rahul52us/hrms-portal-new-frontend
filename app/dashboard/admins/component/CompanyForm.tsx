@@ -13,6 +13,7 @@ import {
   Icon,
   SimpleGrid,
   Text,
+  VStack,
   useColorModeValue,
   useToast,
 } from "@chakra-ui/react";
@@ -20,6 +21,7 @@ import { Formik, Form as FormikForm, getIn } from "formik";
 import {
   Building2,
   Globe,
+  UserPlus,
   MapPin,
   Palette,
 } from "lucide-react";
@@ -129,6 +131,14 @@ export const companyInitialValues = {
       pinCode: "",
     },
   ],
+  companyAdmin: {
+    create: false,
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    sendInvite: true,
+  },
 };
 
 const createCompanyFormValues = (company?: any) => ({
@@ -164,6 +174,10 @@ const createCompanyFormValues = (company?: any) => ({
           pinCode: address?.pinCode || "",
         }))
       : companyInitialValues.addressInfo,
+  companyAdmin: {
+    ...companyInitialValues.companyAdmin,
+    ...(company?.companyAdmin || {}),
+  },
 });
 
 /* ================= FORM ================= */
@@ -240,11 +254,52 @@ const CompanyForm = ({
     primaryThemeColor: Yup.string()
       .matches(/^#(?:[0-9A-Fa-f]{3}){1,2}$/, "Enter a valid hex color")
       .required("Primary theme color is required"),
+    companyAdmin: Yup.object({
+      create: Yup.boolean(),
+      name: Yup.string().when("create", {
+        is: true,
+        then: (schema) => schema.trim().required("Company admin name is required"),
+        otherwise: (schema) => schema.trim().optional(),
+      }),
+      email: Yup.string().when("create", {
+        is: true,
+        then: (schema) =>
+          schema.trim().email("Enter a valid company admin email").required("Company admin email is required"),
+        otherwise: (schema) => schema.trim().optional(),
+      }),
+      password: Yup.string()
+        .trim()
+        .test(
+          "password-strength",
+          "Password must be 8+ characters with uppercase, lowercase, and a number",
+          (value) => !value || /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/.test(value)
+        ),
+      confirmPassword: Yup.string().test(
+        "password-match",
+        "Passwords do not match",
+        function (value) {
+          const password = this.parent?.password;
+          return !password || value === password;
+        }
+      ),
+      sendInvite: Yup.boolean(),
+    }).test(
+      "password-or-invite",
+      "Enter a password or keep setup invite enabled",
+      (value) => !value?.create || Boolean(value?.password) || value?.sendInvite !== false
+    ),
   });
 
   return (
     <Formik
-      initialValues={createCompanyFormValues(initialValues)}
+      initialValues={{
+        ...createCompanyFormValues(initialValues),
+        companyAdmin: {
+          ...companyInitialValues.companyAdmin,
+          ...(initialValues?.companyAdmin || {}),
+          create: simpleCreate && !initialValues?._id,
+        },
+      }}
       enableReinitialize
       validationSchema={validationSchema}
       onSubmit={async (values, helpers) => {
@@ -258,6 +313,17 @@ const CompanyForm = ({
                 bio: String(values.bio || "").trim() || `${values.company_name} HRMS workspace`,
                 primaryThemeColor: normalizeHexColor(values.primaryThemeColor, DEFAULT_LEARNER_PRIMARY_COLOR),
                 verified_email_allowed: false,
+                companyAdmin: values.companyAdmin?.create
+                  ? {
+                      create: true,
+                      name: String(values.companyAdmin?.name || "").trim(),
+                      email: String(values.companyAdmin?.email || "").trim().toLowerCase(),
+                      password: String(values.companyAdmin?.password || ""),
+                      sendInvite: values.companyAdmin?.password
+                        ? false
+                        : values.companyAdmin?.sendInvite !== false,
+                    }
+                  : { create: false },
               }
             : values;
           await onSubmit(normalizedValues);
@@ -526,6 +592,101 @@ const CompanyForm = ({
                   </>
                 )}
               </SectionCard>
+
+              {simpleCreate && (
+                <SectionCard title="Company Admin" icon={UserPlus} color="green">
+                  <VStack align="stretch" spacing={4}>
+                    <Checkbox
+                      isChecked={Boolean(values.companyAdmin?.create)}
+                      onChange={(event) =>
+                        setFieldValue("companyAdmin.create", event.target.checked)
+                      }
+                    >
+                      Create company admin with this company
+                    </Checkbox>
+
+                    {values.companyAdmin?.create ? (
+                      <>
+                        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                          <CustomInput
+                            label="Admin Name"
+                            name="companyAdmin.name"
+                            placeholder="Enter admin full name"
+                            value={values.companyAdmin?.name || ""}
+                            onBlur={handleBlur}
+                            onChange={(event: any) =>
+                              setFieldValue("companyAdmin.name", event.target.value)
+                            }
+                            error={fieldError("companyAdmin.name")}
+                            showError={showFieldError("companyAdmin.name")}
+                          />
+                          <CustomInput
+                            label="Admin Email"
+                            name="companyAdmin.email"
+                            placeholder="admin@company.com"
+                            value={values.companyAdmin?.email || ""}
+                            onBlur={handleBlur}
+                            onChange={(event: any) =>
+                              setFieldValue("companyAdmin.email", event.target.value)
+                            }
+                            error={fieldError("companyAdmin.email")}
+                            showError={showFieldError("companyAdmin.email")}
+                          />
+                          <CustomInput
+                            label="Initial Password (Optional)"
+                            name="companyAdmin.password"
+                            type="password"
+                            placeholder="Leave blank to send setup link"
+                            value={values.companyAdmin?.password || ""}
+                            onBlur={handleBlur}
+                            onChange={(event: any) => {
+                              setFieldValue("companyAdmin.password", event.target.value);
+                              if (event.target.value) {
+                                setFieldValue("companyAdmin.sendInvite", false);
+                              }
+                            }}
+                            error={fieldError("companyAdmin.password")}
+                            showError={showFieldError("companyAdmin.password")}
+                          />
+                          <CustomInput
+                            label="Confirm Password"
+                            name="companyAdmin.confirmPassword"
+                            type="password"
+                            placeholder="Confirm optional password"
+                            value={values.companyAdmin?.confirmPassword || ""}
+                            onBlur={handleBlur}
+                            onChange={(event: any) =>
+                              setFieldValue("companyAdmin.confirmPassword", event.target.value)
+                            }
+                            error={fieldError("companyAdmin.confirmPassword")}
+                            showError={showFieldError("companyAdmin.confirmPassword")}
+                          />
+                        </SimpleGrid>
+
+                        <Checkbox
+                          isChecked={values.companyAdmin?.sendInvite !== false}
+                          isDisabled={Boolean(values.companyAdmin?.password)}
+                          onChange={(event) =>
+                            setFieldValue("companyAdmin.sendInvite", event.target.checked)
+                          }
+                        >
+                          Send setup invite email when no password is provided
+                        </Checkbox>
+
+                        {typeof fieldError("companyAdmin") === "string" && submitCount > 0 ? (
+                          <Text color="red.500" fontSize="sm">
+                            {fieldError("companyAdmin")}
+                          </Text>
+                        ) : null}
+                      </>
+                    ) : (
+                      <Text fontSize="sm" color="gray.500">
+                        You can add a company admin later from the company workspace.
+                      </Text>
+                    )}
+                  </VStack>
+                </SectionCard>
+              )}
 
               {/* ADDRESS */}
               <SectionCard title={simpleCreate ? "Address (Optional)" : "Address"} icon={MapPin} color="orange">

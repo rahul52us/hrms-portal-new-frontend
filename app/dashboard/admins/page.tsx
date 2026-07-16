@@ -169,15 +169,28 @@ const DirectoryPage = observer(() => {
       }
 
       const response: any = await createCompany(payload);
-      const createdCompany = response?.data?.data;
+      const responseData = response?.data?.data;
+      const createdCompany = responseData?.company || responseData;
+      const setup = responseData?.setup || null;
+      const setupLinkCopied =
+        setup?.emailSent === false &&
+        setup?.setupUrl &&
+        typeof navigator !== "undefined"
+          ? await navigator.clipboard.writeText(setup.setupUrl).then(() => true).catch(() => false)
+          : false;
 
       await refreshCompanies();
       setIsCompanyDrawerOpen(false);
       showToast({
-        title: "Company created",
-        description: response?.data?.message || `${values.company_name} is ready.`,
+        title: responseData?.admin ? "Company and admin created" : "Company created",
+        description:
+          setup?.emailSent === false && setup?.setupUrl
+            ? setupLinkCopied
+              ? "SMTP did not send the admin setup email, so the setup link was copied to clipboard."
+              : `Admin setup link: ${setup.setupUrl}`
+            : response?.data?.message || `${values.company_name} is ready.`,
         status: "success",
-        duration: 4000,
+        duration: setup?.emailSent === false ? 9000 : 4000,
       });
 
       if (createdCompany?._id) {

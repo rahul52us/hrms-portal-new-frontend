@@ -1,7 +1,7 @@
 'use client'
 
 import { PERMISSION_KEYS, hasAnyCourseViewPermission, hasPermission } from '@/app/config/utils/permissions';
-import { isLearnerRole, isManagerRole } from '@/app/config/utils/roleAccess';
+import { isEmployeeRole, isLearnerRole, isManagerRole } from '@/app/config/utils/roleAccess';
 import stores from '@/app/store/stores';
 import { MoonIcon, SunIcon } from '@chakra-ui/icons';
 import {
@@ -46,17 +46,23 @@ const Header: React.FC = observer(() => {
   const user = stores.auth.user;
   const role = String(stores.auth.userType || user?.role || '').toLowerCase();
   const isLoggedIn = Boolean(user);
-  const isLearner = isLoggedIn && isLearnerRole(role);
+  const isEmployee = isLoggedIn && isEmployeeRole(role);
+  const isLearner = isLoggedIn && !isEmployee && isLearnerRole(role);
   const isManagerUser = isLoggedIn && isManagerRole(role);
   const appHref = role === 'superadmin'
     ? '/dashboard/companies'
-    : hasPermission(user, PERMISSION_KEYS.VIEW_USERS)
+    : isEmployee
+      ? '/employee'
+      : hasPermission(user, PERMISSION_KEYS.VIEW_USERS)
       ? '/dashboard/users'
       : hasAnyCourseViewPermission(user)
         ? '/dashboard/course'
         : hasPermission(user, PERMISSION_KEYS.VIEW_BATCHES)
           ? '/dashboard/batches'
           : '/course';
+  const appLabel = isEmployee ? 'My HRMS' : isLearner ? 'My Learning' : 'Dashboard';
+  const appMenuLabel = isEmployee ? 'Open HRMS' : isLearner ? 'Go to learning' : 'Open dashboard';
+  const bottomAppLabel = isEmployee ? 'HRMS' : isLearner ? 'My' : 'App';
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -68,23 +74,37 @@ const Header: React.FC = observer(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
 
-  const navLinks: NavLink[] = useMemo(() => ([
-    { href: '/', label: 'Home' },
-    { href: '/course', label: 'Courses' },
-    ...(isLearner ? [{ href: '/batches', label: 'Batches' }] : []),
-    ...(isManagerUser ? [{ href: '/manager', label: 'Learners' }] : []),
-    { href: '/about-us', label: 'About Us' },
-    { href: '/contact-us', label: 'Contact Us' },
-  ]), [isLearner, isManagerUser]);
+  const navLinks: NavLink[] = useMemo(() => {
+    if (isEmployee) {
+      return [
+        { href: '/employee', label: 'My HRMS' },
+        { href: '/user-profile', label: 'Profile' },
+      ];
+    }
+
+    return [
+      { href: '/', label: 'Home' },
+      { href: '/course', label: 'Courses' },
+      ...(isLearner ? [{ href: '/batches', label: 'Batches' }] : []),
+      ...(isManagerUser ? [{ href: '/manager', label: 'Learners' }] : []),
+      { href: '/about-us', label: 'About Us' },
+      { href: '/contact-us', label: 'Contact Us' },
+    ];
+  }, [isEmployee, isLearner, isManagerUser]);
 
   const bottomNavLinks = useMemo(
-    () => [
-      { href: '/', label: 'Home', icon: FiHome },
-      { href: '/course', label: 'Courses', icon: FiBookOpen },
-      ...(isLearner ? [{ href: '/batches', label: 'Batches', icon: FiGrid }] : []),
-      ...(isLoggedIn ? [{ href: appHref, label: isLearner ? 'My' : 'App', icon: FiUser }] : [{ href: '/login', label: 'Login', icon: FiUser }]),
-    ],
-    [appHref, isLearner, isLoggedIn]
+    () => isEmployee
+      ? [
+        { href: '/employee', label: 'HRMS', icon: FiGrid },
+        { href: '/user-profile', label: 'Profile', icon: FiUser },
+      ]
+      : [
+        { href: '/', label: 'Home', icon: FiHome },
+        { href: '/course', label: 'Courses', icon: FiBookOpen },
+        ...(isLearner ? [{ href: '/batches', label: 'Batches', icon: FiGrid }] : []),
+        ...(isLoggedIn ? [{ href: appHref, label: bottomAppLabel, icon: FiUser }] : [{ href: '/login', label: 'Login', icon: FiUser }]),
+      ],
+    [appHref, bottomAppLabel, isEmployee, isLearner, isLoggedIn]
   );
 
   const handleLogout = () => {
@@ -214,7 +234,7 @@ const Header: React.FC = observer(() => {
                     }}
                     transition="all 0.2s"
                   >
-                    {isLearner ? 'My Learning' : 'Dashboard'}
+                    {appLabel}
                   </ChakraLink>
 
                   <Menu>
@@ -254,7 +274,7 @@ const Header: React.FC = observer(() => {
                         View profile
                       </MenuItem>
                       <MenuItem borderRadius="xl" as={NextLink} href={appHref}>
-                        {isLearner ? 'Go to learning' : 'Open dashboard'}
+                        {appMenuLabel}
                       </MenuItem>
                       <MenuItem borderRadius="xl" color="red.500" onClick={handleLogout}>
                         Logout
@@ -417,7 +437,7 @@ const Header: React.FC = observer(() => {
                     minH="48px"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    {isLearner ? 'My Learning' : 'Dashboard'}
+                    {appLabel}
                   </Button>
                   <Button
                     variant="ghost"

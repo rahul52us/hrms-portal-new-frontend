@@ -10,6 +10,11 @@ export function isLearnerRole(value: unknown) {
   return role === "user" || role === "learner" || role === "manager" || /^l\d+-manager$/i.test(role);
 }
 
+export function isEmployeeRole(value: unknown) {
+  const role = normalizeRole(value);
+  return role === "user";
+}
+
 export function isManagerRole(value: unknown) {
   const role = normalizeRole(value);
   return role === "manager" || /^l\d+-manager$/i.test(role);
@@ -34,6 +39,10 @@ export function getDefaultAuthenticatedRoute(user: any) {
 
   if (role === "admin" || role === "departmenthead") {
     return "/dashboard/users";
+  }
+
+  if (isEmployeeRole(role)) {
+    return "/employee";
   }
 
   return "/";
