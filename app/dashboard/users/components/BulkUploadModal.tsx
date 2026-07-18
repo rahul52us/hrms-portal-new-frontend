@@ -151,7 +151,7 @@ const BulkUploadModal = ({
       <ModalOverlay backdropFilter="blur(6px)" />
 
       <ModalContent borderRadius="2xl">
-        <ModalHeader>Bulk Upload Users</ModalHeader>
+        <ModalHeader>Bulk Upload Employees</ModalHeader>
         <ModalCloseButton />
 
         <ModalBody>
@@ -190,9 +190,9 @@ const BulkUploadModal = ({
               borderRadius="xl"
             >
               <FormControl isRequired>
-                <FormLabel fontWeight="bold">Select User Type</FormLabel>
+                <FormLabel fontWeight="bold">Select Employee Type</FormLabel>
                 <ReactSelect
-                  placeholder="Select the user level you want to create..."
+                  placeholder="Select the employee level you want to create..."
                   options={uploadRoleOptions}
                   value={
                     selectedUploadOption
@@ -274,7 +274,7 @@ const BulkUploadModal = ({
                 textAlign="center"
               >
                 <Text color={muted} fontStyle="italic">
-                  Please select a company and the user type you want to create before uploading the Excel file.
+                  Please select a company and the employee type you want to create before uploading the Excel file.
                 </Text>
               </Box>
             )}
@@ -404,7 +404,7 @@ const BulkUploadModal = ({
             isDisabled={!selectedFile || !companyReady || !bulkForm.uploadRole}
             ml={3}
           >
-            Upload Users
+            Upload Employees
           </Button>
         </ModalFooter>
       </ModalContent>

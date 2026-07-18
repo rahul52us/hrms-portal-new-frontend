@@ -156,7 +156,7 @@ const UsersTable = ({
 
   const columns = [
     {
-      headerName: "User",
+      headerName: "Employee",
       key: "name",
       type: "component",
       width: "280px",
@@ -165,7 +165,7 @@ const UsersTable = ({
           <HStack spacing={3}>
             <Avatar
               size="sm"
-              name={user.name || "User"}
+              name={user.name || "Employee"}
               bgGradient="linear(to-br, blue.400, purple.500)"
               color="white"
               fontWeight="bold"
@@ -442,7 +442,7 @@ const UsersTable = ({
         >
           <Stat>
             <StatLabel color={muted} fontSize="sm">
-              Total Users
+              Total Employees
             </StatLabel>
             <StatNumber fontSize="2xl" fontWeight="bold" color={statNumberColor}>
               {stats.total}
@@ -466,7 +466,7 @@ const UsersTable = ({
         >
           <Stat>
             <StatLabel color={muted} fontSize="sm">
-              Active Users
+              Active Employees
             </StatLabel>
             <StatNumber fontSize="2xl" fontWeight="bold" color={activeNumberColor}>
               {stats.active}
@@ -582,7 +582,7 @@ const UsersTable = ({
           </Box>
         </Flex>
 
-        {/* User source filter for admin-created vs externally linked accounts. */}
+        {/* Employee source filter for admin-created vs externally linked accounts. */}
         {showUserSourceTabs && (
           <Box mb={4}>
             <HStack spacing={2} flexWrap="wrap">
@@ -590,7 +590,7 @@ const UsersTable = ({
                 Show:
               </Text>
               {([
-                { value: "all", label: "All Users" },
+                { value: "all", label: "All Employees" },
                 { value: "manual", label: "Manually Created" },
                 { value: "public_enrolled", label: "Externally Linked" },
               ] as const).map((opt) => (
@@ -620,7 +620,7 @@ const UsersTable = ({
                 borderColor="purple.400"
               >
                 <Text fontSize="xs" color={useColorModeValue("purple.700", "purple.200")}>
-                  ⚠️ These users self-enrolled via public course access. You can view their profiles but cannot edit or delete them.
+                  ⚠️ These employees self-enrolled via public course access. You can view their profiles but cannot edit or delete them.
                 </Text>
               </Box>
             )}
@@ -629,7 +629,7 @@ const UsersTable = ({
 
         {!isCompact ? (
           <CustomTable
-            title="User Directory"
+            title="Employee Directory"
             data={users}
             columns={columns}
             loading={loading}
@@ -640,23 +640,23 @@ const UsersTable = ({
                 },
                 editKey: {
                   showEditButton: canEdit,
-                  title: "Edit User",
+                  title: "Edit Employee",
                   function: (user: any) => {
-                    // Block edit for public-enrolled users
+                    // Block edit for public-enrolled employees
                     if (isPublicEnrolledUser?.(user)) return;
                     onEdit(user);
                   },
                 },
                 viewKey: {
                   showViewButton: true,
-                  title: "View User",
+                  title: "View Employee",
                   function: (user: any) => onView(user),
                 },
                 deleteKey: {
                   showDeleteButton: canDelete,
-                  title: "Delete User",
+                  title: "Delete Employee",
                   function: (user: any) => {
-                    // Block delete for public-enrolled users
+                    // Block delete for public-enrolled employees
                     if (isPublicEnrolledUser?.(user)) return;
                     onDelete?.(user);
                   },
@@ -699,7 +699,7 @@ const UsersTable = ({
                   setSearch(event.target.value);
                   setPage(1);
                 }}
-                placeholder="Search users"
+                placeholder="Search employees"
                 bg={cardBg}
                 borderColor={borderColorLight}
                 borderRadius="xl"
@@ -708,11 +708,11 @@ const UsersTable = ({
 
             {loading ? (
               <Box bg={cardBg} borderWidth="1px" borderColor={borderColorLight} borderRadius="xl" p={5}>
-                <Text fontSize="sm" color={muted}>Loading users...</Text>
+                <Text fontSize="sm" color={muted}>Loading employees...</Text>
               </Box>
             ) : users.length === 0 ? (
               <Box bg={cardBg} borderWidth="1px" borderColor={borderColorLight} borderRadius="xl" p={5}>
-                <Text fontSize="sm" color={muted}>No users found for this filter.</Text>
+                <Text fontSize="sm" color={muted}>No employees found for this filter.</Text>
               </Box>
             ) : (
               users.map((user: any) => {
@@ -723,7 +723,7 @@ const UsersTable = ({
                     <HStack align="start" spacing={3} mb={3}>
                       <Avatar
                         size="sm"
-                        name={user.name || "User"}
+                        name={user.name || "Employee"}
                         bgGradient="linear(to-br, blue.400, purple.500)"
                         color="white"
                       />

@@ -114,7 +114,7 @@ const BulkUploadResultModal = ({
                         </Td>
                         <Td>
                           <Text fontSize="xs" color={item.success ? "gray.500" : "red.500"}>
-                            {item.success ? "User created successfully" : item.error}
+                            {item.success ? "Employee created successfully" : item.error}
                           </Text>
                         </Td>
                       </Tr>

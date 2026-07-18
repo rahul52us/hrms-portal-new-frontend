@@ -98,7 +98,7 @@ const formatRoleLabel = (role: string) => {
   }
 
   if (role === "user") {
-    return "User";
+    return "Employee";
   }
 
   if (role === "admin") {
@@ -142,7 +142,7 @@ const getBulkUploadRoleOptions = (managerLevels: number) => {
 
   options.push({
     value: "user",
-    label: "Employees / Users",
+    label: "Employees",
     description: `Optionally assign L1 to L${totalLevels} manager phone numbers.`,
   });
 
@@ -518,7 +518,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     if (!canOpenCreate) {
       showToast({
         title: "Permission required",
-        description: "Your account cannot create users with the current permission set.",
+        description: "Your account cannot create employees with the current permission set.",
         status: "warning",
         duration: 3000,
       });
@@ -528,7 +528,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     if (isSuperadmin && !scopedCompanyId) {
       showToast({
         title: "Company is required",
-        description: "Select a company before creating a user or manager.",
+        description: "Select a company before creating an employee or manager.",
         status: "warning",
         duration: 3000,
       });
@@ -543,7 +543,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     if (!canEditUsers) {
       showToast({
         title: "Permission required",
-        description: "Your account cannot edit users.",
+        description: "Your account cannot edit employees.",
         status: "warning",
         duration: 3000,
       });
@@ -597,7 +597,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     if (!canDeleteUsers) {
       showToast({
         title: "Permission required",
-        description: "Your account cannot delete users.",
+        description: "Your account cannot delete employees.",
         status: "warning",
         duration: 3000,
       });
@@ -722,7 +722,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     if (managers.some((manager) => selfManagerIdentifiers.includes(manager.managerEmail))) {
       showToast({
         title: "Invalid hierarchy",
-        description: "A user cannot be their own manager.",
+        description: "An employee or manager cannot be their own manager.",
         status: "warning",
         duration: 3000,
       });
@@ -733,7 +733,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       if (roleValue === "user" && !canCreateUsers) {
         showToast({
           title: "Permission required",
-          description: "Your account cannot create users.",
+          description: "Your account cannot create employees.",
           status: "warning",
           duration: 3000,
         });
@@ -752,7 +752,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     } else if (!canEditUsers) {
       showToast({
         title: "Permission required",
-        description: "Your account cannot edit users.",
+        description: "Your account cannot edit employees.",
         status: "warning",
         duration: 3000,
       });
@@ -884,7 +884,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       fetchUsers();
     } catch (err: any) {
       showToast({
-        title: "Unable to save user",
+        title: "Unable to save employee",
         description: getApiErrorMessage(err),
         status: "error",
         duration: 4000,
@@ -1090,8 +1090,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
 
     if (!bulkForm.uploadRole) {
       showToast({
-        title: "User type is required",
-        description: "Select the user type you want to create first.",
+        title: "Employee type is required",
+        description: "Select the employee type you want to create first.",
         status: "warning",
         duration: 3000,
       });
@@ -1137,8 +1137,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     try {
       const response = await userStore.deleteManagedUser(deleteDialog._id);
       showToast({
-        title: "User deleted",
-        description: response?.message || "User deleted successfully.",
+        title: "Employee deleted",
+        description: response?.message || "Employee deleted successfully.",
         status: "success",
         duration: 3500,
       });
@@ -1149,7 +1149,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       fetchUsers();
     } catch (err: any) {
       showToast({
-        title: "Unable to delete user",
+        title: "Unable to delete employee",
         description: getApiErrorMessage(err),
         status: "error",
         duration: 4000,
@@ -1168,8 +1168,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
         statusDialog.nextIsEnabled
       );
       showToast({
-        title: statusDialog.nextIsEnabled ? "User activated" : "User deactivated",
-        description: response?.message || "User status updated successfully.",
+        title: statusDialog.nextIsEnabled ? "Employee activated" : "Employee deactivated",
+        description: response?.message || "Employee status updated successfully.",
         status: "success",
         duration: 3500,
       });
@@ -1177,7 +1177,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       fetchUsers();
     } catch (err: any) {
       showToast({
-        title: "Unable to update user status",
+        title: "Unable to update employee status",
         description: getApiErrorMessage(err),
         status: "error",
         duration: 4000,
@@ -1362,10 +1362,10 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   isOpen={Boolean(deleteDialog)}
   onClose={() => setDeleteDialog(null)}
   onConfirm={handleConfirmDeleteUser}
-  title="Delete user?"
-  description={`${deleteDialog?.name || "This user"} will be removed from active management and hidden from the application.`}
+  title="Delete employee?"
+  description={`${deleteDialog?.name || "This employee"} will be removed from active management and hidden from the application.`}
   // note="This is a soft delete for audit purposes. The record remains in the database, but it will no longer be fetched or shown in the UI."
-  confirmText="Delete User"
+  confirmText="Delete Employee"
   isLoading={userStore.submitting}
   tone="danger"
 />
@@ -1379,13 +1379,13 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   <AlertDialogOverlay />
   <AlertDialogContent borderRadius="2xl">
     <AlertDialogHeader fontSize="lg" fontWeight="bold">
-      {statusDialog?.nextIsEnabled ? "Activate user?" : "Deactivate user?"}
+      {statusDialog?.nextIsEnabled ? "Activate employee?" : "Deactivate employee?"}
     </AlertDialogHeader>
 
     <AlertDialogBody>
       {statusDialog?.nextIsEnabled
-        ? `${statusDialog?.user?.name || "This user"} will be able to log in again immediately.`
-        : `${statusDialog?.user?.name || "This user"} will no longer be able to log in. They’ll see a deactivation message and need an administrator to reactivate the account.`}
+        ? `${statusDialog?.user?.name || "This employee"} will be able to log in again immediately.`
+        : `${statusDialog?.user?.name || "This employee"} will no longer be able to log in. They’ll see a deactivation message and need an administrator to reactivate the account.`}
     </AlertDialogBody>
 
     <AlertDialogFooter>

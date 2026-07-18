@@ -72,7 +72,7 @@ const UserDetailsModal = ({
           <Flex justify="space-between" align="center" pr={8} gap={3}>
             <Box>
               <Text fontSize="xl" fontWeight="700">
-                {user?.name || "User details"}
+                {user?.name || "Employee details"}
               </Text>
               <Text color={muted} fontSize="sm" mt={1}>
                 {user?.email || "No email available"}

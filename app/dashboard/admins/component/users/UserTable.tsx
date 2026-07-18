@@ -137,7 +137,7 @@ const UserTable = observer(({
             label = "Department Head";
           } else if (dt.role === "user") {
             color = "green";
-            label = "User";
+            label = "Employee";
           } else if (dt.role?.includes("manager")) {
             color = "orange";
             label = dt.role;

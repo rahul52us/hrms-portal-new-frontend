@@ -130,7 +130,7 @@ const Form = ({
         const isDeptHead = currentUser?.role === "departmenthead";
         const isSuperadmin = currentUser?.role === "superadmin";
         const roleOptions = isDeptHead
-          ? [{ label: "User", value: "user" }]
+          ? [{ label: "Employee", value: "user" }]
           : isSuperadmin
             ? [
                 { label: "Admin", value: "admin" },
@@ -139,7 +139,7 @@ const Form = ({
             : [
                 { label: "Admin", value: "admin" },
                 { label: "Department Head", value: "departmenthead" },
-                { label: "User", value: "user" },
+                { label: "Employee", value: "user" },
               ];
 
         useEffect(() => {
