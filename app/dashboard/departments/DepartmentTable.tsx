@@ -1,3 +1,4 @@
+import axios from "axios";
 import { departmentStore } from "@/app/store/departmentStore/departmentStore";
 import stores from "@/app/store/stores";
 import { AddIcon, ChevronRightIcon } from "@chakra-ui/icons";
@@ -16,6 +17,7 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
+  Select,
   SimpleGrid,
   Spinner,
   Stat,
@@ -37,7 +39,7 @@ import {
 import { ChevronLeftIcon } from "lucide-react";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
-import { FiEdit2, FiHash, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiEdit2, FiHash, FiPlus, FiTrash2, FiUserCheck, FiUsers } from "react-icons/fi";
 import AddDepartmentModal from "./AddDepartment";
 
 type DepartmentTableProps = {
@@ -58,12 +60,36 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
     onOpen: onDeleteOpen,
     onClose: onDeleteClose,
   } = useDisclosure();
+  const {
+    isOpen: isHeadOpen,
+    onOpen: onHeadOpen,
+    onClose: onHeadClose,
+  } = useDisclosure();
+  const {
+    isOpen: isEmployeesOpen,
+    onOpen: onEmployeesOpen,
+    onClose: onEmployeesClose,
+  } = useDisclosure();
 
   const [selectedDept, setSelectedDept] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [headDept, setHeadDept] = useState<any>(null);
+  const [departmentHeadId, setDepartmentHeadId] = useState("");
+  const [headCandidates, setHeadCandidates] = useState<any[]>([]);
+  const [isHeadCandidatesLoading, setIsHeadCandidatesLoading] = useState(false);
+  const [employeesDept, setEmployeesDept] = useState<any>(null);
+  const [departmentEmployees, setDepartmentEmployees] = useState<any[]>([]);
+  const [departmentEmployeesPage, setDepartmentEmployeesPage] = useState(1);
+  const [departmentEmployeesPagination, setDepartmentEmployeesPagination] = useState<any>({
+    total: 0,
+    totalPages: 1,
+    page: 1,
+  });
+  const [isDepartmentEmployeesLoading, setIsDepartmentEmployeesLoading] = useState(false);
 
   const limit = 5;
+  const employeesLimit = 20;
 
   const cardBg = useColorModeValue("white", "gray.800");
   const softBg = useColorModeValue("gray.50", "gray.700");
@@ -107,6 +133,32 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
     }
   }, [companyId, page]);
 
+  const normalizeRole = (value: unknown) =>
+    String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/^department[-\s]?head$/i, "departmenthead")
+      .replace(/^l\s*(\d+)\s*manager$/i, "l$1-manager")
+      .replace(/\s+/g, "-");
+
+  const formatRoleLabel = (value: unknown) => {
+    const normalized = normalizeRole(value);
+    if (!normalized || normalized === "user") return "Employee";
+    if (normalized === "departmenthead") return "Department Head";
+
+    return normalized
+      .split("-")
+      .map((part) =>
+        part.startsWith("l") && /\d+/.test(part.slice(1))
+          ? part.toUpperCase()
+          : `${part.charAt(0).toUpperCase()}${part.slice(1)}`
+      )
+      .join(" ");
+  };
+
+  const getHeadName = (dept: any) => dept?.departmentHead?.name || "No head assigned";
+  const getHeadEmail = (dept: any) => dept?.departmentHead?.email || dept?.departmentHead?.username || "";
+
   const totalPages = Math.max(
     1,
     Math.ceil((departmentStore.pagination?.total || 0) / limit)
@@ -131,6 +183,87 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
   const handleDeleteClick = (id: string) => {
     setDeleteId(id);
     onDeleteOpen();
+  };
+
+  const fetchHeadCandidates = async () => {
+    if (!companyId) return;
+
+    setIsHeadCandidatesLoading(true);
+    try {
+      const { data } = await axios.get("/admin/users", {
+        params: {
+          companyId,
+          page: 1,
+          limit: 100,
+        },
+      });
+      const users = data?.data?.users || [];
+      setHeadCandidates(
+        users.filter(
+          (user: any) => !["admin", "superadmin"].includes(normalizeRole(user.role || user.userType))
+        )
+      );
+    } catch {
+      setHeadCandidates([]);
+    } finally {
+      setIsHeadCandidatesLoading(false);
+    }
+  };
+
+  const handleAssignHeadClick = (dept: any) => {
+    setHeadDept(dept);
+    setDepartmentHeadId(String(dept?.departmentHead?._id || ""));
+    setHeadCandidates([]);
+    onHeadOpen();
+    fetchHeadCandidates().catch(() => undefined);
+  };
+
+  const confirmAssignHead = async () => {
+    if (!headDept?._id || !companyId) return;
+
+    await departmentStore.assignDepartmentHead(headDept._id, {
+      departmentHeadId,
+    });
+    await departmentStore.fetchDepartments(companyId, page, limit);
+    setHeadDept(null);
+    setDepartmentHeadId("");
+    onHeadClose();
+  };
+
+  const fetchDepartmentEmployees = async (dept: any, nextPage = 1) => {
+    if (!companyId || !dept?.departmentName) return;
+
+    setIsDepartmentEmployeesLoading(true);
+    try {
+      const { data } = await axios.get("/admin/users", {
+        params: {
+          companyId,
+          department: dept.departmentName,
+          page: nextPage,
+          limit: employeesLimit,
+        },
+      });
+      setDepartmentEmployees(data?.data?.users || []);
+      setDepartmentEmployeesPagination({
+        total: data?.data?.total || 0,
+        totalPages: data?.data?.totalPages || 1,
+        page: data?.data?.page || nextPage,
+      });
+      setDepartmentEmployeesPage(nextPage);
+    } catch {
+      setDepartmentEmployees([]);
+      setDepartmentEmployeesPagination({ total: 0, totalPages: 1, page: nextPage });
+    } finally {
+      setIsDepartmentEmployeesLoading(false);
+    }
+  };
+
+  const handleViewEmployees = (dept: any) => {
+    setEmployeesDept(dept);
+    setDepartmentEmployees([]);
+    setDepartmentEmployeesPage(1);
+    onEmployeesOpen();
+    fetchDepartmentEmployees(dept, 1).catch(() => undefined);
   };
 
   const handleSaved = async (mode: "create" | "update") => {
@@ -207,6 +340,17 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
             variant="ghost"
             colorScheme="blue"
             onClick={() => handleEdit(dept)}
+          />
+        </Tooltip>
+
+        <Tooltip label="Assign department head" hasArrow>
+          <IconButton
+            aria-label="Assign department head"
+            icon={<Icon as={FiUserCheck} />}
+            size="sm"
+            variant="ghost"
+            colorScheme="green"
+            onClick={() => handleAssignHeadClick(dept)}
           />
         </Tooltip>
 
@@ -337,6 +481,12 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
             <Th color="white" fontSize="sm">
               Code
             </Th>
+            <Th color="white" fontSize="sm">
+              Department Head
+            </Th>
+            <Th color="white" fontSize="sm">
+              Employees
+            </Th>
             {canManageDepartments ? (
               <Th textAlign="right" color="white" fontSize="sm">
                 Actions
@@ -378,6 +528,32 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
                     <Text>{dept.code}</Text>
                   </HStack>
                 </Badge>
+              </Td>
+
+              <Td>
+                <VStack align="start" spacing={0.5}>
+                  <Text fontWeight="700" color={textColor}>
+                    {getHeadName(dept)}
+                  </Text>
+                  <Text fontSize="xs" color={mutedTextColor}>
+                    {getHeadEmail(dept) || "Assign a head"}
+                  </Text>
+                </VStack>
+              </Td>
+
+              <Td>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  colorScheme="blue"
+                  leftIcon={<Icon as={FiUsers} />}
+                  onClick={() => handleViewEmployees(dept)}
+                >
+                  {dept.employeeCount || 0}
+                </Button>
+                <Text mt={1} fontSize="xs" color={mutedTextColor}>
+                  {dept.activeEmployeeCount || 0} active - {dept.managerCount || 0} managers
+                </Text>
               </Td>
 
               {canManageDepartments ? (
@@ -432,6 +608,27 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
                   <Text>{dept.code}</Text>
                 </HStack>
               </Badge>
+
+              <Text mt={2} fontSize="xs" color={mutedTextColor} noOfLines={1}>
+                Head: {getHeadName(dept)}
+              </Text>
+              <HStack mt={2} spacing={2} flexWrap="wrap">
+                <Badge colorScheme="blue" borderRadius="full">
+                  {dept.employeeCount || 0} employees
+                </Badge>
+                <Badge colorScheme="green" borderRadius="full">
+                  {dept.activeEmployeeCount || 0} active
+                </Badge>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  colorScheme="blue"
+                  leftIcon={<Icon as={FiUsers} />}
+                  onClick={() => handleViewEmployees(dept)}
+                >
+                  View
+                </Button>
+              </HStack>
             </Box>
 
             <DepartmentActions dept={dept} />
@@ -696,6 +893,180 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
         companyName={companyName}
         onSaved={handleSaved}
       />
+
+      <Modal
+        isOpen={isHeadOpen}
+        onClose={() => {
+          setHeadDept(null);
+          setDepartmentHeadId("");
+          onHeadClose();
+        }}
+        isCentered
+        size={{ base: "xs", md: "lg" }}
+      >
+        <ModalOverlay backdropFilter="blur(10px)" />
+        <ModalContent mx={4} rounded="2xl" bg={modalBg}>
+          <ModalHeader>Assign Department Head</ModalHeader>
+          <ModalCloseButton color={modalCloseBtnColor} />
+          <ModalBody>
+            <VStack align="stretch" spacing={4}>
+              <Box>
+                <Text fontSize="sm" color={mutedTextColor}>
+                  Department
+                </Text>
+                <Text fontWeight="800" color={headingColor}>
+                  {headDept?.departmentName || "--"}
+                </Text>
+              </Box>
+
+              <Box>
+                <Text mb={2} fontSize="sm" fontWeight="700">
+                  Department Head
+                </Text>
+                <Select
+                  value={departmentHeadId}
+                  onChange={(event) => setDepartmentHeadId(event.target.value)}
+                  placeholder={isHeadCandidatesLoading ? "Loading employees..." : "No department head"}
+                  isDisabled={isHeadCandidatesLoading}
+                >
+                  <option value="">No department head</option>
+                  {headCandidates.map((user: any) => (
+                    <option key={user._id} value={user._id}>
+                      {user.name || user.email || user.username} - {user.email || user.username} ({formatRoleLabel(user.role || user.userType)})
+                    </option>
+                  ))}
+                </Select>
+              </Box>
+
+              <Box p={3} borderRadius="xl" bg={softBg} borderWidth="1px" borderColor={subtleBorderColor}>
+                <Text fontSize="xs" color={mutedTextColor}>
+                  The selected employee or manager will be promoted to Department Head and scoped to this department.
+                </Text>
+              </Box>
+            </VStack>
+          </ModalBody>
+          <ModalFooter gap={3}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setHeadDept(null);
+                setDepartmentHeadId("");
+                onHeadClose();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              colorScheme="blue"
+              onClick={confirmAssignHead}
+              isLoading={departmentStore.isSubmitting}
+              leftIcon={<Icon as={FiUserCheck} />}
+            >
+              Save Head
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal
+        isOpen={isEmployeesOpen}
+        onClose={() => {
+          setEmployeesDept(null);
+          setDepartmentEmployees([]);
+          onEmployeesClose();
+        }}
+        isCentered
+        size={{ base: "xs", md: "5xl" }}
+      >
+        <ModalOverlay backdropFilter="blur(10px)" />
+        <ModalContent mx={4} rounded="2xl" bg={modalBg}>
+          <ModalHeader>
+            <VStack align="start" spacing={1}>
+              <Text>Employees in {employeesDept?.departmentName || "Department"}</Text>
+              <Text fontSize="sm" fontWeight="500" color={mutedTextColor}>
+                {departmentEmployeesPagination.total || 0} employees found
+              </Text>
+            </VStack>
+          </ModalHeader>
+          <ModalCloseButton color={modalCloseBtnColor} />
+          <ModalBody>
+            {isDepartmentEmployeesLoading ? (
+              <Flex justify="center" py={10}>
+                <Spinner color="blue.500" />
+              </Flex>
+            ) : departmentEmployees.length === 0 ? (
+              <Box p={6} textAlign="center" bg={emptyStateBg} borderRadius="xl">
+                <Text fontWeight="700">No employees found in this department.</Text>
+              </Box>
+            ) : (
+              <Box overflowX="auto">
+                <Table size="sm">
+                  <Thead bg={headerBg}>
+                    <Tr>
+                      <Th color="white">Employee</Th>
+                      <Th color="white">Role</Th>
+                      <Th color="white">Office Location</Th>
+                      <Th color="white">Status</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {departmentEmployees.map((user: any) => (
+                      <Tr key={user._id}>
+                        <Td>
+                          <VStack align="start" spacing={0.5}>
+                            <Text fontWeight="700">{user.name || "--"}</Text>
+                            <Text fontSize="xs" color={mutedTextColor}>
+                              {user.email || user.username || "--"}
+                            </Text>
+                          </VStack>
+                        </Td>
+                        <Td>{formatRoleLabel(user.role || user.userType)}</Td>
+                        <Td>
+                          {user.officeLocationName ||
+                            user.officeLocation?.name ||
+                            [user.city, user.state].filter(Boolean).join(", ") ||
+                            "--"}
+                        </Td>
+                        <Td>
+                          <Badge colorScheme={user.status === "ACTIVE" ? "green" : user.status === "INACTIVE" ? "red" : "orange"}>
+                            {user.status || "Pending"}
+                          </Badge>
+                        </Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+              </Box>
+            )}
+          </ModalBody>
+          <ModalFooter justifyContent="space-between" gap={3}>
+            <Text fontSize="sm" color={mutedTextColor}>
+              Page {departmentEmployeesPage} of {departmentEmployeesPagination.totalPages || 1}
+            </Text>
+            <HStack>
+              <Button
+                size="sm"
+                variant="outline"
+                isDisabled={departmentEmployeesPage <= 1 || isDepartmentEmployeesLoading}
+                onClick={() => fetchDepartmentEmployees(employeesDept, departmentEmployeesPage - 1)}
+              >
+                Prev
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                isDisabled={
+                  departmentEmployeesPage >= (departmentEmployeesPagination.totalPages || 1) ||
+                  isDepartmentEmployeesLoading
+                }
+                onClick={() => fetchDepartmentEmployees(employeesDept, departmentEmployeesPage + 1)}
+              >
+                Next
+              </Button>
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       <Modal
         isOpen={isDeleteOpen}

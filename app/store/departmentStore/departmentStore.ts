@@ -6,6 +6,17 @@ export interface DepartmentItem {
   departmentName: string;
   code: string;
   company?: string;
+  departmentHead?: {
+    _id: string;
+    name?: string;
+    email?: string;
+    username?: string;
+    role?: string;
+    department?: string;
+  } | null;
+  employeeCount?: number;
+  activeEmployeeCount?: number;
+  managerCount?: number;
 }
 
 class DepartmentStore {
@@ -125,6 +136,35 @@ class DepartmentStore {
     } catch (err: any) {
       runInAction(() => {
         this.error = err?.response?.data?.message || "Update failed";
+      });
+      throw err;
+    } finally {
+      runInAction(() => {
+        this.isSubmitting = false;
+      });
+    }
+  };
+
+  assignDepartmentHead = async (
+    id: string,
+    payload: { departmentHeadId?: string }
+  ) => {
+    this.isSubmitting = true;
+    this.error = null;
+
+    try {
+      const { data } = await axios.put(`/department/head/${id}`, payload);
+
+      runInAction(() => {
+        this.departments = this.departments.map((department) =>
+          department._id === id ? data.data : department
+        );
+      });
+
+      return data;
+    } catch (err: any) {
+      runInAction(() => {
+        this.error = err?.response?.data?.message || err?.response?.data?.error || "Head assignment failed";
       });
       throw err;
     } finally {
