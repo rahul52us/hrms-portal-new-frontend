@@ -56,6 +56,7 @@ type UserFormState = {
   pic: any;
   mobileNumber: string;
   department: string;
+  officeLocationId: string;
   city: string;
   state: string;
   designation: string;
@@ -172,6 +173,15 @@ const optionFromManager = (manager: any) => {
   };
 };
 
+const getUserOfficeLocationId = (user: any) => {
+  const location = user?.officeLocation;
+  return String(
+    user?.officeLocationId ||
+      (location && typeof location === "object" ? location._id : location) ||
+      ""
+  );
+};
+
 const getRequiredManagerLevels = (role: string, maxLevel: number) => {
   const normalizedRole = normalizeRole(role);
   if (!normalizedRole || normalizedRole === "admin" || normalizedRole === "superadmin") {
@@ -210,6 +220,7 @@ const initialForm = (): UserFormState => ({
   pic: { file: null, isAdd: 0, isDeleted: 0, url: "" },
   mobileNumber: "",
   department: "",
+  officeLocationId: "",
   city: "",
   state: "",
   designation: "",
@@ -227,11 +238,12 @@ const initialForm = (): UserFormState => ({
 
 const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = false }: UsersViewProps) => {
   const toast = useToast();
-  const { userStore, companyStore, auth } = stores;
+  const { userStore, companyStore, auth, locationStore } = stores;
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 500);
   const [page, setPage] = useState(1);
   const [listTab, setListTab] = useState("user");
+  const [locationFilter, setLocationFilter] = useState("");
   const [isUserDrawerOpen, setIsUserDrawerOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
@@ -376,6 +388,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
         limit: 10,
         search: debouncedSearch,
         role: listTab,
+        ...(locationFilter ? { officeLocationId: locationFilter } : {}),
         ...(isSuperadmin && scopedCompanyId ? { companyId: scopedCompanyId } : {}),
       });
     } catch (err: any) {
@@ -386,7 +399,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
         duration: 3500,
       });
     }
-  }, [debouncedSearch, isSuperadmin, listTab, page, scopedCompanyId, toast, userStore]);
+  }, [debouncedSearch, isSuperadmin, listTab, locationFilter, page, scopedCompanyId, showToast, userStore]);
 
   useEffect(() => {
     fetchUsers();
@@ -397,6 +410,18 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       companyStore.getManagedCompanies().catch(() => undefined);
     }
   }, [companyStore, isSuperadmin]);
+
+  useEffect(() => {
+    const locationCompanyId = isSuperadmin ? scopedCompanyId : auth.company;
+    setLocationFilter("");
+
+    if (!locationCompanyId) {
+      locationStore.clearLocations();
+      return;
+    }
+
+    locationStore.fetchLocations(locationCompanyId, 1, 100).catch(() => undefined);
+  }, [auth.company, isSuperadmin, locationStore, scopedCompanyId]);
 
   useEffect(() => {
     setBulkForm((prev) =>
@@ -572,6 +597,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       pic: user.pic ? { ...user.pic, file: null, isAdd: 0, isDeleted: 0, url: user.pic.url || "" } : { file: null, isAdd: 0, isDeleted: 0, url: "" },
       mobileNumber: user.mobileNumber || "",
       department: user.department || "",
+      officeLocationId: getUserOfficeLocationId(user),
       city: user.city || "",
       state: user.state || "",
       designation: user.designation || "",
@@ -630,6 +656,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     const roleValue = normalizeRole(userForm.role);
     const mobileNumber = userForm.mobileNumber.trim();
     const department = userForm.department.trim();
+    const officeLocationId = userForm.officeLocationId.trim();
     const city = userForm.city.trim();
     const state = userForm.state.trim();
     const designation = userForm.designation.trim();
@@ -775,6 +802,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       email: email || undefined,
       mobileNumber,
       department,
+      officeLocationId: officeLocationId || undefined,
       city,
       state,
       designation,
@@ -1118,6 +1146,15 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     () => (isSuperadmin ? managedCompanies : []),
     [isSuperadmin, managedCompanies]
   );
+  const officeLocationOptions = useMemo(
+    () =>
+      locationStore.locations.map((location: any) => ({
+        label: `${location.name}${location.city ? ` - ${location.city}` : ""}`,
+        value: location._id,
+        isDisabled: location.is_active === false,
+      })),
+    [locationStore.locations]
+  );
 
   const cancelStatusRef = useRef<HTMLButtonElement | null>(null);
 
@@ -1293,6 +1330,9 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   canEdit={canEditUsers}
   canDelete={canDeleteUsers}
   canToggleStatus={isSuperadmin}
+  officeLocationOptions={officeLocationOptions}
+  locationFilter={locationFilter}
+  setLocationFilter={setLocationFilter}
 />
       
       </VStack>
@@ -1310,6 +1350,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   muted={muted}
   currentCompanyName={currentCompanyName}
   currentCompanyDepartments={currentCompanyDepartments}
+  officeLocationOptions={officeLocationOptions}
   managerCompanyId={managerCompanyId}
   updateRole={updateRole}
   setManagerSelection={setManagerSelection}

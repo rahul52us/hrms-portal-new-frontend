@@ -7,6 +7,7 @@ import { contactStore } from "./contactStore/contactStore";
 import { courseStore } from "./courseStore/courseStore";
 import { dashboardStore } from "./dashboardStore/dashboardStore";
 import { layoutStore } from './layoutStore/LayoutStore';
+import { locationStore } from "./locationStore/locationStore";
 import { managerStore } from "./managerStore/managerStore";
 import { testimonialStore } from "./testimonialStore/testimonialStore";
 import { themeStore } from "./themeStore/themeStore";
@@ -19,6 +20,7 @@ const stores = {
   batchStore: batchStore,
   themeStore : themeStore,
   layout : layoutStore,
+  locationStore : locationStore,
   managerStore: managerStore,
   contactStore : contactStore,
   companyStore : CompanyStore,

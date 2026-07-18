@@ -88,11 +88,13 @@ const buildUserFormErrors = ({
   userForm,
   isSuperadmin,
   availableDepartments,
+  officeLocationOptions,
   isDepartmentRequired,
 }: {
   userForm: any;
   isSuperadmin: boolean;
   availableDepartments: string[];
+  officeLocationOptions: { label: string; value: string }[];
   isDepartmentRequired: boolean;
 }) => {
   const errors: Record<string, string> = {};
@@ -101,6 +103,7 @@ const buildUserFormErrors = ({
   const trimmedEmail = String(userForm.email || "").trim().toLowerCase();
   const trimmedMobile = String(userForm.mobileNumber || "").trim();
   const trimmedDepartment = String(userForm.department || "").trim();
+  const trimmedOfficeLocationId = String(userForm.officeLocationId || "").trim();
   const normalizedRole = String(userForm.role || "").trim().toLowerCase();
   const isCompanyAdminRole = normalizedRole === "admin";
   const trimmedPassword = String(userForm.password || "");
@@ -143,6 +146,14 @@ const buildUserFormErrors = ({
     errors.department = "Select a valid department for the chosen company.";
   }
 
+  if (
+    trimmedOfficeLocationId &&
+    officeLocationOptions.length > 0 &&
+    !officeLocationOptions.some((location) => location.value === trimmedOfficeLocationId)
+  ) {
+    errors.officeLocationId = "Select a valid office location for the chosen company.";
+  }
+
   if (trimmedPassword && !/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/.test(trimmedPassword)) {
     errors.password =
       "Password must be 8+ characters with uppercase, lowercase, and a number.";
@@ -173,6 +184,7 @@ const UserDrawer = ({
   isSuperadmin,
   filteredCompanies,
   currentCompanyDepartments,
+  officeLocationOptions = [],
   borderColor,
   muted,
   currentCompanyName,
@@ -196,12 +208,14 @@ const UserDrawer = ({
         userForm,
         isSuperadmin,
         availableDepartments,
+        officeLocationOptions,
         isDepartmentRequired,
       }),
     [
       availableDepartments,
       isDepartmentRequired,
       isSuperadmin,
+      officeLocationOptions,
       userForm,
     ]
   );
@@ -485,6 +499,25 @@ const UserDrawer = ({
                       }))}
                     />
                     <CustomInput
+                      type="select"
+                      label="Office Location"
+                      name="officeLocationId"
+                      placeholder="Select office location"
+                      value={
+                        officeLocationOptions.find(
+                          (location: any) => location.value === userForm.officeLocationId
+                        ) || null
+                      }
+                      error={validationErrors.officeLocationId}
+                      showError={submitAttempted}
+                      isClear
+                      onChange={(option: any) =>
+                        setUserForm((p: any) => ({ ...p, officeLocationId: option?.value || "" }))
+                      }
+                      options={officeLocationOptions}
+                      isSearchable
+                    />
+                    <CustomInput
                       label="City"
                       name="city"
                       placeholder="Enter city"
@@ -597,6 +630,7 @@ const UserDrawer = ({
                         ...p,
                         companyId: option?.value || "",
                         department: "",
+                        officeLocationId: "",
                       }))
                     }
                     options={filteredCompanies.map((c: any) => ({

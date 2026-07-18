@@ -22,6 +22,7 @@ import {
   StatLabel,
   StatNumber,
   StatHelpText,
+  Select,
   SimpleGrid,
   Stack,
   useBreakpointValue,
@@ -69,6 +70,9 @@ type Props = {
   canEdit?: boolean;
   canDelete?: boolean;
   canToggleStatus?: boolean;
+  officeLocationOptions?: { label: string; value: string; isDisabled?: boolean }[];
+  locationFilter?: string;
+  setLocationFilter?: (v: string) => void;
   // User source separation for admin-created vs externally linked accounts.
   showUserSourceTabs?: boolean;
   userSourceTab?: "all" | "manual" | "public_enrolled";
@@ -103,6 +107,16 @@ const getUserStatusMeta = (user: any) => {
   };
 };
 
+const getOfficeLocationDisplay = (user: any) =>
+  user?.officeLocationName || user?.officeLocation?.name || "";
+
+const getOfficeLocationPlace = (user: any) => {
+  const location = user?.officeLocation || {};
+  return [location.city || user?.city, location.state || user?.state]
+    .filter(Boolean)
+    .join(", ");
+};
+
 const UsersTable = ({
   users,
   loading,
@@ -125,6 +139,9 @@ const UsersTable = ({
   canEdit = true,
   canDelete = false,
   canToggleStatus = false,
+  officeLocationOptions = [],
+  locationFilter = "",
+  setLocationFilter,
   showUserSourceTabs = false,
   userSourceTab = "all",
   setUserSourceTab,
@@ -189,27 +206,37 @@ const UsersTable = ({
       },
     },
     {
-      headerName: "Location",
+      headerName: "Department / Location",
       key: "department",
       type: "component",
-      width: "200px",
+      width: "230px",
       metaData: {
-        component: (user: any) => (
-          <VStack align="start" spacing={0.5}>
-            <HStack spacing={1} fontSize="sm">
-              <Icon as={FiBriefcase} boxSize={3} color="purple.500" />
-              <Text fontWeight="medium" color={useColorModeValue("gray.700", "gray.200")}>
-                {user.department || "--"}
-              </Text>
-            </HStack>
-            <HStack spacing={1}>
-              <Icon as={FiMapPin} boxSize={3} color={muted} />
-              <Text fontSize="xs" color={muted}>
-                {[user.city, user.state].filter(Boolean).join(", ") || "No location"}
-              </Text>
-            </HStack>
-          </VStack>
-        ),
+        component: (user: any) => {
+          const officeLocation = getOfficeLocationDisplay(user);
+          const place = getOfficeLocationPlace(user);
+
+          return (
+            <VStack align="start" spacing={0.5}>
+              <HStack spacing={1} fontSize="sm">
+                <Icon as={FiBriefcase} boxSize={3} color="purple.500" />
+                <Text fontWeight="medium" color={useColorModeValue("gray.700", "gray.200")}>
+                  {user.department || "--"}
+                </Text>
+              </HStack>
+              <HStack spacing={1}>
+                <Icon as={FiMapPin} boxSize={3} color={muted} />
+                <Text fontSize="xs" color={muted}>
+                  {officeLocation || place || "No office location"}
+                </Text>
+              </HStack>
+              {officeLocation && place ? (
+                <Text fontSize="10px" color={muted}>
+                  {place}
+                </Text>
+              ) : null}
+            </VStack>
+          );
+        },
       },
     },
 
@@ -627,6 +654,31 @@ const UsersTable = ({
           </Box>
         )}
 
+        <Flex justify="flex-end" mb={4}>
+          <Box minW={{ base: "100%", md: "260px" }}>
+            <Text fontSize="xs" color={muted} fontWeight="700" mb={1}>
+              Office Location
+            </Text>
+            <Select
+              size="sm"
+              value={locationFilter}
+              onChange={(event) => {
+                setLocationFilter?.(event.target.value);
+                setPage(1);
+              }}
+              borderRadius="full"
+              isDisabled={officeLocationOptions.length === 0}
+            >
+              <option value="">All locations</option>
+              {officeLocationOptions.map((location) => (
+                <option key={location.value} value={location.value} disabled={location.isDisabled}>
+                  {location.label}
+                </option>
+              ))}
+            </Select>
+          </Box>
+        </Flex>
+
         {!isCompact ? (
           <CustomTable
             title="Employee Directory"
@@ -676,6 +728,7 @@ const UsersTable = ({
                 text: "Clear Filters",
                 function: () => {
                   setSearch("");
+                  setLocationFilter?.("");
                   setPage(1);
                 },
               },
@@ -689,6 +742,25 @@ const UsersTable = ({
           />
         ) : (
           <Stack spacing={3}>
+            <Select
+              size="sm"
+              value={locationFilter}
+              onChange={(event) => {
+                setLocationFilter?.(event.target.value);
+                setPage(1);
+              }}
+              borderRadius="xl"
+              bg={cardBg}
+              borderColor={borderColorLight}
+              isDisabled={officeLocationOptions.length === 0}
+            >
+              <option value="">All locations</option>
+              {officeLocationOptions.map((location) => (
+                <option key={location.value} value={location.value} disabled={location.isDisabled}>
+                  {location.label}
+                </option>
+              ))}
+            </Select>
             <InputGroup>
               <InputLeftElement pointerEvents="none">
                 <Icon as={FiSearch} color={muted} />
@@ -748,6 +820,12 @@ const UsersTable = ({
                       <Box>
                         <Text fontSize="10px" textTransform="uppercase" color={muted}>Department</Text>
                         <Text fontSize="xs" fontWeight="medium" noOfLines={1}>{user.department || "--"}</Text>
+                      </Box>
+                      <Box>
+                        <Text fontSize="10px" textTransform="uppercase" color={muted}>Office Location</Text>
+                        <Text fontSize="xs" fontWeight="medium" noOfLines={1}>
+                          {getOfficeLocationDisplay(user) || getOfficeLocationPlace(user) || "--"}
+                        </Text>
                       </Box>
                       <Box>
                         <Text fontSize="10px" textTransform="uppercase" color={muted}>Security</Text>

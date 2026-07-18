@@ -3,7 +3,7 @@ import { expandRoleAliases } from "@/app/config/utils/roleAccess";
 import { PERMISSION_KEYS, hasPermission } from "@/app/config/utils/permissions";
 import { LucideBriefcaseBusiness } from "lucide-react";
 import { BiCategory } from "react-icons/bi";
-import { FiBell, FiSettings } from "react-icons/fi";
+import { FiBell, FiMapPin, FiSettings } from "react-icons/fi";
 
 interface SidebarItem {
   id: number;
@@ -39,6 +39,14 @@ const sidebarDatas: SidebarItem[] = [
     url: "/dashboard/departments",
     role: ["admin", "superadmin", "departmenthead"],
     permissionKey: PERMISSION_KEYS.VIEW_DEPARTMENTS,
+  },
+  {
+    id: 102,
+    name: "Locations",
+    icon: <FiMapPin />,
+    url: "/dashboard/locations",
+    role: ["admin", "superadmin", "departmenthead"],
+    permissionKey: PERMISSION_KEYS.VIEW_LOCATIONS,
   },
   {
     id: 12,

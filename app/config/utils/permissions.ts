@@ -9,6 +9,8 @@ export const PERMISSION_KEYS = {
   EDIT_USERS: "edit_users",
   ASSIGN_MANAGERS: "assign_managers",
   VIEW_DEPARTMENTS: "view_departments",
+  VIEW_LOCATIONS: "view_locations",
+  MANAGE_LOCATIONS: "manage_locations",
   VIEW_ASSIGNED_COURSES: "view_assigned_courses",
   VIEW_ALL_COURSES: "view_all_courses",
   CREATE_COURSES: "create_courses",

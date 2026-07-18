@@ -48,6 +48,11 @@ const DetailCard = ({ label, value }: { label: string; value?: string | null }) 
   );
 };
 
+const getOfficeLocationDisplay = (user: any) =>
+  user?.officeLocationName ||
+  user?.officeLocation?.name ||
+  [user?.city, user?.state].filter(Boolean).join(", ");
+
 const UserDetailsModal = ({
   isOpen,
   onClose,
@@ -106,6 +111,7 @@ const UserDetailsModal = ({
                 <DetailCard label="Mobile" value={user?.mobileNumber} />
                 <DetailCard label="Designation" value={user?.designation} />
                 <DetailCard label="Department" value={user?.department} />
+                <DetailCard label="Office Location" value={getOfficeLocationDisplay(user)} />
                 <DetailCard label="City" value={user?.city} />
                 <DetailCard label="State" value={user?.state} />
                 <DetailCard
