@@ -6,6 +6,7 @@ import { CompanyStore } from "./companyStore/companyStore";
 import { contactStore } from "./contactStore/contactStore";
 import { courseStore } from "./courseStore/courseStore";
 import { dashboardStore } from "./dashboardStore/dashboardStore";
+import { departmentStore } from "./departmentStore/departmentStore";
 import { layoutStore } from './layoutStore/LayoutStore';
 import { locationStore } from "./locationStore/locationStore";
 import { managerStore } from "./managerStore/managerStore";
@@ -15,6 +16,7 @@ import { userStore } from "./userStore/userStore";
 const stores = {
   auth : authStore,
   dashboardStore : dashboardStore,
+  departmentStore : departmentStore,
   userStore : userStore,
   bookingStore : bookingStore,
   batchStore: batchStore,

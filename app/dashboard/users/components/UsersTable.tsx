@@ -223,6 +223,11 @@ const UsersTable = ({
                   {user.department || "--"}
                 </Text>
               </HStack>
+              {user.team ? (
+                <Text fontSize="xs" color={muted}>
+                  Team: {user.team}
+                </Text>
+              ) : null}
               <HStack spacing={1}>
                 <Icon as={FiMapPin} boxSize={3} color={muted} />
                 <Text fontSize="xs" color={muted}>
@@ -820,6 +825,10 @@ const UsersTable = ({
                       <Box>
                         <Text fontSize="10px" textTransform="uppercase" color={muted}>Department</Text>
                         <Text fontSize="xs" fontWeight="medium" noOfLines={1}>{user.department || "--"}</Text>
+                      </Box>
+                      <Box>
+                        <Text fontSize="10px" textTransform="uppercase" color={muted}>Team</Text>
+                        <Text fontSize="xs" fontWeight="medium" noOfLines={1}>{user.team || "--"}</Text>
                       </Box>
                       <Box>
                         <Text fontSize="10px" textTransform="uppercase" color={muted}>Office Location</Text>

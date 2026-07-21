@@ -89,12 +89,14 @@ const buildUserFormErrors = ({
   isSuperadmin,
   availableDepartments,
   officeLocationOptions,
+  teamOptions,
   isDepartmentRequired,
 }: {
   userForm: any;
   isSuperadmin: boolean;
   availableDepartments: string[];
   officeLocationOptions: { label: string; value: string }[];
+  teamOptions: { label: string; value: string }[];
   isDepartmentRequired: boolean;
 }) => {
   const errors: Record<string, string> = {};
@@ -103,6 +105,7 @@ const buildUserFormErrors = ({
   const trimmedEmail = String(userForm.email || "").trim().toLowerCase();
   const trimmedMobile = String(userForm.mobileNumber || "").trim();
   const trimmedDepartment = String(userForm.department || "").trim();
+  const trimmedTeam = String(userForm.team || "").trim();
   const trimmedOfficeLocationId = String(userForm.officeLocationId || "").trim();
   const normalizedRole = String(userForm.role || "").trim().toLowerCase();
   const isCompanyAdminRole = normalizedRole === "admin";
@@ -146,6 +149,16 @@ const buildUserFormErrors = ({
     errors.department = "Select a valid department for the chosen company.";
   }
 
+  if (trimmedTeam && !trimmedDepartment) {
+    errors.team = "Select a department before assigning a team.";
+  } else if (
+    trimmedTeam &&
+    teamOptions.length > 0 &&
+    !teamOptions.some((team) => team.value === trimmedTeam)
+  ) {
+    errors.team = "Select a valid team for the chosen department.";
+  }
+
   if (
     trimmedOfficeLocationId &&
     officeLocationOptions.length > 0 &&
@@ -184,6 +197,7 @@ const UserDrawer = ({
   isSuperadmin,
   filteredCompanies,
   currentCompanyDepartments,
+  departmentRecords = [],
   officeLocationOptions = [],
   borderColor,
   muted,
@@ -197,9 +211,28 @@ const UserDrawer = ({
 }: any) => {
   const [preview, setPreview] = useState<string | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const activeDepartmentRecords = Array.isArray(departmentRecords) ? departmentRecords : [];
+  const departmentNamesFromRecords = activeDepartmentRecords
+    .map((department: any) => department?.departmentName)
+    .filter(Boolean);
   const availableDepartments = isSuperadmin
-    ? filteredCompanies.find((company: any) => company?._id === userForm.companyId)?.departments || []
-    : currentCompanyDepartments || [];
+    ? departmentNamesFromRecords.length
+      ? departmentNamesFromRecords
+      : filteredCompanies.find((company: any) => company?._id === userForm.companyId)?.departments || []
+    : departmentNamesFromRecords.length
+      ? departmentNamesFromRecords
+      : currentCompanyDepartments || [];
+  const selectedDepartmentRecord = activeDepartmentRecords.find(
+    (department: any) =>
+      String(department?.departmentName || "").toLowerCase() ===
+      String(userForm.department || "").toLowerCase()
+  );
+  const teamOptions = (Array.isArray(selectedDepartmentRecord?.teams) ? selectedDepartmentRecord.teams : [])
+    .filter((team: any) => team?.isActive !== false)
+    .map((team: any) => ({
+      label: team.name,
+      value: team.name,
+    }));
   const isDepartmentRequired =
     userForm.role === "departmenthead" || /^l\d+-manager$/i.test(String(userForm.role || ""));
   const validationErrors = useMemo(
@@ -209,6 +242,7 @@ const UserDrawer = ({
         isSuperadmin,
         availableDepartments,
         officeLocationOptions,
+        teamOptions,
         isDepartmentRequired,
       }),
     [
@@ -216,6 +250,7 @@ const UserDrawer = ({
       isDepartmentRequired,
       isSuperadmin,
       officeLocationOptions,
+      teamOptions,
       userForm,
     ]
   );
@@ -491,12 +526,41 @@ const UserDrawer = ({
                       error={validationErrors.department}
                       showError={submitAttempted}
                       onChange={(option: any) =>
-                        setUserForm((p: any) => ({ ...p, department: option?.value || "" }))
+                        setUserForm((p: any) => ({
+                          ...p,
+                          department: option?.value || "",
+                          team: "",
+                        }))
                       }
                       options={availableDepartments.map((department: string) => ({
                         label: department,
                         value: department,
                       }))}
+                    />
+                    <CustomInput
+                      type="select"
+                      label="Team (Optional)"
+                      name="team"
+                      placeholder={
+                        userForm.department
+                          ? teamOptions.length
+                            ? "Select team"
+                            : "No teams in selected department"
+                          : "Select department first"
+                      }
+                      value={
+                        userForm.team
+                          ? { label: userForm.team, value: userForm.team }
+                          : null
+                      }
+                      error={validationErrors.team}
+                      showError={submitAttempted}
+                      isClear
+                      disabled={!userForm.department || teamOptions.length === 0}
+                      onChange={(option: any) =>
+                        setUserForm((p: any) => ({ ...p, team: option?.value || "" }))
+                      }
+                      options={teamOptions}
                     />
                     <CustomInput
                       type="select"
@@ -630,6 +694,7 @@ const UserDrawer = ({
                         ...p,
                         companyId: option?.value || "",
                         department: "",
+                        team: "",
                         officeLocationId: "",
                       }))
                     }

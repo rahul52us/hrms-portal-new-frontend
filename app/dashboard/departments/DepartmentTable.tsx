@@ -6,10 +6,20 @@ import {
   Badge,
   Box,
   Button,
+  Drawer,
+  DrawerBody,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerOverlay,
   Flex,
+  FormControl,
+  FormLabel,
   HStack,
   Icon,
   IconButton,
+  Input,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -28,6 +38,7 @@ import {
   Tbody,
   Td,
   Text,
+  Textarea,
   Th,
   Thead,
   Tooltip,
@@ -39,7 +50,7 @@ import {
 import { ChevronLeftIcon } from "lucide-react";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
-import { FiEdit2, FiHash, FiPlus, FiTrash2, FiUserCheck, FiUsers } from "react-icons/fi";
+import { FiEdit2, FiHash, FiLayers, FiPlus, FiTrash2, FiUserCheck, FiUsers } from "react-icons/fi";
 import AddDepartmentModal from "./AddDepartment";
 
 type DepartmentTableProps = {
@@ -70,6 +81,11 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
     onOpen: onEmployeesOpen,
     onClose: onEmployeesClose,
   } = useDisclosure();
+  const {
+    isOpen: isTeamsOpen,
+    onOpen: onTeamsOpen,
+    onClose: onTeamsClose,
+  } = useDisclosure();
 
   const [selectedDept, setSelectedDept] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -87,6 +103,13 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
     page: 1,
   });
   const [isDepartmentEmployeesLoading, setIsDepartmentEmployeesLoading] = useState(false);
+  const [teamsDept, setTeamsDept] = useState<any>(null);
+  const [teamForm, setTeamForm] = useState({
+    id: "",
+    name: "",
+    code: "",
+    description: "",
+  });
 
   const limit = 5;
   const employeesLimit = 20;
@@ -266,6 +289,60 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
     fetchDepartmentEmployees(dept, 1).catch(() => undefined);
   };
 
+  const resetTeamForm = () =>
+    setTeamForm({
+      id: "",
+      name: "",
+      code: "",
+      description: "",
+    });
+
+  const getDepartmentTeams = (dept: any) =>
+    Array.isArray(dept?.teams) ? dept.teams : [];
+
+  const handleManageTeams = (dept: any) => {
+    setTeamsDept(dept);
+    resetTeamForm();
+    onTeamsOpen();
+  };
+
+  const handleEditTeam = (team: any) => {
+    setTeamForm({
+      id: String(team?._id || ""),
+      name: team?.name || "",
+      code: team?.code || "",
+      description: team?.description || "",
+    });
+  };
+
+  const handleSaveTeam = async () => {
+    if (!teamsDept?._id || !teamForm.name.trim()) return;
+
+    try {
+      const payload = {
+        name: teamForm.name.trim(),
+        code: teamForm.code.trim(),
+        description: teamForm.description.trim(),
+      };
+      const response = teamForm.id
+        ? await departmentStore.updateDepartmentTeam(teamsDept._id, teamForm.id, payload)
+        : await departmentStore.addDepartmentTeam(teamsDept._id, payload);
+
+      setTeamsDept(response?.data || teamsDept);
+      resetTeamForm();
+    } catch {}
+  };
+
+  const handleDeleteTeam = async (teamId: string) => {
+    if (!teamsDept?._id || !teamId) return;
+
+    try {
+      const response = await departmentStore.deleteDepartmentTeam(teamsDept._id, teamId);
+      setTeamsDept(response?.data || teamsDept);
+      resetTeamForm();
+    } catch {}
+  };
+
   const handleSaved = async (mode: "create" | "update") => {
     if (!companyId) return;
 
@@ -332,6 +409,17 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
 
     return (
       <HStack spacing={1} justify="flex-end">
+        <Tooltip label="Manage teams" hasArrow>
+          <IconButton
+            aria-label="Manage teams"
+            icon={<Icon as={FiLayers} />}
+            size="sm"
+            variant="ghost"
+            colorScheme="purple"
+            onClick={() => handleManageTeams(dept)}
+          />
+        </Tooltip>
+
         <Tooltip label="Edit department" hasArrow>
           <IconButton
             aria-label="Edit department"
@@ -482,6 +570,9 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
               Code
             </Th>
             <Th color="white" fontSize="sm">
+              Teams
+            </Th>
+            <Th color="white" fontSize="sm">
               Department Head
             </Th>
             <Th color="white" fontSize="sm">
@@ -528,6 +619,18 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
                     <Text>{dept.code}</Text>
                   </HStack>
                 </Badge>
+              </Td>
+
+              <Td>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  colorScheme="purple"
+                  leftIcon={<Icon as={FiLayers} />}
+                  onClick={() => handleManageTeams(dept)}
+                >
+                  {dept.teamCount ?? getDepartmentTeams(dept).length}
+                </Button>
               </Td>
 
               <Td>
@@ -619,6 +722,15 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
                 <Badge colorScheme="green" borderRadius="full">
                   {dept.activeEmployeeCount || 0} active
                 </Badge>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  colorScheme="purple"
+                  leftIcon={<Icon as={FiLayers} />}
+                  onClick={() => handleManageTeams(dept)}
+                >
+                  {dept.teamCount ?? getDepartmentTeams(dept).length} teams
+                </Button>
                 <Button
                   size="xs"
                   variant="outline"
@@ -968,28 +1080,181 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
         </ModalContent>
       </Modal>
 
-      <Modal
+      <Drawer
+        isOpen={isTeamsOpen}
+        placement="right"
+        size="lg"
+        onClose={() => {
+          setTeamsDept(null);
+          resetTeamForm();
+          onTeamsClose();
+        }}
+      >
+        <DrawerOverlay backdropFilter="blur(8px)" bg="blackAlpha.300" />
+        <DrawerContent bg={modalBg} borderLeftRadius={{ base: "none", md: "2xl" }} shadow="2xl">
+          <DrawerCloseButton color={modalCloseBtnColor} top={4} right={4} />
+          <DrawerHeader borderBottomWidth="1px" borderColor={borderColor} pr={12}>
+            <VStack align="start" spacing={1}>
+              <Text>Teams in {teamsDept?.departmentName || "Department"}</Text>
+              <Text fontSize="sm" fontWeight="500" color={mutedTextColor}>
+                Optional teams inside this department
+              </Text>
+            </VStack>
+          </DrawerHeader>
+
+          <DrawerBody py={5}>
+            <VStack align="stretch" spacing={5}>
+              {canManageDepartments ? (
+                <Box p={4} borderWidth="1px" borderColor={borderColor} borderRadius="xl" bg={softBg}>
+                  <Text fontWeight="800" color={textColor} mb={3}>
+                    {teamForm.id ? "Edit team" : "Add team"}
+                  </Text>
+                  <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
+                    <FormControl isRequired>
+                      <FormLabel fontSize="sm">Team Name</FormLabel>
+                      <Input
+                        value={teamForm.name}
+                        placeholder="Fullstack Team"
+                        onChange={(event) =>
+                          setTeamForm((prev) => ({ ...prev, name: event.target.value }))
+                        }
+                      />
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel fontSize="sm">Code</FormLabel>
+                      <Input
+                        value={teamForm.code}
+                        placeholder="FS"
+                        onChange={(event) =>
+                          setTeamForm((prev) => ({ ...prev, code: event.target.value }))
+                        }
+                      />
+                    </FormControl>
+                  </SimpleGrid>
+                  <FormControl mt={3}>
+                    <FormLabel fontSize="sm">Description</FormLabel>
+                    <Textarea
+                      value={teamForm.description}
+                      placeholder="Optional team description"
+                      rows={3}
+                      onChange={(event) =>
+                        setTeamForm((prev) => ({ ...prev, description: event.target.value }))
+                      }
+                    />
+                  </FormControl>
+                  <HStack mt={4} justify="flex-end">
+                    <Button size="sm" variant="ghost" onClick={resetTeamForm}>
+                      Clear
+                    </Button>
+                    <Button
+                      size="sm"
+                      colorScheme="purple"
+                      leftIcon={<Icon as={FiPlus} />}
+                      isDisabled={!teamForm.name.trim()}
+                      isLoading={departmentStore.isSubmitting}
+                      onClick={handleSaveTeam}
+                    >
+                      {teamForm.id ? "Update Team" : "Add Team"}
+                    </Button>
+                  </HStack>
+                </Box>
+              ) : null}
+
+              {getDepartmentTeams(teamsDept).length === 0 ? (
+                <Box p={6} textAlign="center" bg={emptyStateBg} borderRadius="xl">
+                  <Text fontWeight="700">No teams added yet.</Text>
+                  <Text mt={1} fontSize="sm" color={mutedTextColor}>
+                    Teams are optional. Add them only where a department needs smaller groups.
+                  </Text>
+                </Box>
+              ) : (
+                <VStack align="stretch" spacing={3}>
+                  {getDepartmentTeams(teamsDept).map((team: any) => (
+                    <Box
+                      key={team._id}
+                      p={4}
+                      borderWidth="1px"
+                      borderColor={borderColor}
+                      borderRadius="xl"
+                      bg={cardBg}
+                    >
+                      <Flex justify="space-between" gap={3} align="flex-start">
+                        <Box minW={0}>
+                          <HStack spacing={2} flexWrap="wrap">
+                            <Text fontWeight="800" color={textColor}>
+                              {team.name}
+                            </Text>
+                            {team.code ? (
+                              <Badge colorScheme="purple" borderRadius="full">
+                                {team.code}
+                              </Badge>
+                            ) : null}
+                            {team.isActive === false ? (
+                              <Badge colorScheme="orange" borderRadius="full">
+                                Inactive
+                              </Badge>
+                            ) : null}
+                          </HStack>
+                          {team.description ? (
+                            <Text mt={1} fontSize="sm" color={mutedTextColor}>
+                              {team.description}
+                            </Text>
+                          ) : null}
+                        </Box>
+
+                        {canManageDepartments ? (
+                          <HStack spacing={1}>
+                            <IconButton
+                              aria-label="Edit team"
+                              icon={<Icon as={FiEdit2} />}
+                              size="sm"
+                              variant="ghost"
+                              colorScheme="blue"
+                              onClick={() => handleEditTeam(team)}
+                            />
+                            <IconButton
+                              aria-label="Delete team"
+                              icon={<Icon as={FiTrash2} />}
+                              size="sm"
+                              variant="ghost"
+                              colorScheme="red"
+                              isLoading={departmentStore.isSubmitting}
+                              onClick={() => handleDeleteTeam(String(team._id || ""))}
+                            />
+                          </HStack>
+                        ) : null}
+                      </Flex>
+                    </Box>
+                  ))}
+                </VStack>
+              )}
+            </VStack>
+          </DrawerBody>
+        </DrawerContent>
+      </Drawer>
+
+      <Drawer
         isOpen={isEmployeesOpen}
+        placement="right"
+        size="xl"
         onClose={() => {
           setEmployeesDept(null);
           setDepartmentEmployees([]);
           onEmployeesClose();
         }}
-        isCentered
-        size={{ base: "xs", md: "5xl" }}
       >
-        <ModalOverlay backdropFilter="blur(10px)" />
-        <ModalContent mx={4} rounded="2xl" bg={modalBg}>
-          <ModalHeader>
+        <DrawerOverlay backdropFilter="blur(8px)" bg="blackAlpha.300" />
+        <DrawerContent bg={modalBg} borderLeftRadius={{ base: "none", md: "2xl" }} shadow="2xl">
+          <DrawerCloseButton color={modalCloseBtnColor} top={4} right={4} />
+          <DrawerHeader borderBottomWidth="1px" borderColor={borderColor} pr={12}>
             <VStack align="start" spacing={1}>
               <Text>Employees in {employeesDept?.departmentName || "Department"}</Text>
               <Text fontSize="sm" fontWeight="500" color={mutedTextColor}>
                 {departmentEmployeesPagination.total || 0} employees found
               </Text>
             </VStack>
-          </ModalHeader>
-          <ModalCloseButton color={modalCloseBtnColor} />
-          <ModalBody>
+          </DrawerHeader>
+          <DrawerBody py={5}>
             {isDepartmentEmployeesLoading ? (
               <Flex justify="center" py={10}>
                 <Spinner color="blue.500" />
@@ -1005,6 +1270,7 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
                     <Tr>
                       <Th color="white">Employee</Th>
                       <Th color="white">Role</Th>
+                      <Th color="white">Team</Th>
                       <Th color="white">Office Location</Th>
                       <Th color="white">Status</Th>
                     </Tr>
@@ -1021,6 +1287,7 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
                           </VStack>
                         </Td>
                         <Td>{formatRoleLabel(user.role || user.userType)}</Td>
+                        <Td>{user.team || "--"}</Td>
                         <Td>
                           {user.officeLocationName ||
                             user.officeLocation?.name ||
@@ -1038,8 +1305,8 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
                 </Table>
               </Box>
             )}
-          </ModalBody>
-          <ModalFooter justifyContent="space-between" gap={3}>
+          </DrawerBody>
+          <DrawerFooter borderTopWidth="1px" borderColor={borderColor} justifyContent="space-between" gap={3}>
             <Text fontSize="sm" color={mutedTextColor}>
               Page {departmentEmployeesPage} of {departmentEmployeesPagination.totalPages || 1}
             </Text>
@@ -1064,9 +1331,9 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
                 Next
               </Button>
             </HStack>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
 
       <Modal
         isOpen={isDeleteOpen}

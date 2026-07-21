@@ -111,6 +111,7 @@ const UserDetailsModal = ({
                 <DetailCard label="Mobile" value={user?.mobileNumber} />
                 <DetailCard label="Designation" value={user?.designation} />
                 <DetailCard label="Department" value={user?.department} />
+                <DetailCard label="Team" value={user?.team} />
                 <DetailCard label="Office Location" value={getOfficeLocationDisplay(user)} />
                 <DetailCard label="City" value={user?.city} />
                 <DetailCard label="State" value={user?.state} />

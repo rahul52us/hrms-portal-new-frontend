@@ -301,6 +301,7 @@ const BulkUploadModal = ({
                         <Th>Phone Number</Th>
                         <Th>Email</Th>
                         <Th>Department</Th>
+                        <Th>Team</Th>
                         <Th>City</Th>
                         <Th>State</Th>
                         <Th>Role</Th>
@@ -314,7 +315,7 @@ const BulkUploadModal = ({
                     <Tbody>
                       {loading ? (
                         <Tr>
-                          <Td colSpan={12} textAlign="center" py={6}>
+                          <Td colSpan={13} textAlign="center" py={6}>
                             Loading preview...
                           </Td>
                         </Tr>
@@ -326,6 +327,7 @@ const BulkUploadModal = ({
                             <Td>{row.mobileNumber || "--"}</Td>
                             <Td>{row.email}</Td>
                             <Td>{row.department || "--"}</Td>
+                            <Td>{row.team || "--"}</Td>
                             <Td>{row.city || "--"}</Td>
                             <Td>{row.state || "--"}</Td>
                             <Td>

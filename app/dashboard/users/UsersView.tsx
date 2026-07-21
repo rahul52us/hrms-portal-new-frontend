@@ -56,6 +56,7 @@ type UserFormState = {
   pic: any;
   mobileNumber: string;
   department: string;
+  team: string;
   officeLocationId: string;
   city: string;
   state: string;
@@ -220,6 +221,7 @@ const initialForm = (): UserFormState => ({
   pic: { file: null, isAdd: 0, isDeleted: 0, url: "" },
   mobileNumber: "",
   department: "",
+  team: "",
   officeLocationId: "",
   city: "",
   state: "",
@@ -238,7 +240,7 @@ const initialForm = (): UserFormState => ({
 
 const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = false }: UsersViewProps) => {
   const toast = useToast();
-  const { userStore, companyStore, auth, locationStore } = stores;
+  const { userStore, companyStore, auth, locationStore, departmentStore } = stores;
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 500);
   const [page, setPage] = useState(1);
@@ -320,6 +322,11 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const selectedBulkManagerLevels = bulkForm.createCompany
     ? Math.max(1, Number(bulkForm.companyManagerLevels) || 3)
     : getCompanyManagerLevels(selectedBulkCompany || { managerLevels: currentCompanyManagerLevels });
+  const userDepartmentCompanyId = isSuperadmin ? userForm.companyId || scopedCompanyId : auth.company;
+  const departmentRecords =
+    departmentStore.activeCompanyId === (userDepartmentCompanyId || "")
+      ? departmentStore.departments
+      : [];
   const bulkUploadRoleOptions = useMemo(
     () => getBulkUploadRoleOptions(selectedBulkManagerLevels),
     [selectedBulkManagerLevels]
@@ -422,6 +429,14 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
 
     locationStore.fetchLocations(locationCompanyId, 1, 100).catch(() => undefined);
   }, [auth.company, isSuperadmin, locationStore, scopedCompanyId]);
+
+  useEffect(() => {
+    if (!userDepartmentCompanyId) {
+      return;
+    }
+
+    departmentStore.fetchDepartments(userDepartmentCompanyId, 1, 100).catch(() => undefined);
+  }, [departmentStore, userDepartmentCompanyId]);
 
   useEffect(() => {
     setBulkForm((prev) =>
@@ -597,6 +612,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       pic: user.pic ? { ...user.pic, file: null, isAdd: 0, isDeleted: 0, url: user.pic.url || "" } : { file: null, isAdd: 0, isDeleted: 0, url: "" },
       mobileNumber: user.mobileNumber || "",
       department: user.department || "",
+      team: user.team || "",
       officeLocationId: getUserOfficeLocationId(user),
       city: user.city || "",
       state: user.state || "",
@@ -656,6 +672,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     const roleValue = normalizeRole(userForm.role);
     const mobileNumber = userForm.mobileNumber.trim();
     const department = userForm.department.trim();
+    const team = userForm.team.trim();
     const officeLocationId = userForm.officeLocationId.trim();
     const city = userForm.city.trim();
     const state = userForm.state.trim();
@@ -802,6 +819,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       email: email || undefined,
       mobileNumber,
       department,
+      team,
       officeLocationId: officeLocationId || undefined,
       city,
       state,
@@ -1350,6 +1368,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   muted={muted}
   currentCompanyName={currentCompanyName}
   currentCompanyDepartments={currentCompanyDepartments}
+  departmentRecords={departmentRecords}
   officeLocationOptions={officeLocationOptions}
   managerCompanyId={managerCompanyId}
   updateRole={updateRole}

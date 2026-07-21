@@ -6,6 +6,14 @@ export interface DepartmentItem {
   departmentName: string;
   code: string;
   company?: string;
+  teams?: {
+    _id: string;
+    name: string;
+    code?: string;
+    description?: string;
+    isActive?: boolean;
+  }[];
+  teamCount?: number;
   departmentHead?: {
     _id: string;
     name?: string;
@@ -165,6 +173,91 @@ class DepartmentStore {
     } catch (err: any) {
       runInAction(() => {
         this.error = err?.response?.data?.message || err?.response?.data?.error || "Head assignment failed";
+      });
+      throw err;
+    } finally {
+      runInAction(() => {
+        this.isSubmitting = false;
+      });
+    }
+  };
+
+  addDepartmentTeam = async (
+    id: string,
+    payload: { name: string; code?: string; description?: string; isActive?: boolean }
+  ) => {
+    this.isSubmitting = true;
+    this.error = null;
+
+    try {
+      const { data } = await axios.post(`/department/${id}/teams`, payload);
+
+      runInAction(() => {
+        this.departments = this.departments.map((department) =>
+          department._id === id ? data.data : department
+        );
+      });
+
+      return data;
+    } catch (err: any) {
+      runInAction(() => {
+        this.error = err?.response?.data?.message || "Team creation failed";
+      });
+      throw err;
+    } finally {
+      runInAction(() => {
+        this.isSubmitting = false;
+      });
+    }
+  };
+
+  updateDepartmentTeam = async (
+    id: string,
+    teamId: string,
+    payload: { name?: string; code?: string; description?: string; isActive?: boolean }
+  ) => {
+    this.isSubmitting = true;
+    this.error = null;
+
+    try {
+      const { data } = await axios.put(`/department/${id}/teams/${teamId}`, payload);
+
+      runInAction(() => {
+        this.departments = this.departments.map((department) =>
+          department._id === id ? data.data : department
+        );
+      });
+
+      return data;
+    } catch (err: any) {
+      runInAction(() => {
+        this.error = err?.response?.data?.message || "Team update failed";
+      });
+      throw err;
+    } finally {
+      runInAction(() => {
+        this.isSubmitting = false;
+      });
+    }
+  };
+
+  deleteDepartmentTeam = async (id: string, teamId: string) => {
+    this.isSubmitting = true;
+    this.error = null;
+
+    try {
+      const { data } = await axios.delete(`/department/${id}/teams/${teamId}`);
+
+      runInAction(() => {
+        this.departments = this.departments.map((department) =>
+          department._id === id ? data.data : department
+        );
+      });
+
+      return data;
+    } catch (err: any) {
+      runInAction(() => {
+        this.error = err?.response?.data?.message || "Team deletion failed";
       });
       throw err;
     } finally {
