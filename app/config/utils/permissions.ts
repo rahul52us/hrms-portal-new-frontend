@@ -4,6 +4,7 @@ export const PERMISSION_KEYS = {
   VIEW_DASHBOARD: "view_dashboard",
   VIEW_USERS: "view_users",
   CREATE_USERS: "create_users",
+  CREATE_HR_USERS: "create_hr_users",
   CREATE_MANAGERS: "create_managers",
   CREATE_DEPARTMENT_HEADS: "create_department_heads",
   EDIT_USERS: "edit_users",

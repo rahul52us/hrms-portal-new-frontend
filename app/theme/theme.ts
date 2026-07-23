@@ -245,7 +245,7 @@ export function createLearnerBrandScale(primaryColor?: string): BrandScale {
 
 export function shouldUseCompanyDashboardBranding(user?: Record<string, any> | null) {
   const role = String(user?.userType || user?.role || "").trim().toLowerCase();
-  return role === "admin" || role === "department head" || role === "department_head";
+  return ["admin", "departmenthead", "department head", "department_head", "hradmin", "hr"].includes(role);
 }
 
 function createAccentBrandScale(primaryColor?: string, targetHex = "#312E81", amount = 0.18) {

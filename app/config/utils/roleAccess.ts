@@ -2,7 +2,10 @@ export function normalizeRole(value: unknown) {
   return String(value || "")
     .trim()
     .toLowerCase()
-    .replace(/^department[-\s]?head$/i, "departmenthead");
+    .replace(/^department[-\s]?head$/i, "departmenthead")
+    .replace(/^head[-\s]?hr$/i, "hradmin")
+    .replace(/^hr[-\s]?admin$/i, "hradmin")
+    .replace(/^hr[-\s]?executive$/i, "hr");
 }
 
 export function isLearnerRole(value: unknown) {
@@ -37,7 +40,7 @@ export function getDefaultAuthenticatedRoute(user: any) {
     return "/dashboard/companies";
   }
 
-  if (role === "admin" || role === "departmenthead") {
+  if (role === "admin" || role === "departmenthead" || role === "hradmin" || role === "hr") {
     return "/dashboard/users";
   }
 

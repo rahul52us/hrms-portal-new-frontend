@@ -70,6 +70,11 @@ type UserFormState = {
   companyManagerLevels: number;
   createCompany: boolean;
   resendSetupEmail: boolean;
+  hrScope: {
+    departments: string[];
+    teams: string[];
+    officeLocationIds: string[];
+  };
   managers: ManagerRow[];
 };
 
@@ -87,6 +92,10 @@ const normalizeRole = (value: unknown) =>
   String(value || "")
     .trim()
     .toLowerCase()
+    .replace(/^department[-\s]?head$/i, "departmenthead")
+    .replace(/^head[-\s]?hr$/i, "hradmin")
+    .replace(/^hr[-\s]?admin$/i, "hradmin")
+    .replace(/^hr[-\s]?executive$/i, "hr")
     .replace(/^l\s*(\d+)\s*manager$/i, "l$1-manager")
     .replace(/\s+/g, "-");
 const normalizeEmail = (value: unknown) => String(value || "").trim().toLowerCase();
@@ -105,6 +114,18 @@ const formatRoleLabel = (role: string) => {
 
   if (role === "admin") {
     return "Admin";
+  }
+
+  if (role === "hradmin") {
+    return "HR Admin";
+  }
+
+  if (role === "hr") {
+    return "HR";
+  }
+
+  if (role === "departmenthead") {
+    return "Department Head";
   }
 
   return role
@@ -185,7 +206,10 @@ const getUserOfficeLocationId = (user: any) => {
 
 const getRequiredManagerLevels = (role: string, maxLevel: number) => {
   const normalizedRole = normalizeRole(role);
-  if (!normalizedRole || normalizedRole === "admin" || normalizedRole === "superadmin") {
+  if (
+    !normalizedRole ||
+    ["admin", "superadmin", "hradmin", "hr"].includes(normalizedRole)
+  ) {
     return [];
   }
 
@@ -235,6 +259,11 @@ const initialForm = (): UserFormState => ({
   companyManagerLevels: 3,
   createCompany: false,
   resendSetupEmail: true,
+  hrScope: {
+    departments: [],
+    teams: [],
+    officeLocationIds: [],
+  },
   managers: reconcileManagersForRole("user", [], 3),
 });
 
@@ -269,12 +298,13 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const role = normalizeRole(auth.userType || auth.user?.role);
   const canViewUsers = hasPermission(auth.user, PERMISSION_KEYS.VIEW_USERS);
   const canCreateUsers = hasPermission(auth.user, PERMISSION_KEYS.CREATE_USERS);
+  const canCreateHrUsers = hasPermission(auth.user, PERMISSION_KEYS.CREATE_HR_USERS);
   const canCreateManagers = hasPermission(auth.user, PERMISSION_KEYS.CREATE_MANAGERS);
   const canCreateDepartmentHeads = hasPermission(auth.user, PERMISSION_KEYS.CREATE_DEPARTMENT_HEADS);
   const canEditUsers = hasPermission(auth.user, PERMISSION_KEYS.EDIT_USERS);
   const canAssignManagers = hasPermission(auth.user, PERMISSION_KEYS.ASSIGN_MANAGERS);
   const canDeleteUsers = canEditUsers;
-  const canOpenCreate = canCreateUsers || canCreateManagers || canCreateDepartmentHeads;
+  const canOpenCreate = canCreateUsers || canCreateHrUsers || canCreateManagers || canCreateDepartmentHeads;
   const canOpenBulk = canOpenCreate || canEditUsers;
   const showToast = useCallback(
     (options: any) =>
@@ -349,6 +379,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const roleOptions = useMemo(() => {
     const baseRoles = [
       ...(canCreateUsers ? ["user"] : []),
+      ...(canCreateHrUsers && (isSuperadmin || role === "admin") ? ["hradmin"] : []),
+      ...(canCreateHrUsers ? ["hr"] : []),
       ...(canCreateDepartmentHeads ? ["departmenthead"] : []),
       ...(canCreateManagers
         ? Array.from({ length: selectedUserManagerLevels }, (_, index) => `l${index + 1}-manager`)
@@ -363,7 +395,16 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       value: item,
       label: formatRoleLabel(item),
     }));
-  }, [canCreateDepartmentHeads, canCreateManagers, canCreateUsers, selectedUserManagerLevels, userForm.role]);
+  }, [
+    canCreateDepartmentHeads,
+    canCreateHrUsers,
+    canCreateManagers,
+    canCreateUsers,
+    isSuperadmin,
+    role,
+    selectedUserManagerLevels,
+    userForm.role,
+  ]);
 
   const listTabs = useMemo(() => {
     const tabs = [{ label: "Employees", value: "user" }];
@@ -381,6 +422,11 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
 
     if (isSuperadmin || role === "admin") {
       tabs.push({ label: "Department Heads", value: "departmenthead" });
+    }
+
+    if (isSuperadmin || role === "admin" || role === "hradmin") {
+      tabs.push({ label: "HR Admins", value: "hradmin" });
+      tabs.push({ label: "HR", value: "hr" });
     }
 
     return tabs;
@@ -626,6 +672,15 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       companyManagerLevels: user.company?.managerLevels || selectedUserManagerLevels,
       createCompany: false,
       resendSetupEmail: false,
+      hrScope: {
+        departments: Array.isArray(user.hrScope?.departments) ? user.hrScope.departments : [],
+        teams: Array.isArray(user.hrScope?.teams) ? user.hrScope.teams : [],
+        officeLocationIds: Array.isArray(user.hrScope?.officeLocationIds)
+          ? user.hrScope.officeLocationIds
+          : Array.isArray(user.hrScope?.officeLocations)
+            ? user.hrScope.officeLocations
+            : [],
+      },
       managers: reconcileManagersForRole(roleValue, mappedManagers, roleMaxLevel),
     });
     setIsUserDrawerOpen(true);
@@ -650,10 +705,22 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   };
 
   const updateRole = (nextRole: string) => {
+    const normalizedNextRole = normalizeRole(nextRole);
+    const isHrRole = normalizedNextRole === "hradmin" || normalizedNextRole === "hr";
     setUserForm((prev) => ({
       ...prev,
-      role: nextRole,
-      managers: reconcileManagersForRole(nextRole, prev.managers, selectedUserManagerLevels),
+      role: normalizedNextRole,
+      department: isHrRole ? "" : prev.department,
+      team: isHrRole ? "" : prev.team,
+      officeLocationId: isHrRole ? "" : prev.officeLocationId,
+      hrScope: normalizedNextRole === "hr"
+        ? prev.hrScope
+        : {
+            departments: [],
+            teams: [],
+            officeLocationIds: [],
+          },
+      managers: reconcileManagersForRole(normalizedNextRole, prev.managers, selectedUserManagerLevels),
     }));
   };
 
@@ -695,6 +762,16 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       showToast({
         title: "Missing details",
         description: `Employee code, full name, email, ${isDepartmentRequired ? "department, " : ""}and role are required.`,
+        status: "warning",
+        duration: 3000,
+      });
+      return;
+    }
+
+    if (roleValue === "hr" && (userForm.hrScope?.departments || []).length === 0) {
+      showToast({
+        title: "HR scope required",
+        description: "Select at least one department for this HR account.",
         status: "warning",
         duration: 3000,
       });
@@ -774,6 +851,16 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     }
 
     if (!userForm.id) {
+      if (["hr", "hradmin"].includes(roleValue) && !canCreateHrUsers) {
+        showToast({
+          title: "Permission required",
+          description: "Your account cannot create HR users.",
+          status: "warning",
+          duration: 3000,
+        });
+        return;
+      }
+
       if (roleValue === "user" && !canCreateUsers) {
         showToast({
           title: "Permission required",
@@ -813,14 +900,15 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       return;
     }
 
+    const isHrRole = roleValue === "hradmin" || roleValue === "hr";
     const payload: any = {
       code,
       name,
       email: email || undefined,
       mobileNumber,
-      department,
-      team,
-      officeLocationId: officeLocationId || undefined,
+      department: isHrRole ? "" : department,
+      team: isHrRole ? "" : team,
+      officeLocationId: isHrRole ? undefined : officeLocationId || undefined,
       city,
       state,
       designation,
@@ -830,6 +918,14 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       role: roleValue,
       managers,
     };
+
+    if (roleValue === "hr") {
+      payload.hrScope = {
+        departments: userForm.hrScope?.departments || [],
+        teams: userForm.hrScope?.teams || [],
+        officeLocationIds: userForm.hrScope?.officeLocationIds || [],
+      };
+    }
 
     if (!userForm.id) {
       const password = String(userForm.password || "");

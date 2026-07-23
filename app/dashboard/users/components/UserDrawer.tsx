@@ -109,6 +109,8 @@ const buildUserFormErrors = ({
   const trimmedOfficeLocationId = String(userForm.officeLocationId || "").trim();
   const normalizedRole = String(userForm.role || "").trim().toLowerCase();
   const isCompanyAdminRole = normalizedRole === "admin";
+  const isHrRole = normalizedRole === "hradmin" || normalizedRole === "hr";
+  const hrScope = userForm.hrScope || {};
   const trimmedPassword = String(userForm.password || "");
   const trimmedConfirmPassword = String(userForm.confirmPassword || "");
   const requiresEmployeeCode = !isCompanyAdminRole;
@@ -135,6 +137,10 @@ const buildUserFormErrors = ({
     errors.role = "Role is required.";
   }
 
+  if (normalizedRole === "hr" && (!Array.isArray(hrScope.departments) || hrScope.departments.length === 0)) {
+    errors.hrScopeDepartments = "Select at least one department for scoped HR.";
+  }
+
   if (isSuperadmin && !String(userForm.companyId || "").trim()) {
     errors.companyId = "Company selection is required.";
   }
@@ -142,6 +148,7 @@ const buildUserFormErrors = ({
   if (isDepartmentRequired && !trimmedDepartment) {
     errors.department = "Department is required for this role.";
   } else if (
+    !isHrRole &&
     trimmedDepartment &&
     availableDepartments.length > 0 &&
     !availableDepartments.includes(trimmedDepartment)
@@ -149,9 +156,10 @@ const buildUserFormErrors = ({
     errors.department = "Select a valid department for the chosen company.";
   }
 
-  if (trimmedTeam && !trimmedDepartment) {
+  if (!isHrRole && trimmedTeam && !trimmedDepartment) {
     errors.team = "Select a department before assigning a team.";
   } else if (
+    !isHrRole &&
     trimmedTeam &&
     teamOptions.length > 0 &&
     !teamOptions.some((team) => team.value === trimmedTeam)
@@ -160,6 +168,7 @@ const buildUserFormErrors = ({
   }
 
   if (
+    !isHrRole &&
     trimmedOfficeLocationId &&
     officeLocationOptions.length > 0 &&
     !officeLocationOptions.some((location) => location.value === trimmedOfficeLocationId)
@@ -233,6 +242,35 @@ const UserDrawer = ({
       label: team.name,
       value: team.name,
     }));
+  const hrScope = userForm.hrScope || {
+    departments: [],
+    teams: [],
+    officeLocationIds: [],
+  };
+  const selectedHrScopeDepartments = Array.isArray(hrScope.departments) ? hrScope.departments : [];
+  const hrScopeTeamOptions = activeDepartmentRecords
+    .filter((department: any) =>
+      selectedHrScopeDepartments.some(
+        (name: string) =>
+          String(name || "").toLowerCase() ===
+          String(department?.departmentName || "").toLowerCase()
+      )
+    )
+    .flatMap((department: any) =>
+      (Array.isArray(department?.teams) ? department.teams : [])
+        .filter((team: any) => team?.isActive !== false)
+        .map((team: any) => ({
+          label: `${team.name} (${department.departmentName})`,
+          value: team.name,
+        }))
+    )
+    .filter(
+      (team: any, index: number, arr: any[]) =>
+        arr.findIndex((item: any) => item.value.toLowerCase() === team.value.toLowerCase()) === index
+    );
+  const isHrAdminRole = String(userForm.role || "").trim().toLowerCase() === "hradmin";
+  const isScopedHrRole = String(userForm.role || "").trim().toLowerCase() === "hr";
+  const isHrRole = isHrAdminRole || isScopedHrRole;
   const isDepartmentRequired =
     userForm.role === "departmenthead" || /^l\d+-manager$/i.test(String(userForm.role || ""));
   const validationErrors = useMemo(
@@ -267,20 +305,19 @@ const UserDrawer = ({
 
   const todayDate = getTodayDateValue();
   const isCompanyAdminRole = String(userForm.role || "").trim().toLowerCase() === "admin";
+  const roleTitle = isCompanyAdminRole
+    ? "Company Admin"
+    : isHrAdminRole
+      ? "HR Admin"
+      : isScopedHrRole
+        ? "HR"
+        : "Employee";
   const drawerTitle = userForm.id
-    ? isCompanyAdminRole
-      ? "Edit Company Admin"
-      : "Edit Employee"
-    : isCompanyAdminRole
-      ? "Add Company Admin"
-      : "Add Employee";
+    ? `Edit ${roleTitle}`
+    : `Add ${roleTitle}`;
   const submitLabel = userForm.id
-    ? isCompanyAdminRole
-      ? "Update Company Admin"
-      : "Update Employee"
-    : isCompanyAdminRole
-      ? "Create Company Admin"
-      : "Create Employee";
+    ? `Update ${roleTitle}`
+    : `Create ${roleTitle}`;
   const roleLabel =
     roleOptions.find((roleOption: any) => roleOption.value === userForm.role)?.label ||
     userForm.role;
@@ -392,7 +429,7 @@ const UserDrawer = ({
             )}
 
             {/* EMPLOYEE */}
-            <SectionCard title={isCompanyAdminRole ? "Company Admin Details" : "Employee Details"} icon={User} color="blue">
+            <SectionCard title={`${roleTitle} Details`} icon={User} color="blue">
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                 {!isCompanyAdminRole && (
                   <>
@@ -512,75 +549,79 @@ const UserDrawer = ({
                 />
                 {!isCompanyAdminRole && (
                   <>
-                    <CustomInput
-                      type="select"
-                      label="Department"
-                      name="department"
-                      required={isDepartmentRequired}
-                      placeholder="Select department"
-                      value={
-                        userForm.department
-                          ? { label: userForm.department, value: userForm.department }
-                          : null
-                      }
-                      error={validationErrors.department}
-                      showError={submitAttempted}
-                      onChange={(option: any) =>
-                        setUserForm((p: any) => ({
-                          ...p,
-                          department: option?.value || "",
-                          team: "",
-                        }))
-                      }
-                      options={availableDepartments.map((department: string) => ({
-                        label: department,
-                        value: department,
-                      }))}
-                    />
-                    <CustomInput
-                      type="select"
-                      label="Team (Optional)"
-                      name="team"
-                      placeholder={
-                        userForm.department
-                          ? teamOptions.length
-                            ? "Select team"
-                            : "No teams in selected department"
-                          : "Select department first"
-                      }
-                      value={
-                        userForm.team
-                          ? { label: userForm.team, value: userForm.team }
-                          : null
-                      }
-                      error={validationErrors.team}
-                      showError={submitAttempted}
-                      isClear
-                      disabled={!userForm.department || teamOptions.length === 0}
-                      onChange={(option: any) =>
-                        setUserForm((p: any) => ({ ...p, team: option?.value || "" }))
-                      }
-                      options={teamOptions}
-                    />
-                    <CustomInput
-                      type="select"
-                      label="Office Location"
-                      name="officeLocationId"
-                      placeholder="Select office location"
-                      value={
-                        officeLocationOptions.find(
-                          (location: any) => location.value === userForm.officeLocationId
-                        ) || null
-                      }
-                      error={validationErrors.officeLocationId}
-                      showError={submitAttempted}
-                      isClear
-                      onChange={(option: any) =>
-                        setUserForm((p: any) => ({ ...p, officeLocationId: option?.value || "" }))
-                      }
-                      options={officeLocationOptions}
-                      isSearchable
-                    />
+                    {!isHrRole ? (
+                      <>
+                        <CustomInput
+                          type="select"
+                          label="Department"
+                          name="department"
+                          required={isDepartmentRequired}
+                          placeholder="Select department"
+                          value={
+                            userForm.department
+                              ? { label: userForm.department, value: userForm.department }
+                              : null
+                          }
+                          error={validationErrors.department}
+                          showError={submitAttempted}
+                          onChange={(option: any) =>
+                            setUserForm((p: any) => ({
+                              ...p,
+                              department: option?.value || "",
+                              team: "",
+                            }))
+                          }
+                          options={availableDepartments.map((department: string) => ({
+                            label: department,
+                            value: department,
+                          }))}
+                        />
+                        <CustomInput
+                          type="select"
+                          label="Team (Optional)"
+                          name="team"
+                          placeholder={
+                            userForm.department
+                              ? teamOptions.length
+                                ? "Select team"
+                                : "No teams in selected department"
+                              : "Select department first"
+                          }
+                          value={
+                            userForm.team
+                              ? { label: userForm.team, value: userForm.team }
+                              : null
+                          }
+                          error={validationErrors.team}
+                          showError={submitAttempted}
+                          isClear
+                          disabled={!userForm.department || teamOptions.length === 0}
+                          onChange={(option: any) =>
+                            setUserForm((p: any) => ({ ...p, team: option?.value || "" }))
+                          }
+                          options={teamOptions}
+                        />
+                        <CustomInput
+                          type="select"
+                          label="Office Location"
+                          name="officeLocationId"
+                          placeholder="Select office location"
+                          value={
+                            officeLocationOptions.find(
+                              (location: any) => location.value === userForm.officeLocationId
+                            ) || null
+                          }
+                          error={validationErrors.officeLocationId}
+                          showError={submitAttempted}
+                          isClear
+                          onChange={(option: any) =>
+                            setUserForm((p: any) => ({ ...p, officeLocationId: option?.value || "" }))
+                          }
+                          options={officeLocationOptions}
+                          isSearchable
+                        />
+                      </>
+                    ) : null}
                     <CustomInput
                       label="City"
                       name="city"
@@ -695,6 +736,11 @@ const UserDrawer = ({
                         companyId: option?.value || "",
                         department: "",
                         team: "",
+                        hrScope: {
+                          departments: [],
+                          teams: [],
+                          officeLocationIds: [],
+                        },
                         officeLocationId: "",
                       }))
                     }
@@ -712,8 +758,91 @@ const UserDrawer = ({
               )}
             </SectionCard>
 
+            {isScopedHrRole ? (
+              <SectionCard title="HR Scope" icon={Building2} color="orange">
+                <VStack align="stretch" spacing={4}>
+                  <Text fontSize="sm" color={muted}>
+                    This HR account can manage employees and managers only inside the selected scope.
+                  </Text>
+                  <CustomInput
+                    type="select"
+                    label="Departments"
+                    name="hrScopeDepartments"
+                    placeholder="Select departments"
+                    value={selectedHrScopeDepartments.map((department: string) => ({
+                      label: department,
+                      value: department,
+                    }))}
+                    error={validationErrors.hrScopeDepartments}
+                    showError={submitAttempted}
+                    isMulti
+                    onChange={(options: any) =>
+                      setUserForm((p: any) => ({
+                        ...p,
+                        hrScope: {
+                          ...(p.hrScope || {}),
+                          departments: (Array.isArray(options) ? options : []).map((option: any) => option.value),
+                          teams: [],
+                        },
+                      }))
+                    }
+                    options={availableDepartments.map((department: string) => ({
+                      label: department,
+                      value: department,
+                    }))}
+                  />
+                  <CustomInput
+                    type="select"
+                    label="Teams (Optional)"
+                    name="hrScopeTeams"
+                    placeholder={
+                      selectedHrScopeDepartments.length
+                        ? "Select teams to narrow scope"
+                        : "Select departments first"
+                    }
+                    value={(Array.isArray(hrScope.teams) ? hrScope.teams : []).map((team: string) => ({
+                      label: team,
+                      value: team,
+                    }))}
+                    isMulti
+                    disabled={selectedHrScopeDepartments.length === 0 || hrScopeTeamOptions.length === 0}
+                    onChange={(options: any) =>
+                      setUserForm((p: any) => ({
+                        ...p,
+                        hrScope: {
+                          ...(p.hrScope || {}),
+                          teams: (Array.isArray(options) ? options : []).map((option: any) => option.value),
+                        },
+                      }))
+                    }
+                    options={hrScopeTeamOptions}
+                  />
+                  <CustomInput
+                    type="select"
+                    label="Office Locations (Optional)"
+                    name="hrScopeOfficeLocations"
+                    placeholder="Select locations to narrow scope"
+                    value={officeLocationOptions.filter((location: any) =>
+                      (Array.isArray(hrScope.officeLocationIds) ? hrScope.officeLocationIds : []).includes(location.value)
+                    )}
+                    isMulti
+                    onChange={(options: any) =>
+                      setUserForm((p: any) => ({
+                        ...p,
+                        hrScope: {
+                          ...(p.hrScope || {}),
+                          officeLocationIds: (Array.isArray(options) ? options : []).map((option: any) => option.value),
+                        },
+                      }))
+                    }
+                    options={officeLocationOptions}
+                  />
+                </VStack>
+              </SectionCard>
+            ) : null}
+
             {/* HIERARCHY */}
-            {!isCompanyAdminRole && (
+            {!isCompanyAdminRole && !isHrRole && (
               <SectionCard title="Manager Hierarchy" icon={Layers} color="orange">
                 {!canAssignManagers ? (
                   <Text fontSize="sm" color={muted}>

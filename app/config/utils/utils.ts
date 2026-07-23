@@ -115,7 +115,7 @@ export const insertUniqueFile = (setState : any, state : any[], newFiles : any[]
   };
 
   export const renderUserTypeComponent = (role : any) => {
-    if(['admin','superadmin'].includes(role)){
+    if(['admin','superadmin','hradmin','hr'].includes(String(role || '').toLowerCase())){
        return true
     }else{
       return false
