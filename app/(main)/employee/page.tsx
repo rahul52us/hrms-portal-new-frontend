@@ -19,13 +19,11 @@ import {
   Text,
   useColorModeValue,
   VStack,
-  IconButton,
-  Link as ChakraLink,
 } from "@chakra-ui/react";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import {
   FiBriefcase,
   FiCalendar,
@@ -37,8 +35,6 @@ import {
   FiMapPin,
   FiPhone,
   FiPower,
-  FiChevronDown,
-  FiChevronRight,
   FiShield,
   FiUser,
   FiUsers,
@@ -179,212 +175,6 @@ function QuickLinkTile({
   );
 }
 
-function EmployeeSidebar() {
-  const sidebarBg = useColorModeValue("white", "gray.900");
-  const borderColor = useColorModeValue("gray.200", "whiteAlpha.200");
-  const textColor = useColorModeValue("gray.800", "gray.100");
-  const subText = useColorModeValue("gray.700", "gray.300");
-  const accent = useColorModeValue("orange.500", "orange.300");
-  const hoverBg = useColorModeValue("gray.50", "whiteAlpha.100");
-  const [collapsed, setCollapsed] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    links: true,
-    profile: false,
-    attendance: false,
-    request: true,
-    claims: false,
-    company: false,
-    valueAdd: false,
-    benefits: false,
-  });
-
-  const toggleGroup = (group: string) => {
-    setOpenGroups((current) => ({ ...current, [group]: !current[group] }));
-  };
-
-  const navLink = (label: string, href: string, isActive = false) => (
-    <ChakraLink
-      as={Link}
-      href={href}
-      display="flex"
-      alignItems="center"
-      gap={2}
-      px={3}
-      py={2}
-      borderRadius="md"
-      fontSize="14px"
-      color={isActive ? accent : textColor}
-      fontWeight={isActive ? "800" : "600"}
-      _hover={{ textDecoration: "none", bg: hoverBg }}
-    >
-      <Icon as={FiUser} boxSize={4} />
-      <Text>{label}</Text>
-    </ChakraLink>
-  );
-
-  return (
-    <Box
-      as="aside"
-      w={collapsed ? "64px" : { base: "full", lg: "210px", xl: "220px" }}
-      flexShrink={0}
-      bg={sidebarBg}
-      borderRight="1px solid"
-      borderColor={borderColor}
-      minH="calc(100vh - 88px)"
-      position={{ base: "relative", lg: "sticky" }}
-      top={{ base: 0, lg: "88px" }}
-      overflowY="auto"
-    >
-      <Flex align="center" justify={collapsed ? "center" : "space-between"} px={3} py={3} borderBottom="1px solid" borderColor={borderColor}>
-        {!collapsed ? <Text fontSize="13px" fontWeight="800" color={accent}>Menu</Text> : null}
-        <IconButton
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          icon={collapsed ? <FiChevronRight /> : <FiChevronDown />}
-          size="sm"
-          variant="ghost"
-          onClick={() => setCollapsed((value) => !value)}
-        />
-      </Flex>
-
-      {!collapsed ? (
-        <Stack spacing={0}>
-          <Box borderBottom="1px solid" borderColor={borderColor}>{navLink("Home", "/employee", true)}</Box>
-
-          <Box borderBottom="1px solid" borderColor={borderColor}>
-            <Flex
-              as="button"
-              type="button"
-              w="full"
-              align="center"
-              justify="space-between"
-              px={3}
-              py={3}
-              fontWeight="700"
-              color={textColor}
-              onClick={() => toggleGroup("links")}
-            >
-              <HStack spacing={2}>
-                <Icon as={FiFileText} boxSize={4} />
-                <Text fontSize="14px">My Links</Text>
-              </HStack>
-              <Icon as={openGroups.links ? FiChevronDown : FiChevronRight} boxSize={4} />
-            </Flex>
-            {openGroups.links ? (
-              <Stack px={3} pb={3} spacing={1}>
-                {[
-                  ["My CTC", "/employee/ctc"],
-                  ["My Salary Slip", "/dashboard/salary-slip"],
-                  ["My Investment Declaration", "/employee/investment-declaration"],
-                  ["My Tax Report", "/employee/tax-report"],
-                  ["My Annual Salary", "/employee/annual-salary"],
-                  ["My To Do", "/employee/todo"],
-                  ["My Activity Update", "/employee/activity-update"],
-                  ["Asset Allocated", "/employee/assets"],
-                  ["View My Process Activities", "/employee/process-activities"],
-                  ["My Form16", "/employee/form16"],
-                  ["My Trainings", "/course"],
-                  ["Remarks", "/employee/remarks"],
-                  ["My Appreciation", "/employee/appreciation"],
-                ].map(([label, href]) => (
-                  <ChakraLink
-                    key={label}
-                    as={Link}
-                    href={href}
-                    px={2}
-                    py={1.5}
-                    borderRadius="md"
-                    fontSize="13px"
-                    color={subText}
-                    _hover={{ textDecoration: "none", bg: hoverBg, color: accent }}
-                  >
-                    {label}
-                  </ChakraLink>
-                ))}
-              </Stack>
-            ) : null}
-          </Box>
-
-          <Box borderBottom="1px solid" borderColor={borderColor}>
-            <Flex as="button" type="button" w="full" align="center" justify="space-between" px={3} py={3} fontWeight="700" color={textColor} onClick={() => toggleGroup("profile")}>
-              <HStack spacing={2}>
-                <Icon as={FiUser} boxSize={4} />
-                <Text fontSize="14px">My Profile</Text>
-              </HStack>
-              <Icon as={openGroups.profile ? FiChevronDown : FiChevronRight} boxSize={4} />
-            </Flex>
-            {openGroups.profile ? <Box px={3} pb={3}>{navLink("Profile Details", "/user-profile")}</Box> : null}
-          </Box>
-
-          <Box borderBottom="1px solid" borderColor={borderColor}>
-            <Flex as="button" type="button" w="full" align="center" justify="space-between" px={3} py={3} fontWeight="700" color={textColor} onClick={() => toggleGroup("attendance")}>
-              <HStack spacing={2}>
-                <Icon as={FiCalendar} boxSize={4} />
-                <Text fontSize="14px">My Attendance</Text>
-              </HStack>
-              <Icon as={openGroups.attendance ? FiChevronDown : FiChevronRight} boxSize={4} />
-            </Flex>
-            {openGroups.attendance ? <Box px={3} pb={3}>{navLink("Attendance Overview", "#attendance")}</Box> : null}
-          </Box>
-
-          <Box borderBottom="1px solid" borderColor={borderColor}>
-            <Flex as="button" type="button" w="full" align="center" justify="space-between" px={3} py={3} fontWeight="700" color={textColor} onClick={() => toggleGroup("request")}>
-              <HStack spacing={2}>
-                <Icon as={FiFileText} boxSize={4} />
-                <Text fontSize="14px">Request</Text>
-              </HStack>
-              <Icon as={openGroups.request ? FiChevronDown : FiChevronRight} boxSize={4} />
-            </Flex>
-            {openGroups.request ? (
-              <Stack px={3} pb={3} spacing={1}>
-                {[
-                  ["Attendance Regularise", "/dashboard/request"],
-                  ["Leave/OD/WFH", "/dashboard/request/leave"],
-                  ["HelpDesk", "/contact-us"],
-                  ["Appreciation", "/employee/appreciation"],
-                  ["Resignation Note", "/employee/resignation"],
-                  ["Leave Encashment", "/employee/leave-encashment"],
-                ].map(([label, href]) => (
-                  <ChakraLink
-                    key={label}
-                    as={Link}
-                    href={href}
-                    px={2}
-                    py={1.5}
-                    borderRadius="md"
-                    fontSize="13px"
-                    color={subText}
-                    _hover={{ textDecoration: "none", bg: hoverBg, color: accent }}
-                  >
-                    {label}
-                  </ChakraLink>
-                ))}
-              </Stack>
-            ) : null}
-          </Box>
-
-          {[
-            ["My Claims", "claims", "/employee/claims"],
-            ["Corp. Info.", "company", "/dashboard/company-settings"],
-            ["Value Add", "valueAdd", "/employee/value-add"],
-            ["Employee Benefit", "benefits", "/employee/benefits"],
-          ].map(([label, groupKey, href]) => (
-            <Box key={label} borderBottom="1px solid" borderColor={borderColor}>
-              <Flex as="button" type="button" w="full" align="center" justify="space-between" px={3} py={3} fontWeight="700" color={textColor} onClick={() => toggleGroup(String(groupKey))}>
-                <HStack spacing={2}>
-                  <Icon as={FiShield} boxSize={4} />
-                  <Text fontSize="14px">{label}</Text>
-                </HStack>
-                <Icon as={openGroups[String(groupKey)] ? FiChevronDown : FiChevronRight} boxSize={4} />
-              </Flex>
-              {openGroups[String(groupKey)] ? <Box px={3} pb={3}>{navLink(`${label} Home`, href)}</Box> : null}
-            </Box>
-          ))}
-        </Stack>
-      ) : null}
-    </Box>
-  );
-}
-
 const EmployeePage = observer(() => {
   const router = useRouter();
   const { user, sessionReady } = stores.auth;
@@ -445,9 +235,6 @@ const EmployeePage = observer(() => {
   return (
     <Box minH="100vh" bg={pageBg}>
       <Flex align="stretch" minH="calc(100vh - 88px)">
-        <Box display={{ base: "none", lg: "block" }}>
-          <EmployeeSidebar />
-        </Box>
         <Box flex="1" px={{ base: 4, md: 6, xl: 8 }} py={{ base: 5, md: 6 }}>
           <Flex
             align={{ base: "flex-start", md: "center" }}

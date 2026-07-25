@@ -108,6 +108,27 @@ class UserStore {
     }
   };
 
+  updateUserDocuments = async (id: string, payload: any) => {
+    this.isLoading = true;
+    try {
+      const response = await axios.put(`/user/updateDocuments/${id}`, payload);
+      return response;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    } finally {
+      this.isLoading = false;
+    }
+  };
+
+  fetchUserDocuments = async (id: string) => {
+    try {
+      const response = await axios.get(`/user/updateDocuments/${id}`);
+      return response;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    }
+  };
+
   toggleUserStatus = async (id: string, isEnabled?: boolean) => {
     this.isLoading = true;
     try {

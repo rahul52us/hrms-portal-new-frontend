@@ -3,7 +3,6 @@
 import stores from "@/app/store/stores";
 import {
   Avatar,
-  Badge,
   Box,
   Button,
   Divider,
@@ -11,6 +10,7 @@ import {
   Grid,
   HStack,
   Icon,
+  Input,
   Text,
   useColorModeValue,
   useDisclosure,
@@ -18,7 +18,7 @@ import {
   VStack
 } from "@chakra-ui/react";
 import { observer } from "mobx-react-lite";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FiBriefcase,
   FiCalendar,
@@ -28,11 +28,11 @@ import {
   FiMapPin,
   FiUser
 } from "react-icons/fi";
-import { HiOutlineOfficeBuilding } from "react-icons/hi";
 import { MdOutlineVerified } from "react-icons/md";
 import EditProfileModal from "./component/EditProfileModal";
 import { genderOptions } from "@/app/config/constant";
 import { formatDateForInput } from "@/app/component/config/utils/dateUtils";
+import { readFileAsBase64 } from "@/app/config/utils/utils";
 
 function s(v: any): string {
   if (v == null || typeof v === "object") return "";
@@ -62,6 +62,31 @@ function genderLabel(value?: number | string) {
 function profileField(user: any, personalInfo: any, key: string) {
   return s(user?.[key] || personalInfo?.[key]);
 }
+
+type EmployeeDocumentRow = {
+  id: number;
+  label: string;
+  fileName?: string;
+  fileUrl?: string;
+  fileBuffer?: string;
+  fileType?: string;
+  isAdd?: boolean;
+  effectiveFrom?: string;
+  validTill?: string;
+};
+
+const documentTemplates: EmployeeDocumentRow[] = [
+  { id: 1, label: "Increment letter" },
+  { id: 2, label: "Qualification(Passing Certificate)" },
+  { id: 3, label: "PAN Card" },
+  { id: 4, label: "High School (10th ) Marksheet" },
+  { id: 5, label: "Aadhaar card" },
+  { id: 6, label: "Passport" },
+  { id: 7, label: "Intermediate (12th ) Marksheet" },
+  { id: 8, label: "Graduation Marksheet" },
+  { id: 9, label: "Driving Licence" },
+  { id: 10, label: "Appraisal Letter" },
+];
 
 const emptyForm = {
   firstName: "",
@@ -101,7 +126,7 @@ const ProfilePage: React.FC = observer(() => {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const user = stores.auth.user;
-  const personalInfo = user?.profile_details?.personalInfo || {};
+  const personalInfo = useMemo(() => user?.profile_details?.personalInfo || {}, [user?.profile_details?.personalInfo]);
 
   const [tempForm, setTempForm] = useState(emptyForm);
 
@@ -111,15 +136,76 @@ const ProfilePage: React.FC = observer(() => {
       personalInfo?.phoneNumber
   );
 
-  const role = s(user?.role).toLowerCase().replace(/_/g, " ");
-
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [docSaving, setDocSaving] = useState(false);
+  const [documents, setDocuments] = useState<EmployeeDocumentRow[]>(
+    documentTemplates.map((doc) => doc)
+  );
 
   useEffect(() => {
     if (!user) return;
     setForm(buildFormFromUser(user, personalInfo));
+  }, [user, personalInfo]);
+
+  useEffect(() => {
+    const savedDocs = Array.isArray(user?.profile_details?.documents)
+      ? user.profile_details.documents
+      : Array.isArray(user?.documents)
+        ? user.documents
+        : [];
+
+    if (!savedDocs.length) {
+      setDocuments(documentTemplates.map((doc) => doc));
+      return;
+    }
+
+    setDocuments(
+      documentTemplates.map((template) => {
+        const saved = savedDocs.find((item: any) => Number(item?.id) === template.id || item?.label === template.label);
+        return {
+          ...template,
+          ...(saved || {}),
+        };
+      })
+    );
   }, [user]);
+
+  useEffect(() => {
+    const loadDocuments = async () => {
+      if (!user?._id) return;
+
+      try {
+        const response = await stores.userStore.fetchUserDocuments(user._id);
+        const backendDocs = Array.isArray(response?.data?.data?.documents)
+          ? response.data.data.documents
+          : Array.isArray(response?.data?.documents)
+            ? response.data.documents
+            : [];
+
+        if (!backendDocs.length) return;
+
+        setDocuments(
+          documentTemplates.map((template) => {
+            const saved = backendDocs.find((item: any) => Number(item?.id) === template.id || item?.label === template.label);
+            return {
+              ...template,
+              ...(saved || {}),
+              fileName: saved?.file?.name || saved?.fileName || "",
+              fileUrl: saved?.file?.url || saved?.fileUrl || "",
+              fileType: saved?.file?.type || saved?.fileType || "",
+              effectiveFrom: saved?.effectiveFrom || "",
+              validTill: saved?.validTill || "",
+            };
+          })
+        );
+      } catch {
+        setDocuments(documentTemplates.map((doc) => doc));
+      }
+    };
+
+    loadDocuments();
+  }, [user?._id]);
 
   const fullName = `${form.firstName} ${form.lastName}`.trim() || s(user?.name) || "User";
 
@@ -224,6 +310,87 @@ const ProfilePage: React.FC = observer(() => {
     if (!user) return onClose();
     setForm(buildFormFromUser(user, personalInfo));
     onClose();
+  };
+
+  const handleDocumentChange = (docId: number, field: keyof EmployeeDocumentRow, value: string) => {
+    setDocuments((current) =>
+      current.map((doc) =>
+        doc.id === docId ? { ...doc, [field]: value } : doc
+      )
+    );
+  };
+
+  const handleDocumentFileChange = async (docId: number, file?: File) => {
+    if (!file) return;
+
+    const buffer = await readFileAsBase64(file);
+    setDocuments((current) =>
+      current.map((doc) =>
+        doc.id === docId
+          ? {
+              ...doc,
+              fileName: file.name,
+              fileType: file.type,
+              fileBuffer: buffer as string,
+              fileUrl: URL.createObjectURL(file),
+              isAdd: true,
+            }
+          : doc
+      )
+    );
+  };
+
+  const handleDocumentSave = async () => {
+    if (!user?._id) return;
+
+    setDocSaving(true);
+    try {
+      const payloadDocs = documents.map((doc) => ({
+        id: doc.id,
+        label: doc.label,
+        isAdd: doc.isAdd || false,
+        file: doc.fileBuffer
+          ? {
+              file: doc.fileBuffer,
+              filename: doc.fileName || `${doc.label}.pdf`,
+              type: doc.fileType || "application/octet-stream",
+            }
+          : doc.fileUrl
+            ? {
+                url: doc.fileUrl,
+                name: doc.fileName || `${doc.label}.pdf`,
+                type: doc.fileType || "application/octet-stream",
+              }
+            : undefined,
+        effectiveFrom: doc.effectiveFrom || "",
+        validTill: doc.validTill || "",
+      }));
+
+      await stores.userStore.updateUserDocuments(user._id, {
+        documents: payloadDocs,
+      });
+
+      await stores.auth.fetchUser();
+      toast({
+        title: "Documents saved",
+        description: "Your document uploads were updated successfully.",
+        status: "success",
+        duration: 3000,
+        position: "top-right",
+        isClosable: true,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Unable to save documents",
+        description: error?.message || "Please try again.",
+        status: "error",
+        duration: 4000,
+        position: "top-right",
+        isClosable: true,
+      });
+    } finally {
+      setDocSaving(false);
+    }
   };
 
   const pageBg = useColorModeValue("gray.50", "gray.950");
@@ -449,6 +616,7 @@ const ProfilePage: React.FC = observer(() => {
         )}
       </Box>
     </Grid>
+
       </Box>
       <EditProfileModal
   isOpen={isOpen}

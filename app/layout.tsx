@@ -61,14 +61,14 @@ const RootLayout = observer(({ children }: { children: React.ReactNode }) => {
       pathname === "/forgot-password"
     ) {
       return AuthenticationLayout;
-    } else if (pathname?.startsWith("/dashboard")) {
+    } else if (pathname?.startsWith("/dashboard") || pathname?.startsWith("/employee")) {
       return DashboardLayout;
     }
     return MainLayout;
   };
 
   const LayoutComponent = getLayout();
-  const isDashboardPath = pathname?.startsWith("/dashboard");
+  const isDashboardPath = pathname?.startsWith("/dashboard") || pathname?.startsWith("/employee");
   const isLearnerThemeEnabled = !isDashboardPath;
   const isDashboardThemeEnabled = isDashboardPath && shouldUseCompanyDashboardBranding(user);
   const themeConfigSnapshot = isLearnerThemeEnabled
