@@ -25,11 +25,19 @@ const sidebarDatas: SidebarItem[] = [
     permissionKey: PERMISSION_KEYS.VIEW_DASHBOARD,
   },
   {
+    id: 2,
+    name: "HR Dashboard",
+    icon: <FaChartPie />,
+    url: "/dashboard/hr",
+    role: ["admin", "hradmin", "hr"],
+    permissionKey: PERMISSION_KEYS.VIEW_DASHBOARD,
+  },
+  {
     id: 100,
     name: "Employees",
     icon: <FaUsers />,
     url: "/dashboard/users",
-    role: ["admin", "superadmin", "departmenthead"],
+    role: ["admin", "superadmin", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_USERS,
   },
   {
@@ -37,7 +45,7 @@ const sidebarDatas: SidebarItem[] = [
     name: "Departments",
     icon: <BiCategory />,
     url: "/dashboard/departments",
-    role: ["admin", "superadmin", "departmenthead"],
+    role: ["admin", "superadmin", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_DEPARTMENTS,
   },
   {
@@ -45,7 +53,7 @@ const sidebarDatas: SidebarItem[] = [
     name: "Locations",
     icon: <FiMapPin />,
     url: "/dashboard/locations",
-    role: ["admin", "superadmin", "departmenthead"],
+    role: ["admin", "superadmin", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_LOCATIONS,
   },
   {
@@ -349,7 +357,7 @@ export const sidebarFooterData: SidebarItem[] = [
     name: "Company Settings",
     icon: <FiSettings />,
     url: "/dashboard/company-settings",
-    role: ["admin"],
+    role: ["admin", "hradmin"],
     permissionKey: PERMISSION_KEYS.COMPANY_SETTINGS,
   },
   {
@@ -357,7 +365,7 @@ export const sidebarFooterData: SidebarItem[] = [
     name: "Settings",
     icon: <FaCog />,
     url: "/dashboard/profile",
-    role: ["admin", "superadmin", "patient", "doctor", "departmenthead"],
+    role: ["admin", "superadmin", "patient", "doctor", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_PROFILE,
   },
 ];

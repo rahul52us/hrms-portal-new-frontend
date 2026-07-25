@@ -21,6 +21,11 @@ const Page = observer(() => {
       return;
     }
 
+    if (role === "hradmin" || role === "hr") {
+      router.replace("/dashboard/hr");
+      return;
+    }
+
     if (role === "admin" || role === "departmenthead") {
       router.replace("/dashboard/users");
       return;
@@ -31,7 +36,7 @@ const Page = observer(() => {
     }
   }, [isLoading, role, router]);
 
-  if (isLoading || role === "admin" || role === "departmenthead") {
+  if (isLoading || role === "admin" || role === "departmenthead" || role === "hradmin" || role === "hr") {
     return (
       <Center h="100vh">
         <VStack spacing={4}>

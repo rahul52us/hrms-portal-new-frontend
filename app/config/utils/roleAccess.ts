@@ -40,7 +40,11 @@ export function getDefaultAuthenticatedRoute(user: any) {
     return "/dashboard/companies";
   }
 
-  if (role === "admin" || role === "departmenthead" || role === "hradmin" || role === "hr") {
+  if (role === "hradmin" || role === "hr") {
+    return "/dashboard/hr";
+  }
+
+  if (role === "admin" || role === "departmenthead") {
     return "/dashboard/users";
   }
 

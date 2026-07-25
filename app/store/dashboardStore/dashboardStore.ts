@@ -11,6 +11,9 @@ class DashboardStore {
   scopedSummary: ScopedDashboardSummary | any = null;
   scopedSummaryLoading = false;
   scopedSummaryError: string | null = null;
+  hrSummary: any = null;
+  hrSummaryLoading = false;
+  hrSummaryError: string | null = null;
   learnerResults: LearnerResultsResponse | null = null;
   learnerResultsLoading = false;
   learnerResultsError: string | null = null;
@@ -86,6 +89,24 @@ class DashboardStore {
       return Promise.reject(err?.response?.data || err);
     } finally {
       this.scopedSummaryLoading = false;
+    }
+  };
+
+  fetchHrSummary = async (params: Record<string, string> = {}) => {
+    this.hrSummaryLoading = true;
+    this.hrSummaryError = null;
+    try {
+      const { data } = await axios.get("/dashboard/hr-summary", { params });
+      this.hrSummary = data?.data || null;
+      return this.hrSummary;
+    } catch (err: any) {
+      this.hrSummaryError =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        "Failed to load HR dashboard";
+      return Promise.reject(err?.response?.data || err);
+    } finally {
+      this.hrSummaryLoading = false;
     }
   };
 
