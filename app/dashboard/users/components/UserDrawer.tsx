@@ -271,8 +271,7 @@ const UserDrawer = ({
   const isHrAdminRole = String(userForm.role || "").trim().toLowerCase() === "hradmin";
   const isScopedHrRole = String(userForm.role || "").trim().toLowerCase() === "hr";
   const isHrRole = isHrAdminRole || isScopedHrRole;
-  const isDepartmentRequired =
-    userForm.role === "departmenthead" || /^l\d+-manager$/i.test(String(userForm.role || ""));
+  const isDepartmentRequired = userForm.role === "departmenthead";
   const validationErrors = useMemo(
     () =>
       buildUserFormErrors({
@@ -762,7 +761,7 @@ const UserDrawer = ({
               <SectionCard title="HR Scope" icon={Building2} color="orange">
                 <VStack align="stretch" spacing={4}>
                   <Text fontSize="sm" color={muted}>
-                    This HR account can manage employees and managers only inside the selected scope.
+                    This HR account can manage employees only inside the selected scope.
                   </Text>
                   <CustomInput
                     type="select"
@@ -842,17 +841,17 @@ const UserDrawer = ({
             ) : null}
 
             {/* HIERARCHY */}
-            {!isCompanyAdminRole && !isHrRole && (
-              <SectionCard title="Manager Hierarchy" icon={Layers} color="orange">
+            {!isCompanyAdminRole && (
+              <SectionCard title="Reporting Manager" icon={Layers} color="orange">
                 {!canAssignManagers ? (
                   <Text fontSize="sm" color={muted}>
                     Manager assignment is disabled for this account.
                   </Text>
                 ) : null}
                 <ManagerHierarchy
-                  managers={userForm.managers}
-                  role={userForm.role}
+                  selectedManager={userForm.reportingManager}
                   managerCompanyId={managerCompanyId}
+                  currentUserId={userForm.id}
                   createCompany={userForm.createCompany}
                   muted={muted}
                   borderColor={borderColor}

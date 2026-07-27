@@ -1,7 +1,7 @@
 import { FaChartPie, FaCog, FaUsers } from "react-icons/fa";
 import { expandRoleAliases } from "@/app/config/utils/roleAccess";
 import { PERMISSION_KEYS, hasPermission } from "@/app/config/utils/permissions";
-import { LucideBriefcaseBusiness } from "lucide-react";
+import { LucideBriefcaseBusiness, Network } from "lucide-react";
 import { BiCategory } from "react-icons/bi";
 import { FiBell, FiBriefcase, FiCalendar, FiCamera, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers } from "react-icons/fi";
 
@@ -37,6 +37,14 @@ const sidebarDatas: SidebarItem[] = [
     name: "Employees",
     icon: <FaUsers />,
     url: "/dashboard/users",
+    role: ["admin", "superadmin", "departmenthead", "hradmin", "hr"],
+    permissionKey: PERMISSION_KEYS.VIEW_USERS,
+  },
+  {
+    id: 103,
+    name: "Organization",
+    icon: <Network />,
+    url: "/dashboard/organization",
     role: ["admin", "superadmin", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_USERS,
   },

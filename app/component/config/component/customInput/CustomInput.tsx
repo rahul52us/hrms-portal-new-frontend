@@ -92,6 +92,11 @@ interface CustomInputProps {
   query?: any;
   parentStyle?: any;
   shouldUpdateSelectWithValue?: any
+  loadOptionsOnMenuOpen?: boolean;
+  excludeOptionValues?: string[];
+  excludeUserRoles?: string[];
+  excludeDisabledUsers?: boolean;
+  emptyOptionsMessage?: string;
   colorScheme?: any;
   id?: string;
   onKeyDown?: any;
@@ -127,6 +132,11 @@ const CustomInput: React.FC<CustomInputProps> = ({
   query = {},
   parentStyle = {},
   shouldUpdateSelectWithValue = false,
+  loadOptionsOnMenuOpen = false,
+  excludeOptionValues,
+  excludeUserRoles,
+  excludeDisabledUsers = false,
+  emptyOptionsMessage = "No options",
   ...rest
 }) => {
   const [inputValue, setInputValue] = useState<string>("");
@@ -136,6 +146,8 @@ const CustomInput: React.FC<CustomInputProps> = ({
   const [userOptions, setUserOptions] = useState(options || []);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [searchInput, setSearchInput] = useState("");
+  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
+  const searchRequestId = useRef(0);
 
   const handleTogglePassword = () => {
     setShowPassword(!showPassword);
@@ -152,32 +164,59 @@ const CustomInput: React.FC<CustomInputProps> = ({
   // console.log('options are', options)
 
   const fetchSearchUsers = useCallback(
-    async (searchValue: string) => {
-      if (searchValue?.trim() === "") {
+    async (searchValue: string, allowEmptySearch = false) => {
+      const normalizedSearch = String(searchValue || "").trim();
+      if (!normalizedSearch && !allowEmptySearch) {
         return;
       }
+
+      const requestId = ++searchRequestId.current;
+      setIsLoadingOptions(true);
 
       try {
         if (type === "real-time-user-search") {
           const response: any = await stores.auth.getCompanyUsers({
             page: 1,
-            searchValue: searchValue,
+            searchValue: normalizedSearch || undefined,
             ...query,
           });
 
-          setUserOptions(
-            response.map((it: any) => ({
-              label: `${it.user.name || it.user.email || it.user.username} (${it.user.email || it.user.username})`,
-              value: it.user._id,
-              name: it.user.name,
-              email: it.user.email || it.user.username,
-              username: it.user.username,
-              code: it.user.code,
-              role: it.user.role || it.user.userType,
-              company: it.user.company,
-              createdBy: it.user.createdBy,
-            }))
+          const excludedValues = new Set(
+            (excludeOptionValues || []).map((item) => String(item))
           );
+          const excludedRoles = new Set(
+            (excludeUserRoles || []).map((item) => String(item).toLowerCase())
+          );
+          const matchingUsers = (Array.isArray(response) ? response : []).filter((it: any) => {
+            const user = it?.user || {};
+            const userId = String(user._id || "");
+            const userRole = String(user.role || user.userType || "").toLowerCase();
+            const isDisabled = user.is_enabled === false;
+            return (
+              !excludedValues.has(userId) &&
+              !excludedRoles.has(userRole) &&
+              (!excludeDisabledUsers || !isDisabled)
+            );
+          });
+
+          if (requestId === searchRequestId.current) {
+            setUserOptions(
+              matchingUsers.map((it: any) => ({
+                label: `${it.user.name || it.user.email || it.user.username}${it.user.designation ? ` - ${it.user.designation}` : ""}${it.user.department ? ` - ${it.user.department}` : ""} (${it.user.email || it.user.username})`,
+                value: it.user._id,
+                name: it.user.name,
+                email: it.user.email || it.user.username,
+                username: it.user.username,
+                code: it.user.code,
+                role: it.user.role || it.user.userType,
+                designation: it.user.designation,
+                department: it.user.department,
+                team: it.user.team,
+                company: it.user.company,
+                createdBy: it.user.createdBy,
+              }))
+            );
+          }
         } else if (type === "real-time-search") {
           const { entityName, functionName, key } = params || {};
 
@@ -204,20 +243,26 @@ const CustomInput: React.FC<CustomInputProps> = ({
           });
 
           if (Array.isArray(response?.data)) {
-            return setUserOptions(
-              response.data.map((item: any) => ({
-                label: item[key] || "Unknown",
-                value: item._id,
-              }))
-            );
+            if (requestId === searchRequestId.current) {
+              setUserOptions(
+                response.data.map((item: any) => ({
+                  label: item[key] || "Unknown",
+                  value: item._id,
+                }))
+              );
+            }
           }
           // map using provided key
         }
       } catch (err: any) {
         alert(err?.message);
+      } finally {
+        if (requestId === searchRequestId.current) {
+          setIsLoadingOptions(false);
+        }
       }
     },
-    [type, params, query]
+    [type, params, query, excludeOptionValues, excludeUserRoles, excludeDisabledUsers]
   );
 
   const debouncedFetchSearchUserResults = useMemo(
@@ -831,10 +876,17 @@ const CustomInput: React.FC<CustomInputProps> = ({
             onInputChange={(input, { action }) => {
               if (action === "input-change") setSearchInput(input);
             }}
+            onMenuOpen={() => {
+              if (loadOptionsOnMenuOpen && userOptions.length === 0) {
+                void fetchSearchUsers("", true);
+              }
+            }}
             placeholder={placeholder}
             isClearable={!!isClear}
             isMulti={isMulti}
             isSearchable={isSearchable}
+            isLoading={isLoadingOptions}
+            noOptionsMessage={() => emptyOptionsMessage}
             getOptionLabel={getOptionLabel}
             getOptionValue={getOptionValue}
             isDisabled={disabled}
@@ -875,10 +927,17 @@ const CustomInput: React.FC<CustomInputProps> = ({
             }}
             inputValue={searchInput}
             onInputChange={(input) => setSearchInput(input)}
+            onMenuOpen={() => {
+              if (loadOptionsOnMenuOpen && userOptions.length === 0) {
+                void fetchSearchUsers("", true);
+              }
+            }}
             placeholder={placeholder}
             isClearable={isClear ? true : undefined}
             isMulti={isMulti}
             isSearchable={isSearchable}
+            isLoading={isLoadingOptions}
+            noOptionsMessage={() => emptyOptionsMessage}
             getOptionLabel={getOptionLabel}
             getOptionValue={getOptionValue}
             isDisabled={disabled}

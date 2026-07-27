@@ -45,7 +45,7 @@ const formatRole = (role: string) => {
   if (normalized === "hradmin") return "HR Admin";
   if (normalized === "hr") return "HR";
   if (normalized === "departmenthead") return "Department Head";
-  if (/^l\d+[-\s]?manager$/i.test(normalized)) return normalized.replace("-", " ").toUpperCase();
+  if (/^l\d+[-\s]?manager$/i.test(normalized)) return "Employee";
   return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : "User";
 };
 
@@ -224,10 +224,10 @@ const HrDashboardPage = observer(() => {
       show: hasPermission(auth.user, PERMISSION_KEYS.CREATE_USERS),
     },
     {
-      label: "Add Manager",
+      label: "Reporting Lines",
       href: "/dashboard/users",
       icon: FiUserCheck,
-      show: hasPermission(auth.user, PERMISSION_KEYS.CREATE_MANAGERS),
+      show: hasPermission(auth.user, PERMISSION_KEYS.ASSIGN_MANAGERS),
     },
     {
       label: "Add HR",
@@ -316,7 +316,7 @@ const HrDashboardPage = observer(() => {
           ) : (
             <>
               <SimpleGrid columns={{ base: 1, sm: 2, xl: 4 }} spacing={4}>
-                <StatCard label="Employees" value={totalEmployees} helper="Employees, managers, and department heads in scope" icon={FiUsers} color="blue" />
+                <StatCard label="Employees" value={totalEmployees} helper="Employees and department heads in scope" icon={FiUsers} color="blue" />
                 <StatCard label="Active" value={numberValue(stats.activeEmployees)} helper={`${numberValue(stats.pendingEmployees)} pending setup`} icon={FiCheckCircle} color="green" />
                 <StatCard label="Managers" value={numberValue(stats.managers)} helper={`${numberValue(stats.departmentHeads)} department heads`} icon={FiUserCheck} color="purple" />
                 <StatCard label="Pending Work" value={numberValue(stats.incompleteProfiles)} helper="Profiles missing core HR data" icon={FiAlertCircle} color="orange" />

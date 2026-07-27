@@ -3,6 +3,7 @@
 import {
   Badge,
   Box,
+  Button,
   Divider,
   Flex,
   HStack,
@@ -58,11 +59,15 @@ const UserDetailsModal = ({
   onClose,
   user,
   formatRoleLabel,
+  canEditReportingManager = false,
+  onEditReportingManager,
 }: {
   isOpen: boolean;
   onClose: () => void;
   user: any;
   formatRoleLabel: (role: string) => string;
+  canEditReportingManager?: boolean;
+  onEditReportingManager?: (user: any) => void;
 }) => {
   const muted = useColorModeValue("gray.600", "gray.400");
   const sectionBg = useColorModeValue("white", "gray.900");
@@ -131,9 +136,24 @@ const UserDetailsModal = ({
             </Box>
 
             <Box borderWidth="1px" borderColor="blackAlpha.100" borderRadius="2xl" p={5}>
-              <Text fontSize="sm" fontWeight="700" mb={3}>
-                Manager Hierarchy
-              </Text>
+              <Flex justify="space-between" align="center" gap={3} mb={3}>
+                <Text fontSize="sm" fontWeight="700">
+                  Reporting Chain
+                </Text>
+                {canEditReportingManager && user ? (
+                  <Button
+                    size="sm"
+                    colorScheme="blue"
+                    variant="outline"
+                    onClick={() => {
+                      onClose();
+                      onEditReportingManager?.(user);
+                    }}
+                  >
+                    Edit Reporting Manager
+                  </Button>
+                ) : null}
+              </Flex>
               <Divider mb={4} />
               {(user?.managers || []).length === 0 ? (
                 <Text color={muted}>No managers assigned.</Text>

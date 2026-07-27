@@ -816,8 +816,8 @@ const CompanyAdminWorkspace = ({
               icon={FiBriefcase}
             />
             <StatCard
-              label="Manager Levels"
-              value={company?.managerLevels || 3}
+              label="Reporting Model"
+              value="Direct Manager"
               icon={FiShield}
             />
             <StatCard

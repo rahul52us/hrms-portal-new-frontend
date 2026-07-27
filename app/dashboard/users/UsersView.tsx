@@ -39,11 +39,6 @@ type UsersViewProps = {
   embedded?: boolean;
 };
 
-type ManagerRow = {
-  level: number;
-  selectedManager: any | null;
-};
-
 type UserFormState = {
   id?: string;
   code: string;
@@ -75,7 +70,8 @@ type UserFormState = {
     teams: string[];
     officeLocationIds: string[];
   };
-  managers: ManagerRow[];
+  reportingManager: any | null;
+  managers: any[];
 };
 
 type BulkFormState = {
@@ -86,8 +82,6 @@ type BulkFormState = {
   uploadRole: string;
 };
 
-const COLORS = ["blue", "purple", "orange", "green", "pink", "cyan"];
-
 const normalizeRole = (value: unknown) =>
   String(value || "")
     .trim()
@@ -96,10 +90,9 @@ const normalizeRole = (value: unknown) =>
     .replace(/^head[-\s]?hr$/i, "hradmin")
     .replace(/^hr[-\s]?admin$/i, "hradmin")
     .replace(/^hr[-\s]?executive$/i, "hr")
-    .replace(/^l\s*(\d+)\s*manager$/i, "l$1-manager")
+    .replace(/^l\s*\d+\s*[-\s]?manager$/i, "user")
     .replace(/\s+/g, "-");
 const normalizeEmail = (value: unknown) => String(value || "").trim().toLowerCase();
-const emptyManager = (level: number): ManagerRow => ({ level, selectedManager: null });
 
 const getCompanyManagerLevels = (company: any) => Math.max(1, Number(company?.managerLevels) || 3);
 
@@ -138,39 +131,13 @@ const formatRoleLabel = (role: string) => {
     .join(" ");
 };
 
-const parseManagerLevel = (role: string) => {
-  const match = normalizeRole(role).match(/^l(\d+)-manager$/i);
-  return match ? Number(match[1]) : null;
-};
-
-const getBulkUploadRoleOptions = (managerLevels: number) => {
-  const totalLevels = Math.max(1, Number(managerLevels) || 3);
-  const options = [];
-
-  for (let level = totalLevels; level >= 1; level -= 1) {
-    const requiredManagers = Array.from(
-      { length: Math.max(0, totalLevels - level) },
-      (_, index) => `L${level + index + 1}`
-    );
-
-    options.push({
-      value: `l${level}-manager`,
-      label: `Level ${level} Managers`,
-      description:
-        requiredManagers.length === 0
-          ? "Top-level managers without any assigned manager."
-          : `Optionally assign ${requiredManagers.join(", ")} manager phone number${requiredManagers.length > 1 ? "s" : ""}.`,
-    });
-  }
-
-  options.push({
+const getBulkUploadRoleOptions = (_managerLevels: number) => [
+  {
     value: "user",
     label: "Employees",
-    description: `Optionally assign L1 to L${totalLevels} manager phone numbers.`,
-  });
-
-  return options;
-};
+    description: "Upload employees. Reporting manager can be set from the employee form.",
+  },
+];
 
 const optionFromManager = (manager: any) => {
   const email = manager?.email || manager?.username || manager?.managerEmail || "";
@@ -204,36 +171,6 @@ const getUserOfficeLocationId = (user: any) => {
   );
 };
 
-const getRequiredManagerLevels = (role: string, maxLevel: number) => {
-  const normalizedRole = normalizeRole(role);
-  if (
-    !normalizedRole ||
-    ["admin", "superadmin", "hradmin", "hr"].includes(normalizedRole)
-  ) {
-    return [];
-  }
-
-  const managerLevel = parseManagerLevel(normalizedRole);
-  const startLevel = managerLevel ? managerLevel + 1 : 1;
-
-  if (startLevel > maxLevel) {
-    return [];
-  }
-
-  return Array.from({ length: maxLevel - startLevel + 1 }, (_, index) => startLevel + index);
-};
-
-const reconcileManagersForRole = (role: string, managers: ManagerRow[], maxLevel: number) => {
-  const managerMap = new Map<number, ManagerRow>();
-  managers.forEach((manager) => {
-    managerMap.set(Number(manager.level), manager);
-  });
-
-  return getRequiredManagerLevels(role, maxLevel).map(
-    (level) => managerMap.get(level) || emptyManager(level)
-  );
-};
-
 const initialForm = (): UserFormState => ({
   code: "",
   profileId: "",
@@ -264,7 +201,8 @@ const initialForm = (): UserFormState => ({
     teams: [],
     officeLocationIds: [],
   },
-  managers: reconcileManagersForRole("user", [], 3),
+  reportingManager: null,
+  managers: [],
 });
 
 const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = false }: UsersViewProps) => {
@@ -299,12 +237,11 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const canViewUsers = hasPermission(auth.user, PERMISSION_KEYS.VIEW_USERS);
   const canCreateUsers = hasPermission(auth.user, PERMISSION_KEYS.CREATE_USERS);
   const canCreateHrUsers = hasPermission(auth.user, PERMISSION_KEYS.CREATE_HR_USERS);
-  const canCreateManagers = hasPermission(auth.user, PERMISSION_KEYS.CREATE_MANAGERS);
   const canCreateDepartmentHeads = hasPermission(auth.user, PERMISSION_KEYS.CREATE_DEPARTMENT_HEADS);
   const canEditUsers = hasPermission(auth.user, PERMISSION_KEYS.EDIT_USERS);
   const canAssignManagers = hasPermission(auth.user, PERMISSION_KEYS.ASSIGN_MANAGERS);
   const canDeleteUsers = canEditUsers;
-  const canOpenCreate = canCreateUsers || canCreateHrUsers || canCreateManagers || canCreateDepartmentHeads;
+  const canOpenCreate = canCreateUsers || canCreateHrUsers || canCreateDepartmentHeads;
   const canOpenBulk = canOpenCreate || canEditUsers;
   const showToast = useCallback(
     (options: any) =>
@@ -362,29 +299,12 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     [selectedBulkManagerLevels]
   );
 
-  const visibleManagerLevels = useMemo(() => {
-    const companyLevels = isSuperadmin
-      ? managedCompanies.map((company: any) => getCompanyManagerLevels(company))
-      : [currentCompanyManagerLevels];
-    const maxConfiguredLevel = Math.max(1, ...companyLevels, selectedUserManagerLevels, selectedBulkManagerLevels);
-    return Array.from({ length: maxConfiguredLevel }, (_, index) => index + 1);
-  }, [
-    currentCompanyManagerLevels,
-    isSuperadmin,
-    managedCompanies,
-    selectedBulkManagerLevels,
-    selectedUserManagerLevels,
-  ]);
-
   const roleOptions = useMemo(() => {
     const baseRoles = [
       ...(canCreateUsers ? ["user"] : []),
       ...(canCreateHrUsers && (isSuperadmin || role === "admin") ? ["hradmin"] : []),
       ...(canCreateHrUsers ? ["hr"] : []),
       ...(canCreateDepartmentHeads ? ["departmenthead"] : []),
-      ...(canCreateManagers
-        ? Array.from({ length: selectedUserManagerLevels }, (_, index) => `l${index + 1}-manager`)
-        : []),
     ];
     const roleSet = new Set(baseRoles);
     if (userForm.role) {
@@ -398,23 +318,14 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   }, [
     canCreateDepartmentHeads,
     canCreateHrUsers,
-    canCreateManagers,
     canCreateUsers,
     isSuperadmin,
     role,
-    selectedUserManagerLevels,
     userForm.role,
   ]);
 
   const listTabs = useMemo(() => {
     const tabs = [{ label: "Employees", value: "user" }];
-
-    visibleManagerLevels.forEach((level) => {
-      tabs.push({
-        label: `L${level} Managers`,
-        value: `l${level}-manager`,
-      });
-    });
 
     if (isSuperadmin) {
       tabs.push({ label: "Admins", value: "admin" });
@@ -430,7 +341,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     }
 
     return tabs;
-  }, [isSuperadmin, role, visibleManagerLevels]);
+  }, [isSuperadmin, role]);
 
   const activeTabIndex = Math.max(0, listTabs.findIndex((item) => item.value === listTab));
 
@@ -515,49 +426,19 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   }, [bulkForm.companyId, bulkForm.uploadRole, isBulkModalOpen, userStore]);
 
   useEffect(() => {
-    if (!isUserDrawerOpen) {
-      return;
-    }
-
-    setUserForm((prev) => {
-      const nextManagers = reconcileManagersForRole(prev.role, prev.managers, selectedUserManagerLevels);
-      const isSame =
-        nextManagers.length === prev.managers.length &&
-        nextManagers.every(
-          (manager, index) =>
-            manager.level === prev.managers[index]?.level &&
-            manager.selectedManager?.value === prev.managers[index]?.selectedManager?.value &&
-            manager.selectedManager?.email === prev.managers[index]?.selectedManager?.email
-        );
-
-      return isSame ? prev : { ...prev, managers: nextManagers };
-    });
-  }, [isUserDrawerOpen, selectedUserManagerLevels]);
-
-  useEffect(() => {
     if (!listTabs.some((item) => item.value === listTab)) {
       setListTab("user");
       setPage(1);
     }
   }, [listTab, listTabs]);
 
-  useEffect(() => {
-    const currentRoleLevel = parseManagerLevel(userForm.role);
-    if (currentRoleLevel && currentRoleLevel > selectedUserManagerLevels) {
-      setUserForm((prev) => ({
-        ...prev,
-        role: "user",
-        managers: reconcileManagersForRole("user", prev.managers, selectedUserManagerLevels),
-      }));
-    }
-  }, [selectedUserManagerLevels, userForm.role]);
-
   const resetForm = () =>
     setUserForm({
       ...initialForm(),
       companyId: isSuperadmin ? scopedCompanyId : auth.company || "",
       companyManagerLevels: isSuperadmin ? 3 : currentCompanyManagerLevels,
-      managers: reconcileManagersForRole("user", [], isSuperadmin ? 3 : currentCompanyManagerLevels),
+      reportingManager: null,
+      managers: [],
     });
 
   const resetBulkUploadState = useCallback(() => {
@@ -614,7 +495,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     if (isSuperadmin && !scopedCompanyId) {
       showToast({
         title: "Company is required",
-        description: "Select a company before creating an employee or manager.",
+        description: "Select a company before creating an employee.",
         status: "warning",
         duration: 3000,
       });
@@ -637,14 +518,13 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     }
 
     const roleValue = normalizeRole(user.role || "user");
-    const mappedManagers =
+    const firstLegacyManager =
       Array.isArray(user.managers) && user.managers.length > 0
-        ? user.managers.map((manager: any, index: number) => ({
-            level: Number(manager.level) || index + 1,
-            selectedManager: optionFromManager(manager.manager || manager),
-          }))
-        : [];
-    const roleMaxLevel = getCompanyManagerLevels(user.company || { managerLevels: selectedUserManagerLevels });
+        ? [...user.managers].sort((a: any, b: any) => Number(a?.level || 0) - Number(b?.level || 0))[0]
+        : null;
+    const reportingManager =
+      optionFromManager(user.reportingManager) ||
+      optionFromManager(firstLegacyManager?.manager || firstLegacyManager);
 
     setUserForm({
       id: user._id,
@@ -681,7 +561,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
             ? user.hrScope.officeLocations
             : [],
       },
-      managers: reconcileManagersForRole(roleValue, mappedManagers, roleMaxLevel),
+      reportingManager,
+      managers: [],
     });
     setIsUserDrawerOpen(true);
   };
@@ -720,16 +601,14 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
             teams: [],
             officeLocationIds: [],
           },
-      managers: reconcileManagersForRole(normalizedNextRole, prev.managers, selectedUserManagerLevels),
     }));
   };
 
-  const setManagerSelection = (index: number, selectedManager: any) =>
+  const setManagerSelection = (selectedManager: any) =>
     setUserForm((prev) => ({
       ...prev,
-      managers: prev.managers.map((manager, managerIndex) =>
-        managerIndex === index ? { ...manager, selectedManager: selectedManager || null } : manager
-      ),
+      reportingManager: selectedManager || null,
+      managers: [],
     }));
 
   const submitUser = async () => {
@@ -747,16 +626,21 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     const joiningDate = userForm.joiningDate;
     const dateOfBirth = userForm.dateOfBirth;
     const gender = userForm.gender;
-    const managers = userForm.managers
-      .map((manager) => ({
-        level: manager.level,
-        managerEmail: normalizeEmail(
-          manager.selectedManager?.email || manager.selectedManager?.username
-        ),
-      }))
-      .filter((manager) => manager.managerEmail);
+    const selectedReportingManager = userForm.reportingManager;
+    const reportingManagerValue = String(selectedReportingManager?.value || "");
+    const reportingManagerId =
+      reportingManagerValue && !reportingManagerValue.startsWith("pending:")
+        ? reportingManagerValue
+        : "";
+    const reportingManagerEmail = normalizeEmail(
+      selectedReportingManager?.email ||
+        selectedReportingManager?.username ||
+        (reportingManagerValue.startsWith("pending:")
+          ? reportingManagerValue.replace(/^pending:/i, "")
+          : "")
+    );
 
-    const isDepartmentRequired = roleValue === "departmenthead" || Boolean(parseManagerLevel(roleValue));
+    const isDepartmentRequired = roleValue === "departmenthead";
 
     if (!code || !name || !email || !roleValue || (isDepartmentRequired && !department)) {
       showToast({
@@ -840,10 +724,10 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     }
 
     const selfManagerIdentifiers = [email, mobileNumber].filter(Boolean);
-    if (managers.some((manager) => selfManagerIdentifiers.includes(manager.managerEmail))) {
+    if (reportingManagerEmail && selfManagerIdentifiers.includes(reportingManagerEmail)) {
       showToast({
         title: "Invalid hierarchy",
-        description: "An employee or manager cannot be their own manager.",
+        description: "An employee cannot be their own reporting manager.",
         status: "warning",
         duration: 3000,
       });
@@ -871,15 +755,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
         return;
       }
 
-      if (parseManagerLevel(roleValue) && !canCreateManagers) {
-        showToast({
-          title: "Permission required",
-          description: "Your account cannot create managers.",
-          status: "warning",
-          duration: 3000,
-        });
-        return;
-      }
     } else if (!canEditUsers) {
       showToast({
         title: "Permission required",
@@ -890,7 +765,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       return;
     }
 
-    if (managers.length > 0 && !canAssignManagers) {
+    if ((reportingManagerId || reportingManagerEmail) && !canAssignManagers) {
       showToast({
         title: "Permission required",
         description: "Your account cannot assign managers.",
@@ -916,7 +791,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       dateOfBirth,
       gender: gender ? Number(gender) : undefined,
       role: roleValue,
-      managers,
+      reportingManagerId,
+      reportingManagerEmail: reportingManagerId ? undefined : reportingManagerEmail || undefined,
     };
 
     if (roleValue === "hr") {
@@ -1064,7 +940,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       if (!bulkForm.uploadRole) {
         showToast({
           title: "Upload type is required",
-          description: "Choose which hierarchy level this Excel file belongs to.",
+          description: "Choose the employee import type.",
           status: "warning",
           duration: 3000,
         });
@@ -1157,7 +1033,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     if (!bulkForm.uploadRole) {
       showToast({
         title: "Upload type is required",
-        description: "Choose which hierarchy level this Excel file belongs to.",
+        description: "Choose the employee import type.",
         status: "warning",
         duration: 3000,
       });
@@ -1503,6 +1379,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   onClose={() => setSelectedUser(null)}
   user={selectedUser}
   formatRoleLabel={formatRoleLabel}
+  canEditReportingManager={canEditUsers && canAssignManagers}
+  onEditReportingManager={openEdit}
 />
 
 <BulkUploadResultModal

@@ -1,129 +1,93 @@
 "use client";
 
 import CustomInput from "../../../../app/component/config/component/customInput/CustomInput";
-import {
-  Badge,
-  Box,
-  Flex,
-  HStack,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
-// import CustomInput from "../../component/config/component/customInput/CustomInput";
-
-const COLORS = ["blue", "purple", "orange", "green", "pink", "cyan"];
-
-type ManagerRow = {
-  level: number;
-  selectedManager: any | null;
-};
+import { Badge, Box, HStack, Text, VStack } from "@chakra-ui/react";
 
 type Props = {
-  managers: ManagerRow[];
-  role: string;
+  selectedManager: any | null;
   managerCompanyId: string;
+  currentUserId?: string;
   createCompany: boolean;
   muted: string;
   borderColor: string;
-  onChange: (index: number, value: any) => void;
+  onChange: (value: any) => void;
   isDisabled?: boolean;
 };
 
 const ManagerHierarchy = ({
-  managers,
-  role,
+  selectedManager,
   managerCompanyId,
+  currentUserId,
   createCompany,
   muted,
   borderColor,
   onChange,
   isDisabled = false,
 }: Props) => {
-  const normalizeEmail = (value: any) =>
-    String(value || "").trim().toLowerCase();
-
-  if (managers.length === 0) {
-    return (
-      <Box borderWidth="1px" borderColor={borderColor} p={4} borderRadius="lg">
-        <Text fontSize="sm" color={muted}>
-          No manager required for this role.
-        </Text>
-      </Box>
-    );
-  }
+  const email = String(
+    selectedManager?.email || selectedManager?.username || ""
+  ).trim();
+  const isAssigned =
+    selectedManager &&
+    !String(selectedManager?.value || "").startsWith("pending:");
 
   return (
-    <VStack align="stretch" spacing={4}>
-      {managers.map((manager, index) => {
-        const email = normalizeEmail(
-          manager.selectedManager?.email ||
-            manager.selectedManager?.username
-        );
+    <Box borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={4}>
+      <VStack align="stretch" spacing={3}>
+        <HStack justify="space-between">
+          <Text fontWeight="semibold">Direct Reporting Manager</Text>
+          <Badge colorScheme={isAssigned ? "green" : email ? "orange" : "gray"}>
+            {isAssigned ? "Assigned" : email ? "Pending" : "Optional"}
+          </Badge>
+        </HStack>
 
-        const isAssigned =
-          manager.selectedManager &&
-          !String(manager.selectedManager?.value || "").startsWith("pending:");
-
-        return (
-          <Box
-            key={manager.level}
-            borderWidth="1px"
-            borderColor={borderColor}
-            borderRadius="xl"
-            p={4}
-          >
-            <Flex justify="space-between" align="center" mb={3}>
-              <HStack>
-                <Badge colorScheme={COLORS[index % COLORS.length]}>
-                  L{manager.level}
-                </Badge>
-                <Text fontWeight="semibold">
-                  L{manager.level} Manager
-                </Text>
-              </HStack>
-
-              <Badge
-                colorScheme={
-                  isAssigned ? "green" : email ? "orange" : "gray"
+        <CustomInput
+          label="Search Reporting Manager"
+          type="real-time-user-search"
+          name="reportingManager"
+          value={selectedManager}
+          query={
+            managerCompanyId
+              ? {
+                  companyId: managerCompanyId,
+                  purpose: "reporting-manager",
+                  excludeUserId: currentUserId || undefined,
                 }
-              >
-                {isAssigned
-                  ? "Assigned"
-                  : email
-                  ? "Pending"
-                  : "Optional"}
-              </Badge>
-            </Flex>
+              : {}
+          }
+          isSearchable
+          isClear
+          placeholder="Search by employee name or email"
+          loadOptionsOnMenuOpen
+          excludeOptionValues={currentUserId ? [currentUserId] : []}
+          excludeUserRoles={["admin", "superadmin"]}
+          excludeDisabledUsers
+          emptyOptionsMessage="No eligible employees found"
+          onChange={(val: any) => onChange(val)}
+          disabled={isDisabled || (!managerCompanyId && createCompany)}
+        />
 
-            <CustomInput
-              label={`Search L${manager.level} Manager`}
-              type="real-time-user-search"
-              name="search"
-              value={manager.selectedManager}
-              query={
-                managerCompanyId ? { companyId: managerCompanyId } : {}
-              }
-              isSearchable
-              isClear
-              onChange={(val: any) => onChange(index, val)}
-              disabled={isDisabled || (!managerCompanyId && createCompany)}
-            />
+        {!managerCompanyId && createCompany ? (
+          <Text fontSize="sm" color={muted}>
+            Select company first to enable manager search.
+          </Text>
+        ) : null}
 
-            {!managerCompanyId && createCompany && (
-              <Text fontSize="sm" color={muted} mt={2}>
-                Select company first to enable manager search
-              </Text>
-            )}
+        <Text fontSize="sm" color={muted}>
+          Any employee can be selected. They become a manager when someone reports to them.
+        </Text>
 
-            {email && (
-              <Text fontSize="sm" color={muted} mt={2}>
-                Selected: {email}
-              </Text>
-            )}
-          </Box>
-        );
-      })}
-    </VStack>
+        {email ? (
+          <Text fontSize="sm" color={muted}>
+            Selected: {email}
+          </Text>
+        ) : (
+          <Text fontSize="sm" color={muted}>
+            Leave empty for a top-level employee.
+          </Text>
+        )}
+      </VStack>
+    </Box>
   );
 };
 

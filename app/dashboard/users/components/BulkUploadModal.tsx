@@ -107,30 +107,17 @@ const BulkUploadModal = ({
   const selectedUploadOption = uploadRoleOptions.find(
     (opt) => opt.value === bulkForm.uploadRole
   );
-  const parseManagerLevel = (role: string) => {
-    const match = String(role || "").trim().toLowerCase().match(/^l(\d+)-manager$/);
-    return match ? Number(match[1]) : null;
-  };
-  const managerLevel = parseManagerLevel(bulkForm.uploadRole);
-  const expectedManagerLevels =
-    bulkForm.uploadRole === "user"
-      ? Array.from({ length: selectedBulkManagerLevels }, (_, index) => index + 1)
-      : managerLevel
-        ? Array.from(
-            { length: Math.max(0, selectedBulkManagerLevels - managerLevel) },
-            (_, index) => managerLevel + index + 1
-          )
-        : [];
   const expectedColumns = [
     "Employee Code",
     "Employee Name",
     "Phone Number",
     "Email ID (Optional)",
-    bulkForm.uploadRole === "user" ? "Branch (Optional)" : "Branch",
+    "Department",
+    "Team (Optional)",
     "City",
     "State",
-    ...(bulkForm.uploadRole === "user" ? ["Designation", "Joining Date"] : []),
-    ...expectedManagerLevels.map((level) => `L${level} Manager Phone Number (Name)`),
+    "Designation",
+    "Joining Date",
   ];
   const companyReady = Boolean(bulkForm.companyId);
   const getUniqueManagers = (managers: any[] = []) => {
@@ -255,7 +242,7 @@ const BulkUploadModal = ({
                 <Text fontWeight="bold">Drag & drop Excel file here</Text>
 
                 <Text fontSize="sm" color={muted} mt={2}>
-                  Upload `.xlsx` / `.xls` for <strong>{selectedUploadOption?.label || "the selected hierarchy level"}</strong>.
+                  Upload `.xlsx` / `.xls` for <strong>{selectedUploadOption?.label || "employees"}</strong>.
                 </Text>
 
                 {selectedFile && (
@@ -306,7 +293,7 @@ const BulkUploadModal = ({
                         <Th>State</Th>
                         <Th>Role</Th>
                         <Th>Company Status</Th>
-                        <Th>Managers</Th>
+                        <Th>Manager Validation</Th>
                         <Th>Action</Th>
                         <Th>Errors</Th>
                       </Tr>

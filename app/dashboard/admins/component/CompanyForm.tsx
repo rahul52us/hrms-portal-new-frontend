@@ -432,17 +432,6 @@ const CompanyForm = ({
                         error={fieldError("customDomain")}
                         showError={showFieldError("customDomain")}
                       />
-                      <CustomInput
-                        label="Manager Levels"
-                        name="managerLevels"
-                        type="number"
-                        placeholder="Enter number of manager levels"
-                        value={values.managerLevels}
-                        onBlur={handleBlur}
-                        onChange={handleChange}
-                        error={fieldError("managerLevels")}
-                        showError={showFieldError("managerLevels")}
-                      />
                     </>
                   )}
                 </SimpleGrid>
@@ -450,7 +439,6 @@ const CompanyForm = ({
                 <Flex mt={4} gap={3} align="center">
                   <Text fontSize="sm">Preview:</Text>
                   <Badge colorScheme="purple">{previewUrl || "—"}</Badge>
-                  {!simpleCreate && <Badge colorScheme="blue">{values.managerLevels || 3} levels</Badge>}
                 </Flex>
               </SectionCard>
 

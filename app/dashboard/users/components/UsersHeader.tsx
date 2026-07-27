@@ -89,7 +89,7 @@ const UsersHeader = ({
                   Employees
                 </Text>
                 <Text color={muted} fontSize="sm" mt={1} display={{ base: "none", sm: "block" }}>
-                  Manage employees, managers, hierarchy and onboarding
+                  Manage employees, reporting lines and onboarding
                 </Text>
               </Box>
             </Flex>

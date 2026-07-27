@@ -269,7 +269,7 @@ const UsersTable = ({
       },
     },
     {
-      headerName: "Manager Hierarchy",
+      headerName: "Reporting Chain",
       key: "managers",
       type: "component",
       width: "200px",
@@ -304,7 +304,7 @@ const UsersTable = ({
                   <HStack>
                     <Icon as={FiAward} size={16} />
                     <Text fontWeight="bold" fontSize="sm">
-                      Reporting Hierarchy
+                      Reporting Chain
                     </Text>
                   </HStack>
                   <Divider borderColor="gray.700" />
