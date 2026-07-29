@@ -1,5 +1,8 @@
 import axios from "axios";
-import { departmentStore } from "@/app/store/departmentStore/departmentStore";
+import {
+  DepartmentArchiveImpact,
+  departmentStore,
+} from "@/app/store/departmentStore/departmentStore";
 import stores from "@/app/store/stores";
 import { AddIcon, ChevronRightIcon } from "@chakra-ui/icons";
 import {
@@ -50,8 +53,20 @@ import {
 import { ChevronLeftIcon } from "lucide-react";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
-import { FiEdit2, FiHash, FiLayers, FiPlus, FiTrash2, FiUserCheck, FiUsers } from "react-icons/fi";
+import {
+  FiAlertCircle,
+  FiArchive,
+  FiArrowRight,
+  FiEdit2,
+  FiHash,
+  FiLayers,
+  FiPlus,
+  FiTrash2,
+  FiUserCheck,
+  FiUsers,
+} from "react-icons/fi";
 import AddDepartmentModal from "./AddDepartment";
+import DepartmentClosureDrawer from "./DepartmentClosureDrawer";
 
 type DepartmentTableProps = {
   companyId?: string;
@@ -67,9 +82,9 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
-    isOpen: isDeleteOpen,
-    onOpen: onDeleteOpen,
-    onClose: onDeleteClose,
+    isOpen: isArchiveOpen,
+    onOpen: onArchiveOpen,
+    onClose: onArchiveClose,
   } = useDisclosure();
   const {
     isOpen: isHeadOpen,
@@ -86,9 +101,19 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
     onOpen: onTeamsOpen,
     onClose: onTeamsClose,
   } = useDisclosure();
+  const {
+    isOpen: isTransferOpen,
+    onOpen: onTransferOpen,
+    onClose: onTransferClose,
+  } = useDisclosure();
 
   const [selectedDept, setSelectedDept] = useState<any>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [archiveId, setArchiveId] = useState<string | null>(null);
+  const [archiveImpact, setArchiveImpact] =
+    useState<DepartmentArchiveImpact | null>(null);
+  const [archiveReason, setArchiveReason] = useState("");
+  const [archiveImpactError, setArchiveImpactError] = useState("");
+  const [isArchiveImpactLoading, setIsArchiveImpactLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [headDept, setHeadDept] = useState<any>(null);
   const [departmentHeadId, setDepartmentHeadId] = useState("");
@@ -144,8 +169,8 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
 
   const modalBg = useColorModeValue("white", "gray.800");
   const modalCloseBtnColor = useColorModeValue("gray.500", "gray.400");
-  const modalDeleteBg = useColorModeValue("red.50", "red.900");
-  const modalDeleteColor = useColorModeValue("red.500", "red.400");
+  const modalSuccessBg = useColorModeValue("green.50", "green.900");
+  const modalSuccessBorder = useColorModeValue("green.200", "green.700");
   const modalTextColor = useColorModeValue("gray.500", "gray.400");
 
   useEffect(() => {
@@ -203,9 +228,73 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
     onOpen();
   };
 
-  const handleDeleteClick = (id: string) => {
-    setDeleteId(id);
-    onDeleteOpen();
+  const handleArchiveClick = async (id: string) => {
+    setArchiveId(id);
+    setArchiveImpact(null);
+    setArchiveImpactError("");
+    setArchiveReason("");
+    setIsArchiveImpactLoading(true);
+    onArchiveOpen();
+
+    try {
+      const impact = await departmentStore.getDepartmentArchiveImpact(id);
+      setArchiveImpact(impact);
+    } catch (err: any) {
+      setArchiveImpactError(
+        err?.response?.data?.message || "Failed to check department dependencies"
+      );
+    } finally {
+      setIsArchiveImpactLoading(false);
+    }
+  };
+
+  const handleArchiveClose = () => {
+    if (departmentStore.isSubmitting) return;
+
+    setArchiveId(null);
+    setArchiveImpact(null);
+    setArchiveImpactError("");
+    setArchiveReason("");
+    onArchiveClose();
+  };
+
+  const openDepartmentTransfer = () => {
+    onArchiveClose();
+    onTransferOpen();
+  };
+
+  const closeDepartmentTransfer = async () => {
+    if (departmentStore.isSubmitting) return;
+
+    onTransferClose();
+    if (!archiveId) return;
+
+    onArchiveOpen();
+    setIsArchiveImpactLoading(true);
+    setArchiveImpactError("");
+    try {
+      const impact = await departmentStore.getDepartmentArchiveImpact(archiveId);
+      setArchiveImpact(impact);
+    } catch (err: any) {
+      setArchiveImpactError(
+        err?.response?.data?.message || "Failed to check department dependencies"
+      );
+    } finally {
+      setIsArchiveImpactLoading(false);
+    }
+  };
+
+  const handleEmployeesTransferred = async (
+    impact: DepartmentArchiveImpact
+  ) => {
+    setArchiveImpact(impact);
+    setArchiveImpactError("");
+    onTransferClose();
+    onArchiveOpen();
+
+    if (companyId) {
+      await departmentStore.fetchDepartments(companyId, page, limit);
+    }
   };
 
   const fetchHeadCandidates = async () => {
@@ -354,16 +443,26 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
     await departmentStore.fetchDepartments(companyId, page, limit);
   };
 
-  const confirmDelete = async () => {
-    if (!deleteId || !companyId) return;
+  const confirmArchive = async () => {
+    if (
+      !archiveId ||
+      !companyId ||
+      !archiveImpact?.canArchive ||
+      archiveReason.trim().length < 3
+    ) {
+      return;
+    }
 
     const moveToPreviousPage =
       page > 1 && departmentStore.departments.length === 1;
 
     try {
-      await departmentStore.deleteDepartment(deleteId);
-      setDeleteId(null);
-      onDeleteClose();
+      await departmentStore.archiveDepartment(archiveId, archiveReason.trim());
+      setArchiveId(null);
+      setArchiveImpact(null);
+      setArchiveImpactError("");
+      setArchiveReason("");
+      onArchiveClose();
 
       if (moveToPreviousPage) {
         setPage((currentPage) => currentPage - 1);
@@ -371,7 +470,15 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
       }
 
       await departmentStore.fetchDepartments(companyId, page, limit);
-    } catch {}
+    } catch (err: any) {
+      const latestImpact = err?.response?.data?.data;
+      if (latestImpact?.counts && Array.isArray(latestImpact?.blockers)) {
+        setArchiveImpact(latestImpact);
+      }
+      setArchiveImpactError(
+        err?.response?.data?.message || "Failed to archive department"
+      );
+    }
   };
 
   const DepartmentAvatar = ({
@@ -442,14 +549,14 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
           />
         </Tooltip>
 
-        <Tooltip label="Delete department" hasArrow>
+        <Tooltip label="Archive department" hasArrow>
           <IconButton
-            aria-label="Delete department"
-            icon={<Icon as={FiTrash2} />}
+            aria-label="Archive department"
+            icon={<Icon as={FiArchive} />}
             size="sm"
             variant="ghost"
-            colorScheme="red"
-            onClick={() => handleDeleteClick(dept._id)}
+            colorScheme="orange"
+            onClick={() => handleArchiveClick(dept._id)}
           />
         </Tooltip>
       </HStack>
@@ -1336,55 +1443,167 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
       </Drawer>
 
       <Modal
-        isOpen={isDeleteOpen}
-        onClose={onDeleteClose}
+        isOpen={isArchiveOpen}
+        onClose={handleArchiveClose}
         isCentered
-        size={{ base: "xs", md: "md" }}
+        size={{ base: "xs", md: "lg" }}
       >
-        <ModalOverlay backdropFilter="blur(10px)" />
+        <ModalOverlay />
 
-        <ModalContent mx={4} rounded="2xl" bg={modalBg}>
-          <ModalHeader
-            fontSize={{ base: "lg", md: "xl" }}
-            bgGradient="linear(to-r, red.500, pink.500)"
-            bgClip="text"
-          >
-            Delete Department
+        <ModalContent mx={4} borderRadius="md" bg={modalBg}>
+          <ModalHeader fontSize={{ base: "lg", md: "xl" }}>
+            Archive Department
           </ModalHeader>
 
           <ModalCloseButton color={modalCloseBtnColor} />
 
-          <ModalBody>
-            <Flex align="center" justify="center" direction="column" py={4}>
-              <Box
-                p={4}
-                rounded="full"
-                bg={modalDeleteBg}
-                color={modalDeleteColor}
-                mb={4}
-              >
-                <Icon as={FiTrash2} boxSize={{ base: 6, md: 8 }} />
-              </Box>
+          <ModalBody pb={2}>
+            {isArchiveImpactLoading ? (
+              <Flex align="center" justify="center" direction="column" py={10} gap={3}>
+                <Spinner color="orange.500" />
+                <Text color={modalTextColor} fontSize="sm">
+                  Checking department dependencies...
+                </Text>
+              </Flex>
+            ) : (
+              <VStack align="stretch" spacing={4}>
+                {archiveImpactError ? (
+                  <Box
+                    bg={errorBg}
+                    borderWidth="1px"
+                    borderColor={errorBorder}
+                    borderRadius="md"
+                    p={3}
+                  >
+                    <HStack align="start">
+                      <Icon as={FiAlertCircle} color={errorText} mt={0.5} />
+                      <Text color={errorText} fontSize="sm">
+                        {archiveImpactError}
+                      </Text>
+                    </HStack>
+                  </Box>
+                ) : null}
 
-              <Text
-                fontSize={{ base: "md", md: "lg" }}
-                fontWeight="800"
-                textAlign="center"
-                color={headingColor}
-              >
-                Are you sure you want to delete this department?
-              </Text>
+                {archiveImpact ? (
+                  <>
+                    <Box>
+                      <Text color={headingColor} fontWeight="700">
+                        {archiveImpact.department.departmentName}
+                      </Text>
+                      <Text color={modalTextColor} fontSize="sm">
+                        {archiveImpact.department.code || "No department code"}
+                      </Text>
+                    </Box>
 
-              <Text
-                fontSize={{ base: "xs", md: "sm" }}
-                color={modalTextColor}
-                mt={2}
-                textAlign="center"
-              >
-                This action cannot be undone. All related data will be permanently
-                removed.
-              </Text>
-            </Flex>
+                    {archiveImpact.blockers.length > 0 ? (
+                      <VStack align="stretch" spacing={2}>
+                        <Text color={headingColor} fontSize="sm" fontWeight="700">
+                          Resolve these dependencies before archiving
+                        </Text>
+                        {archiveImpact.blockers.map((blocker) => (
+                          <Flex
+                            key={blocker.key}
+                            align="start"
+                            gap={3}
+                            borderWidth="1px"
+                            borderColor={errorBorder}
+                            borderRadius="md"
+                            p={3}
+                          >
+                            <Icon as={FiAlertCircle} color={errorText} mt={0.5} />
+                            <Box flex="1" minW={0}>
+                              <HStack justify="space-between" align="start">
+                                <Text color={textColor} fontSize="sm" fontWeight="700">
+                                  {blocker.label}
+                                </Text>
+                                <Badge colorScheme="red">{blocker.count}</Badge>
+                              </HStack>
+                              <Text color={modalTextColor} fontSize="xs" mt={1}>
+                                {blocker.resolution}
+                              </Text>
+                              {blocker.key === "employees" && archiveId ? (
+                                <Button
+                                  size="sm"
+                                  colorScheme="blue"
+                                  variant="outline"
+                                  mt={3}
+                                  rightIcon={<Icon as={FiArrowRight} />}
+                                  onClick={openDepartmentTransfer}
+                                >
+                                  Transfer Employees
+                                </Button>
+                              ) : null}
+                            </Box>
+                          </Flex>
+                        ))}
+                      </VStack>
+                    ) : (
+                      <Box
+                        bg={modalSuccessBg}
+                        borderWidth="1px"
+                        borderColor={modalSuccessBorder}
+                        borderRadius="md"
+                        p={3}
+                      >
+                        <Text color={textColor} fontSize="sm" fontWeight="700">
+                          No active dependencies block this archive.
+                        </Text>
+                      </Box>
+                    )}
+
+                    <SimpleGrid columns={2} spacing={3}>
+                      <Box borderWidth="1px" borderColor={borderColor} borderRadius="md" p={3}>
+                        <Text color={modalTextColor} fontSize="xs">
+                          Teams archived
+                        </Text>
+                        <Text color={textColor} fontWeight="700">
+                          {archiveImpact.effects.teamsArchivedWithDepartment}
+                        </Text>
+                      </Box>
+                      <Box borderWidth="1px" borderColor={borderColor} borderRadius="md" p={3}>
+                        <Text color={modalTextColor} fontSize="xs">
+                          Reporting lines changed
+                        </Text>
+                        <Text color={textColor} fontWeight="700">
+                          {archiveImpact.effects.reportingManagersChanged}
+                        </Text>
+                      </Box>
+                    </SimpleGrid>
+
+                    <Text color={modalTextColor} fontSize="xs">
+                      Historical records and department details are preserved. The
+                      department will be removed from active selections.
+                    </Text>
+
+                    <FormControl
+                      isRequired
+                      isDisabled={!archiveImpact.canArchive}
+                    >
+                      <FormLabel fontSize="sm">Archive reason</FormLabel>
+                      <Textarea
+                        value={archiveReason}
+                        onChange={(event) => setArchiveReason(event.target.value)}
+                        placeholder="Why is this department being archived?"
+                        resize="vertical"
+                        minH="88px"
+                      />
+                      <Text color={modalTextColor} fontSize="xs" mt={1}>
+                        Minimum 3 characters. This reason is retained for audit history.
+                      </Text>
+                    </FormControl>
+                  </>
+                ) : archiveImpactError ? (
+                  <Button
+                    alignSelf="start"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => archiveId && handleArchiveClick(archiveId)}
+                  >
+                    Retry
+                  </Button>
+                ) : null}
+              </VStack>
+            )}
           </ModalBody>
 
           <ModalFooter
@@ -1393,24 +1612,37 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
           >
             <Button
               variant="ghost"
-              onClick={onDeleteClose}
+              onClick={handleArchiveClose}
+              isDisabled={departmentStore.isSubmitting}
               width={{ base: "100%", sm: "auto" }}
             >
               Cancel
             </Button>
 
             <Button
-              colorScheme="red"
-              onClick={confirmDelete}
+              colorScheme="orange"
+              onClick={confirmArchive}
               isLoading={departmentStore.isSubmitting}
-              leftIcon={<Icon as={FiTrash2} />}
+              isDisabled={
+                isArchiveImpactLoading ||
+                !archiveImpact?.canArchive ||
+                archiveReason.trim().length < 3
+              }
+              leftIcon={<Icon as={FiArchive} />}
               width={{ base: "100%", sm: "auto" }}
             >
-              Delete
+              Archive
             </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      <DepartmentClosureDrawer
+        isOpen={isTransferOpen}
+        onClose={closeDepartmentTransfer}
+        departmentId={archiveId}
+        onTransferred={handleEmployeesTransferred}
+      />
     </Box>
   );
 };

@@ -14,10 +14,19 @@ import {
   ModalHeader,
   ModalOverlay,
   SimpleGrid,
+  Spinner,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
   Text,
   VStack,
   useColorModeValue,
 } from "@chakra-ui/react";
+import stores from "@/app/store/stores";
+import { observer } from "mobx-react-lite";
+import { useEffect } from "react";
 
 const COLORS = ["blue", "purple", "orange", "green", "pink", "cyan"];
 
@@ -54,6 +63,18 @@ const getOfficeLocationDisplay = (user: any) =>
   user?.officeLocation?.name ||
   [user?.city, user?.state].filter(Boolean).join(", ");
 
+const formatHistoryDate = (value: unknown) => {
+  if (!value) return "Present";
+  const parsed = new Date(String(value));
+  return Number.isNaN(parsed.getTime())
+    ? "--"
+    : parsed.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+};
+
 const UserDetailsModal = ({
   isOpen,
   onClose,
@@ -65,14 +86,26 @@ const UserDetailsModal = ({
   isOpen: boolean;
   onClose: () => void;
   user: any;
-  formatRoleLabel: (role: string) => string;
+  formatRoleLabel: (_role: string) => string;
   canEditReportingManager?: boolean;
-  onEditReportingManager?: (user: any) => void;
+  onEditReportingManager?: (_user: any) => void;
 }) => {
+  const { userStore } = stores;
   const muted = useColorModeValue("gray.600", "gray.400");
   const sectionBg = useColorModeValue("white", "gray.900");
   const managerItemBg = useColorModeValue("gray.50", "gray.800");
   const statusMeta = getUserStatusMeta(user);
+
+  useEffect(() => {
+    if (isOpen && user?._id) {
+      userStore
+        .fetchEmployeeAssignmentHistory(String(user._id))
+        .catch(() => undefined);
+      return;
+    }
+
+    userStore.clearEmployeeAssignmentHistory();
+  }, [isOpen, user?._id, userStore]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="4xl" isCentered>
@@ -109,7 +142,14 @@ const UserDetailsModal = ({
         <ModalCloseButton top={5} />
 
         <ModalBody pb={6}>
-          <VStack align="stretch" spacing={5}>
+          <Tabs colorScheme="blue" isLazy>
+            <TabList>
+              <Tab flex="1" whiteSpace="nowrap">Overview</Tab>
+              <Tab flex="1" whiteSpace="nowrap">Employment History</Tab>
+            </TabList>
+            <TabPanels>
+              <TabPanel px={0} pt={5}>
+                <VStack align="stretch" spacing={5}>
             <Box bg={sectionBg}>
               <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={4}>
                 <DetailCard label="Employee Code" value={user?.code} />
@@ -189,11 +229,122 @@ const UserDetailsModal = ({
                 </VStack>
               )}
             </Box>
-          </VStack>
+                </VStack>
+              </TabPanel>
+              <TabPanel px={0} pt={5}>
+                {userStore.assignmentHistoryLoading ? (
+                  <Flex justify="center" py={10}>
+                    <Spinner color="blue.500" />
+                  </Flex>
+                ) : userStore.assignmentHistoryError ? (
+                  <Box
+                    borderWidth="1px"
+                    borderColor="red.200"
+                    bg="red.50"
+                    color="red.700"
+                    borderRadius="md"
+                    p={4}
+                  >
+                    {userStore.assignmentHistoryError}
+                  </Box>
+                ) : userStore.assignmentHistory.length === 0 ? (
+                  <Box
+                    borderWidth="1px"
+                    borderColor="blackAlpha.100"
+                    borderRadius="md"
+                    p={6}
+                    textAlign="center"
+                  >
+                    <Text fontWeight="700">No employment history recorded.</Text>
+                  </Box>
+                ) : (
+                  <VStack align="stretch" spacing={3}>
+                    {userStore.assignmentHistory.map((assignment: any) => {
+                      const changedBy =
+                        assignment?.changedBy?.name ||
+                        assignment?.changedBy?.email ||
+                        assignment?.changedBy?.username ||
+                        "System";
+
+                      return (
+                        <Box
+                          key={assignment._id}
+                          borderWidth="1px"
+                          borderColor="blackAlpha.200"
+                          borderRadius="md"
+                          p={4}
+                        >
+                          <Flex
+                            justify="space-between"
+                            align={{ base: "start", md: "center" }}
+                            direction={{ base: "column", md: "row" }}
+                            gap={2}
+                          >
+                            <Box>
+                              <HStack spacing={2} flexWrap="wrap">
+                                <Text fontWeight="700">
+                                  {assignment.departmentNameSnapshot ||
+                                    "No department"}
+                                </Text>
+                                {assignment.teamNameSnapshot ? (
+                                  <Badge colorScheme="purple">
+                                    {assignment.teamNameSnapshot}
+                                  </Badge>
+                                ) : null}
+                                {assignment.isCurrent ? (
+                                  <Badge colorScheme="green">Current</Badge>
+                                ) : null}
+                              </HStack>
+                              <Text color={muted} fontSize="sm" mt={1}>
+                                {formatHistoryDate(assignment.effectiveFrom)} -{" "}
+                                {formatHistoryDate(assignment.effectiveTo)}
+                              </Text>
+                            </Box>
+                            <Badge colorScheme="blue">
+                              {String(assignment.changeType || "assignment")
+                                .replace(/_/g, " ")}
+                            </Badge>
+                          </Flex>
+
+                          <SimpleGrid
+                            columns={{ base: 1, md: 2 }}
+                            spacing={2}
+                            mt={4}
+                          >
+                            <Text fontSize="sm">
+                              <strong>Designation:</strong>{" "}
+                              {assignment.designationSnapshot || "--"}
+                            </Text>
+                            <Text fontSize="sm">
+                              <strong>Office:</strong>{" "}
+                              {assignment.officeLocationNameSnapshot || "--"}
+                            </Text>
+                            <Text fontSize="sm">
+                              <strong>Manager:</strong>{" "}
+                              {assignment.reportingManagerNameSnapshot || "--"}
+                            </Text>
+                            <Text fontSize="sm">
+                              <strong>Changed by:</strong> {changedBy}
+                            </Text>
+                          </SimpleGrid>
+
+                          {assignment.changeReason ? (
+                            <Text mt={3} fontSize="sm" color={muted}>
+                              {assignment.changeReason}
+                            </Text>
+                          ) : null}
+                        </Box>
+                      );
+                    })}
+                  </VStack>
+                )}
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
         </ModalBody>
       </ModalContent>
     </Modal>
   );
 };
 
-export default UserDetailsModal;
+export default observer(UserDetailsModal);

@@ -27,6 +27,72 @@ export interface DepartmentItem {
   managerCount?: number;
 }
 
+export interface DepartmentArchiveImpact {
+  department: {
+    _id: string;
+    departmentName: string;
+    code: string;
+  };
+  counts: {
+    assignedEmployees: number;
+    departmentHead: number;
+    teams: number;
+    activeTeams: number;
+    hrScopes: number;
+  };
+  blockers: {
+    key: "employees" | "departmentHead" | "hrScopes";
+    count: number;
+    label: string;
+    resolution: string;
+  }[];
+  canArchive: boolean;
+  effects: {
+    teamsArchivedWithDepartment: number;
+    reportingManagersChanged: number;
+    historicalRecordsPreserved: boolean;
+  };
+}
+
+export interface DepartmentTransferPreview {
+  sourceDepartment: {
+    _id: string;
+    departmentName: string;
+    code: string;
+    departmentHeadId: string;
+    teams: {
+      _id: string;
+      name: string;
+      code?: string;
+      isActive?: boolean;
+    }[];
+  };
+  employees: {
+    _id: string;
+    name: string;
+    email: string;
+    code: string;
+    role: string;
+    team: string;
+    designation: string;
+    officeLocation?: any;
+    reportingManager?: any;
+    isActive: boolean;
+    isDepartmentHead: boolean;
+  }[];
+  destinations: {
+    _id: string;
+    departmentName: string;
+    code: string;
+    teams: {
+      _id: string;
+      name: string;
+      code?: string;
+      isActive?: boolean;
+    }[];
+  }[];
+}
+
 class DepartmentStore {
   departments: DepartmentItem[] = [];
   isLoading = false;
@@ -267,22 +333,96 @@ class DepartmentStore {
     }
   };
 
-  // ================= DELETE =================
-  deleteDepartment = async (id: string) => {
+  getDepartmentArchiveImpact = async (id: string) => {
+    this.error = null;
+
+    try {
+      const { data } = await axios.get(`/department/${id}/archive-impact`);
+      return data.data as DepartmentArchiveImpact;
+    } catch (err: any) {
+      runInAction(() => {
+        this.error =
+          err?.response?.data?.message || "Failed to check department dependencies";
+      });
+      throw err;
+    }
+  };
+
+  // ================= ARCHIVE =================
+  archiveDepartment = async (id: string, reason: string) => {
     this.isSubmitting = true;
     this.error = null;
 
     try {
-      await axios.delete(`/department/delete/${id}`);
+      const { data } = await axios.post(`/department/${id}/archive`, { reason });
 
       runInAction(() => {
         this.departments = this.departments.filter(
           (department) => department._id !== id
         );
       });
+
+      return data;
     } catch (err: any) {
       runInAction(() => {
-        this.error = err?.response?.data?.message || "Delete failed";
+        this.error = err?.response?.data?.message || "Archive failed";
+      });
+      throw err;
+    } finally {
+      runInAction(() => {
+        this.isSubmitting = false;
+      });
+    }
+  };
+
+  getDepartmentTransferPreview = async (id: string) => {
+    this.error = null;
+
+    try {
+      const { data } = await axios.get(`/department/${id}/transfer-preview`);
+      return data.data as DepartmentTransferPreview;
+    } catch (err: any) {
+      runInAction(() => {
+        this.error =
+          err?.response?.data?.message ||
+          "Failed to load department transfer preview";
+      });
+      throw err;
+    }
+  };
+
+  transferDepartmentEmployees = async (
+    id: string,
+    payload: {
+      targetDepartmentId: string;
+      reason: string;
+      teamMappings?: {
+        sourceTeamId?: string;
+        sourceTeamName?: string;
+        targetTeamId?: string;
+      }[];
+      employeeOverrides?: {
+        employeeId: string;
+        targetDepartmentId?: string;
+        targetTeamId?: string;
+      }[];
+    }
+  ) => {
+    this.isSubmitting = true;
+    this.error = null;
+
+    try {
+      const { data } = await axios.post(
+        `/department/${id}/transfer-employees`,
+        payload
+      );
+      return data;
+    } catch (err: any) {
+      runInAction(() => {
+        this.error =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Employee transfer failed";
       });
       throw err;
     } finally {

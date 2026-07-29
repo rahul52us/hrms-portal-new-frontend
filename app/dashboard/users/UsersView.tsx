@@ -72,6 +72,7 @@ type UserFormState = {
   };
   reportingManager: any | null;
   managers: any[];
+  changeReason: string;
 };
 
 type BulkFormState = {
@@ -131,7 +132,7 @@ const formatRoleLabel = (role: string) => {
     .join(" ");
 };
 
-const getBulkUploadRoleOptions = (_managerLevels: number) => [
+const getBulkUploadRoleOptions = () => [
   {
     value: "user",
     label: "Employees",
@@ -203,6 +204,7 @@ const initialForm = (): UserFormState => ({
   },
   reportingManager: null,
   managers: [],
+  changeReason: "",
 });
 
 const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = false }: UsersViewProps) => {
@@ -295,8 +297,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       ? departmentStore.departments
       : [];
   const bulkUploadRoleOptions = useMemo(
-    () => getBulkUploadRoleOptions(selectedBulkManagerLevels),
-    [selectedBulkManagerLevels]
+    () => getBulkUploadRoleOptions(),
+    []
   );
 
   const roleOptions = useMemo(() => {
@@ -439,6 +441,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       companyManagerLevels: isSuperadmin ? 3 : currentCompanyManagerLevels,
       reportingManager: null,
       managers: [],
+      changeReason: "",
     });
 
   const resetBulkUploadState = useCallback(() => {
@@ -563,6 +566,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       },
       reportingManager,
       managers: [],
+      changeReason: "",
     });
     setIsUserDrawerOpen(true);
   };
@@ -793,6 +797,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       role: roleValue,
       reportingManagerId,
       reportingManagerEmail: reportingManagerId ? undefined : reportingManagerEmail || undefined,
+      assignmentChangeReason: userForm.changeReason.trim() || undefined,
     };
 
     if (roleValue === "hr") {

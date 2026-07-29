@@ -1,7 +1,10 @@
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 import axios from "axios";
 import { authStore } from "../authStore/authStore";
 class UserStore {
+  assignmentHistory: any[] = [];
+  assignmentHistoryLoading = false;
+  assignmentHistoryError: string | null = null;
   users: any[] = [];
   availableRoles: string[] = [];
   pagination = {
@@ -282,6 +285,40 @@ class UserStore {
     }
   };
 
+  fetchEmployeeAssignmentHistory = async (id: string) => {
+    this.assignmentHistoryLoading = true;
+    this.assignmentHistoryError = null;
+
+    try {
+      const response = await axios.get(
+        `/admin/users/${id}/assignment-history`
+      );
+      runInAction(() => {
+        this.assignmentHistory = response.data?.data?.history || [];
+      });
+      return response.data;
+    } catch (err: any) {
+      runInAction(() => {
+        this.assignmentHistory = [];
+        this.assignmentHistoryError =
+          err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Failed to load employment history";
+      });
+      throw err;
+    } finally {
+      runInAction(() => {
+        this.assignmentHistoryLoading = false;
+      });
+    }
+  };
+
+  clearEmployeeAssignmentHistory = () => {
+    this.assignmentHistory = [];
+    this.assignmentHistoryError = null;
+    this.assignmentHistoryLoading = false;
+  };
+
   deleteManagedUser = async (id: string) => {
     this.submitting = true;
     try {
@@ -384,7 +421,7 @@ class UserStore {
       const users = response?.data?.data?.users || [];
       const normalizedEmail = String(email || "").trim().toLowerCase();
       return users.some((user: any) => String(user?.email || "").trim().toLowerCase() === normalizedEmail);
-    } catch (err: any) {
+    } catch {
       return false;
     }
   };

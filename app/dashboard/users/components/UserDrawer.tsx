@@ -17,6 +17,7 @@ import {
   Input,
   SimpleGrid,
   Text,
+  Textarea,
   VStack,
   useColorModeValue,
 } from "@chakra-ui/react";
@@ -642,6 +643,29 @@ const UserDrawer = ({
                   </>
                 )}
               </SimpleGrid>
+              {userForm.id && !isCompanyAdminRole ? (
+                <Box mt={4}>
+                  <Text mb={2} fontSize="sm" fontWeight="600">
+                    Change Reason
+                  </Text>
+                  <Textarea
+                    value={userForm.changeReason || ""}
+                    placeholder="Why is this employee assignment being changed?"
+                    resize="vertical"
+                    rows={3}
+                    onChange={(event) =>
+                      setUserForm((previous: any) => ({
+                        ...previous,
+                        changeReason: event.target.value,
+                      }))
+                    }
+                  />
+                  <Text mt={1} fontSize="xs" color={muted}>
+                    Recorded when department, team, office, designation, manager,
+                    or department-head status changes.
+                  </Text>
+                </Box>
+              ) : null}
 
             </SectionCard>
 
