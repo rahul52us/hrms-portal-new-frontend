@@ -213,25 +213,25 @@ const HrDashboardPage = observer(() => {
   const quickActions = [
     {
       label: "Add Employee",
-      href: "/dashboard/users",
+      href: "/dashboard/users?action=add",
       icon: FiPlus,
       show: hasPermission(auth.user, PERMISSION_KEYS.CREATE_USERS),
     },
     {
       label: "Bulk Upload",
-      href: "/dashboard/users",
+      href: "/dashboard/users?action=bulk",
       icon: FiUsers,
       show: hasPermission(auth.user, PERMISSION_KEYS.CREATE_USERS),
     },
     {
       label: "Reporting Lines",
-      href: "/dashboard/users",
+      href: "/dashboard/users?issue=missing_manager",
       icon: FiUserCheck,
       show: hasPermission(auth.user, PERMISSION_KEYS.ASSIGN_MANAGERS),
     },
     {
       label: "Add HR",
-      href: "/dashboard/users",
+      href: "/dashboard/users?action=add&role=hr",
       icon: FiShield,
       show: hasPermission(auth.user, PERMISSION_KEYS.CREATE_HR_USERS),
     },
@@ -328,28 +328,37 @@ const HrDashboardPage = observer(() => {
                     <Section title="Pending HR Work" helper="Operational gaps to clean up before employee records are reliable.">
                       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
                         {(summary.pendingWork || []).map((item: any) => (
-                          <Flex
+                          <Button
                             key={item.key}
-                            align="center"
-                            justify="space-between"
-                            gap={3}
-                            borderWidth="1px"
-                            borderColor={borderColor}
-                            borderRadius="lg"
+                            variant="outline"
+                            height="auto"
                             p={3}
+                            whiteSpace="normal"
+                            justifyContent="stretch"
+                            isDisabled={!numberValue(item.count)}
+                            onClick={() => router.push(item.href)}
                           >
-                            <Box minW={0}>
-                              <Text fontSize="sm" fontWeight="800" noOfLines={1}>
-                                {item.label}
-                              </Text>
-                              <Text fontSize="xs" color={muted}>
-                                Needs HR review
-                              </Text>
-                            </Box>
-                            <Badge colorScheme={numberValue(item.count) ? "orange" : "green"} borderRadius="full" px={3} py={1}>
-                              {numberValue(item.count)}
-                            </Badge>
-                          </Flex>
+                            <Flex
+                              align="center"
+                              justify="space-between"
+                              gap={3}
+                              width="full"
+                            >
+                              <Box minW={0} textAlign="left">
+                                <Text fontSize="sm" fontWeight="800" noOfLines={1}>
+                                  {item.label}
+                                </Text>
+                                <Text fontSize="xs" color={muted}>
+                                  {numberValue(item.count)
+                                    ? "Open employee work queue"
+                                    : "No action required"}
+                                </Text>
+                              </Box>
+                              <Badge colorScheme={numberValue(item.count) ? "orange" : "green"} borderRadius="full" px={3} py={1}>
+                                {numberValue(item.count)}
+                              </Badge>
+                            </Flex>
+                          </Button>
                         ))}
                       </SimpleGrid>
                     </Section>

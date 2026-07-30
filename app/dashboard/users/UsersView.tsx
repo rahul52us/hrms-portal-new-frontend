@@ -20,6 +20,7 @@ import {
 import { observer } from "mobx-react-lite";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import useDebounce from "../../component/config/component/customHooks/useDebounce";
 import { getApiErrorMessage } from "../../config/utils/apiError";
 import { readFileAsBase64 } from "../../config/utils/utils";
@@ -140,6 +141,14 @@ const getBulkUploadRoleOptions = () => [
   },
 ];
 
+const EMPLOYEE_ISSUE_FILTERS: Record<string, string> = {
+  missing_department: "Employees without department",
+  missing_manager: "Employees without reporting manager",
+  missing_location: "Employees without office location",
+  pending_setup: "Employees with password setup pending",
+  incomplete_profiles: "Employees with incomplete profiles",
+};
+
 const optionFromManager = (manager: any) => {
   const email = manager?.email || manager?.username || manager?.managerEmail || "";
   if (!email && !manager?._id && !manager?.managerId) {
@@ -209,6 +218,9 @@ const initialForm = (): UserFormState => ({
 
 const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = false }: UsersViewProps) => {
   const toast = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { userStore, companyStore, auth, locationStore, departmentStore } = stores;
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 500);
@@ -223,6 +235,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const [uploadResults, setUploadResults] = useState<any | null>(null);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
   const [setupNotice, setSetupNotice] = useState<any | null>(null);
+  const handledDeepLinkRef = useRef("");
   const [userForm, setUserForm] = useState<UserFormState>(initialForm());
   const [bulkForm, setBulkForm] = useState<BulkFormState>({
     companyId: "",
@@ -245,6 +258,18 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const canDeleteUsers = canEditUsers;
   const canOpenCreate = canCreateUsers || canCreateHrUsers || canCreateDepartmentHeads;
   const canOpenBulk = canOpenCreate || canEditUsers;
+  const requestedIssue = embedded
+    ? ""
+    : String(searchParams.get("issue") || "").trim().toLowerCase();
+  const issueFilter = Object.prototype.hasOwnProperty.call(
+    EMPLOYEE_ISSUE_FILTERS,
+    requestedIssue
+  )
+    ? requestedIssue
+    : "";
+  const issueFilterLabel = issueFilter
+    ? EMPLOYEE_ISSUE_FILTERS[issueFilter]
+    : "";
   const showToast = useCallback(
     (options: any) =>
       toast({
@@ -353,7 +378,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
         page,
         limit: 10,
         search: debouncedSearch,
-        role: listTab,
+        ...(!issueFilter ? { role: listTab } : {}),
+        ...(issueFilter ? { issue: issueFilter } : {}),
         ...(locationFilter ? { officeLocationId: locationFilter } : {}),
         ...(isSuperadmin && scopedCompanyId ? { companyId: scopedCompanyId } : {}),
       });
@@ -365,11 +391,15 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
         duration: 3500,
       });
     }
-  }, [debouncedSearch, isSuperadmin, listTab, locationFilter, page, scopedCompanyId, showToast, userStore]);
+  }, [debouncedSearch, isSuperadmin, issueFilter, listTab, locationFilter, page, scopedCompanyId, showToast, userStore]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [issueFilter]);
 
   useEffect(() => {
     if (isSuperadmin) {
@@ -434,15 +464,57 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     }
   }, [listTab, listTabs]);
 
-  const resetForm = () =>
-    setUserForm({
-      ...initialForm(),
-      companyId: isSuperadmin ? scopedCompanyId : auth.company || "",
-      companyManagerLevels: isSuperadmin ? 3 : currentCompanyManagerLevels,
-      reportingManager: null,
-      managers: [],
-      changeReason: "",
-    });
+  const replaceQueryParams = useCallback(
+    (updates: Record<string, string | null>) => {
+      if (embedded) return;
+
+      const nextParams = new URLSearchParams(searchParams.toString());
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value) {
+          nextParams.set(key, value);
+        } else {
+          nextParams.delete(key);
+        }
+      });
+      const query = nextParams.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, {
+        scroll: false,
+      });
+    },
+    [embedded, pathname, router, searchParams]
+  );
+
+  const clearIssueFilter = useCallback(() => {
+    replaceQueryParams({ issue: null });
+    setPage(1);
+  }, [replaceQueryParams]);
+
+  const handleListTabChange = (nextTab: string) => {
+    setListTab(nextTab);
+    setPage(1);
+    if (issueFilter) {
+      clearIssueFilter();
+    }
+  };
+
+  const resetForm = useCallback(
+    (initialRole = "user") =>
+      setUserForm({
+        ...initialForm(),
+        role: initialRole,
+        companyId: isSuperadmin ? scopedCompanyId : auth.company || "",
+        companyManagerLevels: isSuperadmin ? 3 : currentCompanyManagerLevels,
+        reportingManager: null,
+        managers: [],
+        changeReason: "",
+      }),
+    [
+      auth.company,
+      currentCompanyManagerLevels,
+      isSuperadmin,
+      scopedCompanyId,
+    ]
+  );
 
   const resetBulkUploadState = useCallback(() => {
     setSelectedFile(null);
@@ -455,7 +527,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     }));
   }, [auth.company, currentCompanyManagerLevels, isSuperadmin, scopedCompanyId, userStore]);
 
-  const openBulkUpload = () => {
+  const openBulkUpload = useCallback(() => {
     if (isManagementBlocked) {
       showToast({
         title: "Company is inactive",
@@ -467,14 +539,19 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     }
     resetBulkUploadState();
     setIsBulkModalOpen(true);
-  };
+  }, [
+    isManagementBlocked,
+    managementBlockedMessage,
+    resetBulkUploadState,
+    showToast,
+  ]);
 
   const closeBulkUpload = () => {
     resetBulkUploadState();
     setIsBulkModalOpen(false);
   };
 
-  const openCreate = () => {
+  const openCreate = useCallback((initialRole = "user") => {
     if (isManagementBlocked) {
       showToast({
         title: "Company is inactive",
@@ -505,9 +582,64 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       return;
     }
 
-    resetForm();
+    const normalizedInitialRole = normalizeRole(initialRole);
+    const canUseInitialRole = roleOptions.some(
+      (option) => option.value === normalizedInitialRole
+    );
+    resetForm(canUseInitialRole ? normalizedInitialRole : "user");
     setIsUserDrawerOpen(true);
-  };
+  }, [
+    canOpenCreate,
+    isManagementBlocked,
+    isSuperadmin,
+    managementBlockedMessage,
+    resetForm,
+    roleOptions,
+    scopedCompanyId,
+    showToast,
+  ]);
+
+  useEffect(() => {
+    if (embedded || !auth.sessionReady || !auth.user) {
+      return;
+    }
+
+    const action = String(searchParams.get("action") || "")
+      .trim()
+      .toLowerCase();
+    const requestedRole = String(searchParams.get("role") || "")
+      .trim()
+      .toLowerCase();
+    if (!action) {
+      return;
+    }
+
+    const actionKey = `${action}:${requestedRole}:${scopedCompanyId || auth.company || ""}`;
+    if (handledDeepLinkRef.current === actionKey) {
+      return;
+    }
+    handledDeepLinkRef.current = actionKey;
+
+    if (action === "add" && canOpenCreate) {
+      openCreate(requestedRole || "user");
+    } else if (action === "bulk" && canOpenBulk) {
+      openBulkUpload();
+    }
+
+    replaceQueryParams({ action: null, role: null });
+  }, [
+    auth.company,
+    auth.sessionReady,
+    auth.user,
+    canOpenBulk,
+    canOpenCreate,
+    embedded,
+    openBulkUpload,
+    openCreate,
+    replaceQueryParams,
+    scopedCompanyId,
+    searchParams,
+  ]);
 
   const openEdit = (user: any) => {
     if (!canEditUsers) {
@@ -1291,6 +1423,27 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
           </Alert>
         ) : null}
 
+        {issueFilter ? (
+          <Alert
+            status="info"
+            borderRadius="lg"
+            alignItems={{ base: "stretch", sm: "center" }}
+            flexDirection={{ base: "column", sm: "row" }}
+            gap={3}
+          >
+            <AlertIcon display={{ base: "none", sm: "block" }} />
+            <Box flex="1">
+              <AlertTitle fontSize="sm">Dashboard work queue</AlertTitle>
+              <AlertDescription fontSize="sm">
+                Showing {issueFilterLabel.toLowerCase()}.
+              </AlertDescription>
+            </Box>
+            <Button size="sm" variant="outline" onClick={clearIssueFilter}>
+              Clear Filter
+            </Button>
+          </Alert>
+        ) : null}
+
         <UsersHeader
   onOpenBulk={openBulkUpload}
   onOpenCreate={openCreate}
@@ -1310,7 +1463,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   setPage={setPage}
   listTabs={listTabs}
   listTab={listTab}
-  setListTab={setListTab}
+  setListTab={handleListTabChange}
   activeTabIndex={activeTabIndex}
   activeTabLabel={activeTabLabel}
   tableHeadBg={tableHeadBg}
@@ -1328,6 +1481,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   officeLocationOptions={officeLocationOptions}
   locationFilter={locationFilter}
   setLocationFilter={setLocationFilter}
+  onResetFilters={clearIssueFilter}
 />
       
       </VStack>

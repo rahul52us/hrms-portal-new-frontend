@@ -73,6 +73,7 @@ type Props = {
   officeLocationOptions?: { label: string; value: string; isDisabled?: boolean }[];
   locationFilter?: string;
   setLocationFilter?: (v: string) => void;
+  onResetFilters?: () => void;
   // User source separation for admin-created vs externally linked accounts.
   showUserSourceTabs?: boolean;
   userSourceTab?: "all" | "manual" | "public_enrolled";
@@ -142,6 +143,7 @@ const UsersTable = ({
   officeLocationOptions = [],
   locationFilter = "",
   setLocationFilter,
+  onResetFilters,
   showUserSourceTabs = false,
   userSourceTab = "all",
   setUserSourceTab,
@@ -734,6 +736,7 @@ const UsersTable = ({
                 function: () => {
                   setSearch("");
                   setLocationFilter?.("");
+                  onResetFilters?.();
                   setPage(1);
                 },
               },
