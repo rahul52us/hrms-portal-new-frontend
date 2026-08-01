@@ -331,7 +331,7 @@ const ProfilePage: React.FC = observer(() => {
               ...doc,
               fileName: file.name,
               fileType: file.type,
-              fileBuffer: buffer as string,
+              fileBuffer: buffer as unknown as string,
               fileUrl: URL.createObjectURL(file),
               isAdd: true,
             }
