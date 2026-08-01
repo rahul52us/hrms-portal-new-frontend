@@ -14,6 +14,7 @@ import { organizationStore } from "./organizationStore/organizationStore";
 import { testimonialStore } from "./testimonialStore/testimonialStore";
 import { themeStore } from "./themeStore/themeStore";
 import { userStore } from "./userStore/userStore";
+import { workforcePolicyStore } from "./workforcePolicyStore/workforcePolicyStore";
 const stores = {
   auth : authStore,
   dashboardStore : dashboardStore,
@@ -30,6 +31,7 @@ const stores = {
   companyStore : CompanyStore,
   testimonialStore : testimonialStore,
   courseStore:courseStore,
+  workforcePolicyStore,
 };
 
 export default stores;
