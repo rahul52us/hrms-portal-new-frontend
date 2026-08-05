@@ -75,7 +75,7 @@ type NotificationUser = {
   department?: string;
   designation?: string;
   status: "active" | "inactive" | "pending" | string;
-  managers?: Array<{ managerEmail?: string; managerName?: string; level?: number }>;
+  reportingManager?: { _id?: string; email?: string; name?: string } | null;
   notificationSignals?: {
     assignedCourses?: number;
     pendingCourses?: number;
@@ -216,11 +216,15 @@ const NotificationWorkspace = observer(({
   const scrollbarThumb = useColorModeValue("rgba(59,130,246,0.45)", "rgba(144,205,244,0.45)");
   const scrollbarTrack = useColorModeValue("rgba(226,232,240,0.75)", "rgba(45,55,72,0.7)");
   const heroBorderColor = useColorModeValue("blue.100", "whiteAlpha.200");
-  const heroOrbBg = useColorModeValue("blue.100", "whiteAlpha.100");
-
   const { companyStore, userStore } = stores;
-  const managedCompanies = companyStore.companies?.data || [];
-  const companyOptions = managedCompanies.length ? managedCompanies : initialCompany ? [initialCompany] : [];
+  const managedCompanies = useMemo(
+    () => companyStore.companies?.data || [],
+    [companyStore.companies?.data]
+  );
+  const companyOptions = useMemo(
+    () => managedCompanies.length ? managedCompanies : initialCompany ? [initialCompany] : [],
+    [initialCompany, managedCompanies]
+  );
   const [selectedCompanyId, setSelectedCompanyId] = useState(initialCompany?._id || "");
   const selectedCompany = companyOptions.find((entry: any) => entry?._id === selectedCompanyId) || initialCompany;
   const platformBrandName = currentUser?.companyDetails?.company_name || currentUser?.company?.company_name || "LMS Team";
@@ -312,11 +316,9 @@ const NotificationWorkspace = observer(({
       if (filters.courseStatus && normalize(signals.courseStatus) !== normalize(filters.courseStatus)) return false;
       if (filters.quizStatus && normalize(signals.quizStatus) !== normalize(filters.quizStatus)) return false;
       if (filters.manager) {
-        const managerMatch = (user.managers || []).some(
-          (manager) =>
-            normalize(manager.managerEmail) === normalize(filters.manager) ||
-            normalize(manager.managerName) === normalize(filters.manager)
-        );
+        const managerMatch =
+          normalize(user.reportingManager?.email) === normalize(filters.manager) ||
+          normalize(user.reportingManager?.name) === normalize(filters.manager);
         if (!managerMatch) return false;
       }
       if (filters.pendingCourses && !signals.pendingCourses) return false;

@@ -37,7 +37,6 @@ type Props = {
   borderColor: string;
   tableHeadBg: string;
   muted: string;
-  selectedBulkManagerLevels: number;
   uploadRoleOptions: Array<{
     value: string;
     label: string;
@@ -49,7 +48,7 @@ type Props = {
   isDragActive: boolean;
 
   selectedFile: File | null;
-  setSelectedFile: (file: File | null) => void;
+  setSelectedFile: (_file: File | null) => void;
 
   preview: any[];
   loading: boolean;
@@ -68,7 +67,6 @@ const BulkUploadModal = ({
   borderColor,
   tableHeadBg,
   muted,
-  selectedBulkManagerLevels,
   uploadRoleOptions,
   getRootProps,
   getInputProps,
@@ -80,6 +78,8 @@ const BulkUploadModal = ({
   onDownloadTemplate,
   onUpload,
 }: Props) => {
+  const dropzoneHoverBg = useColorModeValue("gray.50", "whiteAlpha.50");
+  const emptyStateBg = useColorModeValue("gray.50", "whiteAlpha.50");
   const selectStyles = {
     control: (base: any) => ({
       ...base,
@@ -111,27 +111,16 @@ const BulkUploadModal = ({
     "Employee Code",
     "Employee Name",
     "Phone Number",
-    "Email ID (Optional)",
+    "Email ID",
     "Department",
     "Team (Optional)",
     "City",
     "State",
     "Designation",
     "Joining Date",
+    "Reporting Manager Email (Optional)",
   ];
   const companyReady = Boolean(bulkForm.companyId);
-  const getUniqueManagers = (managers: any[] = []) => {
-    const seen = new Set<string>();
-    return managers.filter((manager) => {
-      const key = `${manager?.level || ""}:${String(manager?.managerEmail || "").trim().toLowerCase()}`;
-      if (!key || seen.has(key)) {
-        return false;
-      }
-
-      seen.add(key);
-      return true;
-    });
-  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="6xl">
@@ -234,7 +223,7 @@ const BulkUploadModal = ({
                 textAlign="center"
                 cursor="pointer"
                 bg={isDragActive ? "blue.50" : "transparent"}
-                _hover={{ bg: useColorModeValue("gray.50", "whiteAlpha.50") }}
+                _hover={{ bg: dropzoneHoverBg }}
                 transition="all 0.2s"
               >
                 <input {...getInputProps()} />
@@ -257,7 +246,7 @@ const BulkUploadModal = ({
                 borderColor={borderColor}
                 p={8}
                 borderRadius="2xl"
-                bg={useColorModeValue("gray.50", "whiteAlpha.50")}
+                bg={emptyStateBg}
                 textAlign="center"
               >
                 <Text color={muted} fontStyle="italic">
@@ -293,7 +282,7 @@ const BulkUploadModal = ({
                         <Th>State</Th>
                         <Th>Role</Th>
                         <Th>Company Status</Th>
-                        <Th>Manager Validation</Th>
+                        <Th>Reporting Manager</Th>
                         <Th>Action</Th>
                         <Th>Errors</Th>
                       </Tr>
@@ -334,13 +323,7 @@ const BulkUploadModal = ({
                             </Td>
 
                             <Td>
-                              <VStack align="start" spacing={0}>
-                                {getUniqueManagers(row.managers || []).map((m: any) => (
-                                  <Text key={`${m.level}-${m.managerEmail}`} fontSize="xs">
-                                    L{m.level}: {m.managerEmail}
-                                  </Text>
-                                ))}
-                              </VStack>
+                              {row.reportingManager?.name || row.reportingManager?.email || "--"}
                             </Td>
 
                             <Td>

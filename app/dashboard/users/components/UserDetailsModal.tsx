@@ -28,8 +28,6 @@ import stores from "@/app/store/stores";
 import { observer } from "mobx-react-lite";
 import { useEffect } from "react";
 
-const COLORS = ["blue", "purple", "orange", "green", "pink", "cyan"];
-
 const getUserStatusMeta = (user: any) => {
   if (user?.status === "INACTIVE" || user?.isEnabled === false || user?.is_enabled === false) {
     return { label: "Inactive", colorScheme: "red" };
@@ -93,7 +91,6 @@ const UserDetailsModal = ({
   const { userStore } = stores;
   const muted = useColorModeValue("gray.600", "gray.400");
   const sectionBg = useColorModeValue("white", "gray.900");
-  const managerItemBg = useColorModeValue("gray.50", "gray.800");
   const statusMeta = getUserStatusMeta(user);
 
   useEffect(() => {
@@ -178,7 +175,7 @@ const UserDetailsModal = ({
             <Box borderWidth="1px" borderColor="blackAlpha.100" borderRadius="2xl" p={5}>
               <Flex justify="space-between" align="center" gap={3} mb={3}>
                 <Text fontSize="sm" fontWeight="700">
-                  Reporting Chain
+                  Reporting Manager
                 </Text>
                 {canEditReportingManager && user ? (
                   <Button
@@ -195,38 +192,20 @@ const UserDetailsModal = ({
                 ) : null}
               </Flex>
               <Divider mb={4} />
-              {(user?.managers || []).length === 0 ? (
-                <Text color={muted}>No managers assigned.</Text>
+              {!user?.reportingManager ? (
+                <Text color={muted}>No reporting manager assigned.</Text>
               ) : (
-                <VStack align="stretch" spacing={3}>
-                  {(user?.managers || []).map((manager: any, index: number) => (
-                    <Flex
-                      key={`${user?._id || "user"}-${manager.level}`}
-                      justify="space-between"
-                      align={{ base: "start", md: "center" }}
-                      direction={{ base: "column", md: "row" }}
-                      gap={3}
-                      p={4}
-                      borderRadius="xl"
-                      bg={managerItemBg}
-                    >
-                      <HStack spacing={3}>
-                        <Badge colorScheme={COLORS[index % COLORS.length]} borderRadius="full" px={2.5} py={1}>
-                          L{manager.level}
-                        </Badge>
-                        <Box>
-                          <Text fontWeight="600">{manager.managerName || manager.manager?.name || "Manager"}</Text>
-                          <Text fontSize="sm" color={muted}>
-                            {manager.managerEmail || manager.manager?.email || manager.manager?.username || "--"}
-                          </Text>
-                        </Box>
-                      </HStack>
-                      <Badge colorScheme={manager.status === "ASSIGNED" ? "green" : "orange"} borderRadius="full">
-                        {manager.status || "Pending"}
-                      </Badge>
-                    </Flex>
-                  ))}
-                </VStack>
+                <Flex justify="space-between" align={{ base: "start", md: "center" }} gap={3}>
+                  <Box>
+                    <Text fontWeight="600">
+                      {user.reportingManager.name || user.reportingManager.email || "Manager"}
+                    </Text>
+                    <Text fontSize="sm" color={muted}>
+                      {user.reportingManager.email || user.reportingManager.username || "--"}
+                    </Text>
+                  </Box>
+                  <Badge colorScheme="green" borderRadius="full">Assigned</Badge>
+                </Flex>
               )}
             </Box>
                 </VStack>

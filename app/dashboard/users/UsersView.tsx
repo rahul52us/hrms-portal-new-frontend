@@ -72,7 +72,6 @@ type UserFormState = {
     officeLocationIds: string[];
   };
   reportingManager: any | null;
-  managers: any[];
   changeReason: string;
 };
 
@@ -212,7 +211,6 @@ const initialForm = (): UserFormState => ({
     officeLocationIds: [],
   },
   reportingManager: null,
-  managers: [],
   changeReason: "",
 });
 
@@ -505,7 +503,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
         companyId: isSuperadmin ? scopedCompanyId : auth.company || "",
         companyManagerLevels: isSuperadmin ? 3 : currentCompanyManagerLevels,
         reportingManager: null,
-        managers: [],
         changeReason: "",
       }),
     [
@@ -653,13 +650,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     }
 
     const roleValue = normalizeRole(user.role || "user");
-    const firstLegacyManager =
-      Array.isArray(user.managers) && user.managers.length > 0
-        ? [...user.managers].sort((a: any, b: any) => Number(a?.level || 0) - Number(b?.level || 0))[0]
-        : null;
-    const reportingManager =
-      optionFromManager(user.reportingManager) ||
-      optionFromManager(firstLegacyManager?.manager || firstLegacyManager);
+    const reportingManager = optionFromManager(user.reportingManager);
 
     setUserForm({
       id: user._id,
@@ -697,7 +688,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
             : [],
       },
       reportingManager,
-      managers: [],
       changeReason: "",
     });
     setIsUserDrawerOpen(true);
@@ -744,7 +734,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     setUserForm((prev) => ({
       ...prev,
       reportingManager: selectedManager || null,
-      managers: [],
     }));
 
   const submitUser = async () => {
@@ -764,16 +753,10 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     const gender = userForm.gender;
     const selectedReportingManager = userForm.reportingManager;
     const reportingManagerValue = String(selectedReportingManager?.value || "");
-    const reportingManagerId =
-      reportingManagerValue && !reportingManagerValue.startsWith("pending:")
-        ? reportingManagerValue
-        : "";
+    const reportingManagerId = reportingManagerValue;
     const reportingManagerEmail = normalizeEmail(
       selectedReportingManager?.email ||
-        selectedReportingManager?.username ||
-        (reportingManagerValue.startsWith("pending:")
-          ? reportingManagerValue.replace(/^pending:/i, "")
-          : "")
+        selectedReportingManager?.username
     );
 
     const isDepartmentRequired = roleValue === "departmenthead";
@@ -1520,7 +1503,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   borderColor={borderColor}
   tableHeadBg={tableHeadBg}
   muted={muted}
-  selectedBulkManagerLevels={selectedBulkManagerLevels}
   uploadRoleOptions={bulkUploadRoleOptions}
   getRootProps={getRootProps}
   getInputProps={getInputProps}

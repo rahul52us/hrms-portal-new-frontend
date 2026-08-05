@@ -28,7 +28,6 @@ import {
   Flex,
   Heading,
   HStack,
-  Icon,
   IconButton,
   Radio,
   RadioGroup,
@@ -40,7 +39,6 @@ import {
   TabPanels,
   Tabs,
   Text,
-  Tooltip,
   useColorModeValue,
   useToast,
   VStack
@@ -72,30 +70,6 @@ import UserDrawer from "../../users/components/UserDrawer";
 import CompanyForm from "./CompanyForm";
 import UserTable from "./users/UserTable";
 
-const emptyManager = (level: number) => ({ level, selectedManager: null });
-const parseManagerLevel = (role: string) => {
-  const match = String(role || "").trim().toLowerCase().match(/^l(\d+)-manager$/i);
-  return match ? Number(match[1]) : null;
-};
-const getRequiredManagerLevels = (role: string, maxLevel: number) => {
-  const normalizedRole = String(role || "").trim().toLowerCase();
-  if (!normalizedRole || normalizedRole === "admin" || normalizedRole === "superadmin" || normalizedRole === "departmenthead") {
-    return [];
-  }
-
-  const managerLevel = parseManagerLevel(normalizedRole);
-  const startLevel = managerLevel ? managerLevel + 1 : 1;
-  if (startLevel > maxLevel) {
-    return [];
-  }
-
-  return Array.from({ length: maxLevel - startLevel + 1 }, (_, index) => index + startLevel);
-};
-const reconcileManagersForRole = (role: string, managers: any[], maxLevel: number) => {
-  const managerMap = new Map<number, any>();
-  managers.forEach((manager) => managerMap.set(Number(manager.level), manager));
-  return getRequiredManagerLevels(role, maxLevel).map((level) => managerMap.get(level) || emptyManager(level));
-};
 const createMemberForm = (companyId: string, role = "admin") => ({
   code: "",
   profileId: "",
@@ -115,11 +89,10 @@ const createMemberForm = (companyId: string, role = "admin") => ({
   role,
   companyId,
   companyName: "",
-  companyManagerLevels: 3,
   createCompany: false,
   resendSetupEmail: false,
   sendInvite: role === "admin",
-  managers: reconcileManagersForRole(role, [], 3),
+  reportingManager: null,
 });
 const isRealFile = (value: unknown): value is File => typeof File !== "undefined" && value instanceof File;
 type CompanyStatusScope = "company_admin" | "all_users";
@@ -138,7 +111,6 @@ const StatCard = ({
   icon: any;
   trend?: { value: number; isUp: boolean };
 }) => {
-  const bgHover = useColorModeValue("gray.50", "gray.700");
   const borderColor = useColorModeValue("gray.100", "gray.700");
 
   return (
@@ -233,7 +205,6 @@ const CompanyAdminWorkspace = ({
   const router = useRouter();
   const toast = useToast();
   const pageBg = useColorModeValue("gray.50", "gray.900");
-  const surfaceBg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
   const mutedText = useColorModeValue("gray.500", "gray.400");
   const cardBg = useColorModeValue("white", "gray.800");
@@ -269,17 +240,8 @@ const CompanyAdminWorkspace = ({
   const isCompanyInactive = company?.is_active === false;
   const companyRestrictionMessage = `${company?.company_name || "This company"} is inactive. Management actions are disabled until the company is reactivated. User login access depends on each account's status.`;
   const companyStatusActionLabel = isCompanyInactive ? "Activate" : "Deactivate";
-  const companyStatusActionLabelLower = companyStatusActionLabel.toLowerCase();
   const usersTabIndex = 1;
   const isUsersTab = activeTab === usersTabIndex;
-  const selectedStatusActionSummary =
-    statusActionScope === "all_users"
-      ? isCompanyInactive
-        ? `${company?.company_name || "This company"} and every company user will be activated. Admins, department heads, managers, and employees will be able to use their accounts again if they have already completed setup.`
-        : `${company?.company_name || "This company"} and every company user will be deactivated. Admins, department heads, managers, and employees will no longer be able to log in until they are reactivated.`
-      : isCompanyInactive
-        ? `${company?.company_name || "This company"} will be reactivated for company admin activity. Management actions such as adding users and managing HR setup will work again, but existing user account statuses will stay exactly as they are.`
-        : `${company?.company_name || "This company"} will be deactivated for company admin activity. Management actions such as adding users and managing HR setup will be blocked, but existing user account statuses will stay exactly as they are.`;
 
   const refreshAll = async () => {
     await onCompanyRefresh();
@@ -446,19 +408,17 @@ const CompanyAdminWorkspace = ({
         role: nextRole,
         resendSetupEmail: nextRole !== "admin" && nextRole !== "departmenthead",
         sendInvite: nextRole === "admin" ? prev.data?.sendInvite !== false : false,
-        managers: reconcileManagersForRole(nextRole, prev.data?.managers || [], 3),
+        reportingManager: prev.data?.reportingManager || null,
       },
     }));
   };
 
-  const setManagerSelection = (index: number, selectedManager: any) =>
+  const setManagerSelection = (selectedManager: any) =>
     setDrawerState((prev: any) => ({
       ...prev,
       data: {
         ...prev.data,
-        managers: (prev.data?.managers || []).map((manager: any, managerIndex: number) =>
-          managerIndex === index ? { ...manager, selectedManager: selectedManager || null } : manager
-        ),
+        reportingManager: selectedManager || null,
       },
     }));
 
@@ -647,16 +607,6 @@ const CompanyAdminWorkspace = ({
         .filter(Boolean)
         .join(", ")
     : "—";
-
-  // Get initials for avatar
-  const getInitials = (name: string) => {
-    return name
-      ?.split(" ")
-      .map((n: string) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2) || "CO";
-  };
 
   return (
     <Box minH="100vh" bg={pageBg}>

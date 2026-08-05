@@ -4,7 +4,6 @@ import {
   Badge,
   Box,
   Button,
-  Divider,
   Flex,
   HStack,
   Input,
@@ -31,19 +30,15 @@ import {
 import { 
   FiBriefcase, 
   FiMapPin, 
-  FiUser, 
   FiUsers, 
   FiMail, 
   FiShield,
   FiTrendingUp,
   FiCheckCircle,
   FiClock,
-  FiAward,
   FiSearch
 } from "react-icons/fi";
 import CustomTable from "../../../component/config/component/CustomTable/CustomTable";
-
-const COLORS = ["blue", "purple", "orange", "green", "pink", "cyan", "teal", "red"];
 
 type Props = {
   users: any[];
@@ -164,13 +159,14 @@ const UsersTable = ({
   const activeNumberColor = useColorModeValue("green.600", "green.400");
   const pendingNumberColor = useColorModeValue("orange.600", "orange.400");
   const secureNumberColor = useColorModeValue("purple.600", "purple.400");
-  const iconBoxBg = useColorModeValue("purple.50", "gray.700");
-  const iconBoxDarkBg = useColorModeValue("purple.50", "purple.900");
   const tabListBg = useColorModeValue("gray.50", "gray.700");
+  const tabTextColor = useColorModeValue("gray.600", "gray.300");
   const statsBg = useColorModeValue("blue.50", "blue.900");
   const statsTextColor = useColorModeValue("blue.700", "blue.200");
-  const tooltipBg = useColorModeValue("gray.900", "gray.700");
-  const tooltipColor = useColorModeValue("white", "white");
+  const employeeNameColor = useColorModeValue("gray.800", "white");
+  const departmentTextColor = useColorModeValue("gray.700", "gray.200");
+  const externalNoticeBg = useColorModeValue("purple.50", "purple.900");
+  const externalNoticeTextColor = useColorModeValue("purple.700", "purple.200");
   const isCompact = useBreakpointValue({ base: true, lg: false }) ?? false;
 
   const columns = [
@@ -193,7 +189,7 @@ const UsersTable = ({
               {user.name?.charAt(0) || "U"}
             </Avatar>
             <VStack align="start" spacing={0}>
-              <Text fontWeight="semibold" fontSize="sm" color={useColorModeValue("gray.800", "white")}>
+              <Text fontWeight="semibold" fontSize="sm" color={employeeNameColor}>
                 {user.name || "--"}
               </Text>
               <HStack spacing={1}>
@@ -221,7 +217,7 @@ const UsersTable = ({
             <VStack align="start" spacing={0.5}>
               <HStack spacing={1} fontSize="sm">
                 <Icon as={FiBriefcase} boxSize={3} color="purple.500" />
-                <Text fontWeight="medium" color={useColorModeValue("gray.700", "gray.200")}>
+                <Text fontWeight="medium" color={departmentTextColor}>
                   {user.department || "--"}
                 </Text>
               </HStack>
@@ -271,103 +267,33 @@ const UsersTable = ({
       },
     },
     {
-      headerName: "Reporting Chain",
-      key: "managers",
+      headerName: "Reporting Manager",
+      key: "reportingManager",
       type: "component",
       width: "200px",
       metaData: {
         component: (user: any) => {
-          const managers = user.managers || [];
-          const visibleManagers = managers.slice(0, 3);
-          const extraCount = managers.length - 3;
-
-          if (managers.length === 0) {
+          const manager = user.reportingManager;
+          if (!manager) {
             return (
               <HStack spacing={1}>
                 <Icon as={FiUsers} boxSize={3} color={muted} />
                 <Text fontSize="xs" color={muted} fontStyle="italic">
-                  No managers assigned
+                  Not assigned
                 </Text>
               </HStack>
             );
           }
 
           return (
-            <Tooltip
-              hasArrow
-              placement="top-start"
-              bg={tooltipBg}
-              color={tooltipColor}
-              p={3}
-              borderRadius="xl"
-              boxShadow="xl"
-              label={
-                <VStack align="stretch" spacing={3}>
-                  <HStack>
-                    <Icon as={FiAward} size={16} />
-                    <Text fontWeight="bold" fontSize="sm">
-                      Reporting Chain
-                    </Text>
-                  </HStack>
-                  <Divider borderColor="gray.700" />
-                  {managers.map((manager: any, index: number) => (
-                    <Flex
-                      key={`${user._id}-${manager.level}`}
-                      justify="space-between"
-                      align="center"
-                      gap={3}
-                    >
-                      <HStack spacing={2}>
-                        <Badge
-                          colorScheme={COLORS[index % COLORS.length]}
-                          borderRadius="full"
-                          variant="solid"
-                          fontSize="xs"
-                          px={2}
-                        >
-                          L{manager.level}
-                        </Badge>
-                        <Text fontSize="sm">{manager.managerEmail}</Text>
-                      </HStack>
-                      <Badge
-                        size="sm"
-                        variant="subtle"
-                        colorScheme={manager.status === "ASSIGNED" ? "green" : "orange"}
-                      >
-                        {manager.status}
-                      </Badge>
-                    </Flex>
-                  ))}
-                </VStack>
-              }
-            >
-              <HStack spacing={1.5} cursor="pointer">
-                {visibleManagers.map((manager: any, index: number) => (
-                  <Badge
-                    key={`${user._id}-${manager.level}`}
-                    colorScheme={COLORS[index % COLORS.length]}
-                    borderRadius="full"
-                    px={2.5}
-                    py={1}
-                    fontSize="xs"
-                    variant="subtle"
-                  >
-                    L{manager.level}
-                  </Badge>
-                ))}
-                {extraCount > 0 && (
-                  <Badge
-                    variant="solid"
-                    colorScheme="gray"
-                    borderRadius="full"
-                    px={2}
-                    fontSize="xs"
-                  >
-                    +{extraCount}
-                  </Badge>
-                )}
-              </HStack>
-            </Tooltip>
+            <Box minW={0}>
+              <Text fontSize="sm" fontWeight="semibold" noOfLines={1}>
+                {manager.name || manager.email || "Manager"}
+              </Text>
+              <Text fontSize="xs" color={muted} noOfLines={1}>
+                {manager.email || manager.username || ""}
+              </Text>
+            </Box>
           );
         },
       },
@@ -581,7 +507,7 @@ const UsersTable = ({
             }}
           >
             <TabList gap={2} flexWrap="nowrap" overflowX="auto" bg={tabListBg} p={1} borderRadius="full">
-              {listTabs.map((tab, idx) => (
+              {listTabs.map((tab) => (
                 <Tab
                   key={tab.value}
                   _selected={{
@@ -594,7 +520,7 @@ const UsersTable = ({
                   fontSize="sm"
                   fontWeight="medium"
                   transition="all 0.2s"
-                  color={useColorModeValue("gray.600", "gray.300")}
+                  color={tabTextColor}
                   whiteSpace="nowrap"
                 >
                   {tab.label}
@@ -648,12 +574,12 @@ const UsersTable = ({
                 mt={2}
                 px={3}
                 py={2}
-                bg={useColorModeValue("purple.50", "purple.900")}
+                bg={externalNoticeBg}
                 borderRadius="xl"
                 borderLeft="3px solid"
                 borderColor="purple.400"
               >
-                <Text fontSize="xs" color={useColorModeValue("purple.700", "purple.200")}>
+                <Text fontSize="xs" color={externalNoticeTextColor}>
                   ⚠️ These employees self-enrolled via public course access. You can view their profiles but cannot edit or delete them.
                 </Text>
               </Box>
@@ -797,7 +723,7 @@ const UsersTable = ({
             ) : (
               users.map((user: any) => {
                 const statusMeta = getUserStatusMeta(user);
-                const managers = user.managers || [];
+                const reportingManager = user.reportingManager;
                 return (
                   <Box key={user._id} bg={cardBg} borderWidth="1px" borderColor={borderColorLight} borderRadius="xl" p={4} boxShadow="sm">
                     <HStack align="start" spacing={3} mb={3}>
@@ -847,16 +773,9 @@ const UsersTable = ({
                       </Box>
                     </SimpleGrid>
 
-                    {managers.length > 0 ? (
-                      <HStack spacing={1.5} flexWrap="wrap" mb={3}>
-                        {managers.slice(0, 3).map((manager: any, index: number) => (
-                          <Badge key={`${user._id}-${manager.level}`} colorScheme={COLORS[index % COLORS.length]} variant="subtle" borderRadius="full">
-                            L{manager.level}
-                          </Badge>
-                        ))}
-                        {managers.length > 3 ? <Badge borderRadius="full">+{managers.length - 3}</Badge> : null}
-                      </HStack>
-                    ) : null}
+                    <Text fontSize="xs" color={muted} mb={3} noOfLines={1}>
+                      Reporting manager: {reportingManager?.name || reportingManager?.email || "Not assigned"}
+                    </Text>
 
                     <HStack spacing={2} flexWrap="wrap">
                       <Button size="sm" variant="outline" onClick={() => onView(user)}>View</Button>

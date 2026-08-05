@@ -10,7 +10,7 @@ type Props = {
   createCompany: boolean;
   muted: string;
   borderColor: string;
-  onChange: (value: any) => void;
+  onChange: (_value: any) => void;
   isDisabled?: boolean;
 };
 
@@ -27,17 +27,15 @@ const ManagerHierarchy = ({
   const email = String(
     selectedManager?.email || selectedManager?.username || ""
   ).trim();
-  const isAssigned =
-    selectedManager &&
-    !String(selectedManager?.value || "").startsWith("pending:");
+  const isAssigned = Boolean(selectedManager);
 
   return (
     <Box borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={4}>
       <VStack align="stretch" spacing={3}>
         <HStack justify="space-between">
           <Text fontWeight="semibold">Direct Reporting Manager</Text>
-          <Badge colorScheme={isAssigned ? "green" : email ? "orange" : "gray"}>
-            {isAssigned ? "Assigned" : email ? "Pending" : "Optional"}
+          <Badge colorScheme={isAssigned ? "green" : "gray"}>
+            {isAssigned ? "Assigned" : "Optional"}
           </Badge>
         </HStack>
 

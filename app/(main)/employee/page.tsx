@@ -211,7 +211,7 @@ const EmployeePage = observer(() => {
     getProfileValue(user, personalInfo, "state"),
     getProfileValue(user, personalInfo, "country"),
   ].filter(Boolean).join(", ");
-  const managerRows = Array.isArray(user?.managers) ? user.managers : [];
+  const reportingManager = user?.reportingManager || null;
 
   const pageBg = useColorModeValue("gray.50", "gray.950");
   const cardBg = useColorModeValue("white", "gray.800");
@@ -433,7 +433,11 @@ const EmployeePage = observer(() => {
                   <InfoItem icon={FiMail} label="Email" value={email} />
                   <InfoItem icon={FiPhone} label="Phone" value={phone} />
                   <InfoItem icon={FiMapPin} label="Location" value={location} />
-                  <InfoItem icon={FiUsers} label="Reporting Managers" value={`${managerRows.length || 0} assigned`} />
+                  <InfoItem
+                    icon={FiUsers}
+                    label="Reporting Manager"
+                    value={reportingManager?.name || reportingManager?.email || "Not assigned"}
+                  />
                 </SimpleGrid>
 
                 <Divider my={6} />
@@ -442,35 +446,28 @@ const EmployeePage = observer(() => {
                   <Text fontSize="15px" fontWeight="800" mb={3}>
                     Reporting Line
                   </Text>
-                  {managerRows.length ? (
-                    <Stack spacing={3}>
-                      {managerRows.map((manager: any, index: number) => (
-                        <Flex
-                          key={`${manager?.managerEmail || "manager"}-${index}`}
-                          align={{ base: "flex-start", sm: "center" }}
-                          justify="space-between"
-                          gap={3}
-                          border="1px solid"
-                          borderColor={borderColor}
-                          borderRadius="8px"
-                          px={4}
-                          py={3}
-                          direction={{ base: "column", sm: "row" }}
-                        >
-                          <Box>
-                            <Text fontSize="14px" fontWeight="800">
-                              Level {manager?.level || index + 1} Manager
-                            </Text>
-                            <Text fontSize="13px" color={mutedText}>
-                              {text(manager?.managerName) || text(manager?.managerEmail) || "Manager not added"}
-                            </Text>
-                          </Box>
-                          <Badge colorScheme={manager?.status === "ASSIGNED" ? "green" : "yellow"} borderRadius="6px">
-                            {text(manager?.status) || "Pending"}
-                          </Badge>
-                        </Flex>
-                      ))}
-                    </Stack>
+                  {reportingManager ? (
+                    <Flex
+                      align={{ base: "flex-start", sm: "center" }}
+                      justify="space-between"
+                      gap={3}
+                      border="1px solid"
+                      borderColor={borderColor}
+                      borderRadius="8px"
+                      px={4}
+                      py={3}
+                      direction={{ base: "column", sm: "row" }}
+                    >
+                      <Box>
+                        <Text fontSize="14px" fontWeight="800">
+                          {text(reportingManager.name) || "Reporting Manager"}
+                        </Text>
+                        <Text fontSize="13px" color={mutedText}>
+                          {text(reportingManager.email || reportingManager.username) || "--"}
+                        </Text>
+                      </Box>
+                      <Badge colorScheme="green" borderRadius="6px">Assigned</Badge>
+                    </Flex>
                   ) : (
                     <Box border="1px dashed" borderColor={borderColor} borderRadius="8px" p={4}>
                       <Text fontSize="13px" color={mutedText}>
