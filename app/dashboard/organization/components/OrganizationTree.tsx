@@ -1,13 +1,19 @@
 "use client";
 
-import { OrganizationNode } from "@/app/store/organizationStore/organizationStore";
+import {
+  OrganizationNode,
+  OrganizationPageInfo,
+} from "@/app/store/organizationStore/organizationStore";
 import {
   Avatar,
   Badge,
   Box,
+  Button,
+  Center,
   Flex,
   HStack,
   IconButton,
+  Spinner,
   Stack,
   Text,
   Tooltip,
@@ -19,8 +25,13 @@ import { useMemo, useState } from "react";
 type Props = {
   nodes: OrganizationNode[];
   roots: string[];
-  visibleIds: Set<string>;
-  onSelect: (node: OrganizationNode) => void;
+  rootPageInfo: OrganizationPageInfo;
+  childrenPageInfo: Record<string, OrganizationPageInfo>;
+  loadingChildrenIds: string[];
+  isLoadingRoots: boolean;
+  onLoadChildren: (_managerId: string, _append?: boolean) => Promise<void>;
+  onLoadMoreRoots: () => Promise<void>;
+  onSelect: (_node: OrganizationNode) => void;
 };
 
 function roleLabel(role: string) {
@@ -34,8 +45,18 @@ function roleLabel(role: string) {
   return labels[role] || role || "Employee";
 }
 
-const OrganizationTree = ({ nodes, roots, visibleIds, onSelect }: Props) => {
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+const OrganizationTree = ({
+  nodes,
+  roots,
+  rootPageInfo,
+  childrenPageInfo,
+  loadingChildrenIds,
+  isLoadingRoots,
+  onLoadChildren,
+  onLoadMoreRoots,
+  onSelect,
+}: Props) => {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const borderColor = useColorModeValue("gray.200", "gray.700");
   const rowBg = useColorModeValue("white", "gray.800");
   const contextBg = useColorModeValue("gray.50", "gray.750");
@@ -46,41 +67,35 @@ const OrganizationTree = ({ nodes, roots, visibleIds, onSelect }: Props) => {
     () => new Map(nodes.map((node) => [node._id, node])),
     [nodes]
   );
-  const visibleRoots = useMemo(() => {
-    const configuredRoots = roots.filter((rootId) => visibleIds.has(rootId));
-    const additionalRoots = nodes
-      .filter(
-        (node) =>
-          visibleIds.has(node._id) &&
-          (!node.reportingManagerId || !visibleIds.has(node.reportingManagerId))
-      )
-      .map((node) => node._id);
 
-    return Array.from(new Set([...configuredRoots, ...additionalRoots]));
-  }, [nodes, roots, visibleIds]);
+  const toggleNode = (node: OrganizationNode) => {
+    if (expandedIds.has(node._id)) {
+      setExpandedIds((current) => {
+        const next = new Set(current);
+        next.delete(node._id);
+        return next;
+      });
+      return;
+    }
 
-  const toggleNode = (nodeId: string) => {
-    setCollapsedIds((current) => {
-      const next = new Set(current);
-      if (next.has(nodeId)) {
-        next.delete(nodeId);
-      } else {
-        next.add(nodeId);
-      }
-      return next;
-    });
+    setExpandedIds((current) => new Set(current).add(node._id));
+    if (node.directReportCount > 0 && !childrenPageInfo[node._id]) {
+      onLoadChildren(node._id).catch(() => undefined);
+    }
   };
 
   const renderNode = (nodeId: string, path = new Set<string>()): React.ReactNode => {
     const node = nodeById.get(nodeId);
-    if (!node || !visibleIds.has(nodeId) || path.has(nodeId)) {
+    if (!node || path.has(nodeId)) {
       return null;
     }
 
     const nextPath = new Set(path);
     nextPath.add(nodeId);
-    const childIds = node.directReportIds.filter((id) => visibleIds.has(id));
-    const isCollapsed = collapsedIds.has(nodeId);
+    const childIds = node.directReportIds.filter((id) => nodeById.has(id));
+    const isExpanded = expandedIds.has(nodeId);
+    const isLoadingChildren = loadingChildrenIds.includes(nodeId);
+    const childPage = childrenPageInfo[nodeId];
 
     return (
       <Box key={nodeId}>
@@ -96,14 +111,22 @@ const OrganizationTree = ({ nodes, roots, visibleIds, onSelect }: Props) => {
           py={3}
         >
           <HStack spacing={3} flex="1" minW={0} w="full">
-            {childIds.length > 0 ? (
-              <Tooltip label={isCollapsed ? "Expand reports" : "Collapse reports"}>
+            {node.directReportCount > 0 ? (
+              <Tooltip label={isExpanded ? "Collapse reports" : "Load direct reports"}>
                 <IconButton
-                  aria-label={isCollapsed ? `Expand ${node.name}` : `Collapse ${node.name}`}
-                  icon={isCollapsed ? <ChevronRight size={17} /> : <ChevronDown size={17} />}
+                  aria-label={isExpanded ? `Collapse ${node.name}` : `Expand ${node.name}`}
+                  icon={
+                    isLoadingChildren ? (
+                      <Spinner size="xs" />
+                    ) : isExpanded ? (
+                      <ChevronDown size={17} />
+                    ) : (
+                      <ChevronRight size={17} />
+                    )
+                  }
                   variant="ghost"
                   size="sm"
-                  onClick={() => toggleNode(nodeId)}
+                  onClick={() => toggleNode(node)}
                 />
               </Tooltip>
             ) : (
@@ -134,7 +157,12 @@ const OrganizationTree = ({ nodes, roots, visibleIds, onSelect }: Props) => {
             </Box>
           </HStack>
 
-          <HStack spacing={2} flexWrap="wrap" justify={{ base: "space-between", md: "flex-end" }} w={{ base: "full", md: "auto" }}>
+          <HStack
+            spacing={2}
+            flexWrap="wrap"
+            justify={{ base: "space-between", md: "flex-end" }}
+            w={{ base: "full", md: "auto" }}
+          >
             <Badge colorScheme="blue" variant="subtle">
               {roleLabel(node.role)}
             </Badge>
@@ -158,7 +186,7 @@ const OrganizationTree = ({ nodes, roots, visibleIds, onSelect }: Props) => {
           </HStack>
         </Flex>
 
-        {!isCollapsed && childIds.length > 0 ? (
+        {isExpanded ? (
           <Stack
             spacing={2}
             mt={2}
@@ -168,25 +196,52 @@ const OrganizationTree = ({ nodes, roots, visibleIds, onSelect }: Props) => {
             borderColor={connectorColor}
           >
             {childIds.map((childId) => renderNode(childId, nextPath))}
+            {isLoadingChildren && childIds.length === 0 ? (
+              <HStack py={3} color={muted}>
+                <Spinner size="sm" />
+                <Text fontSize="sm">Loading direct reports...</Text>
+              </HStack>
+            ) : null}
+            {childPage?.hasNextPage ? (
+              <Button
+                alignSelf="flex-start"
+                size="sm"
+                variant="outline"
+                isLoading={isLoadingChildren}
+                onClick={() => onLoadChildren(nodeId, true).catch(() => undefined)}
+              >
+                Load more direct reports
+              </Button>
+            ) : null}
           </Stack>
         ) : null}
       </Box>
     );
   };
 
-  if (visibleRoots.length === 0) {
+  if (roots.length === 0) {
     return (
       <Box py={12} textAlign="center">
-        <Text fontWeight="700">No matching organization records</Text>
+        <Text fontWeight="700">No organization roots found</Text>
         <Text mt={1} fontSize="sm" color={muted}>
-          Adjust the search or filters to see reporting lines.
+          Assign reporting managers or review hierarchy issues to build the chart.
         </Text>
       </Box>
     );
   }
 
-  return <Stack spacing={3}>{visibleRoots.map((rootId) => renderNode(rootId))}</Stack>;
+  return (
+    <Stack spacing={3}>
+      {roots.map((rootId) => renderNode(rootId))}
+      {rootPageInfo.hasNextPage ? (
+        <Center pt={2}>
+          <Button variant="outline" isLoading={isLoadingRoots} onClick={onLoadMoreRoots}>
+            Load more top-level employees
+          </Button>
+        </Center>
+      ) : null}
+    </Stack>
+  );
 };
 
 export default OrganizationTree;
-

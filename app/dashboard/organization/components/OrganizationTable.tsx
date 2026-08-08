@@ -1,10 +1,15 @@
 "use client";
 
-import { OrganizationNode } from "@/app/store/organizationStore/organizationStore";
+import {
+  OrganizationNode,
+  OrganizationPageInfo,
+} from "@/app/store/organizationStore/organizationStore";
 import {
   Avatar,
   Badge,
   Box,
+  Button,
+  Center,
   HStack,
   IconButton,
   Table,
@@ -12,6 +17,7 @@ import {
   Tbody,
   Td,
   Text,
+  Spinner,
   Th,
   Thead,
   Tooltip,
@@ -24,7 +30,10 @@ type Props = {
   nodes: OrganizationNode[];
   emptyTitle: string;
   emptyDescription: string;
-  onSelect: (node: OrganizationNode) => void;
+  onSelect: (_node: OrganizationNode) => void;
+  pageInfo?: OrganizationPageInfo;
+  isLoading?: boolean;
+  onLoadMore?: () => void;
 };
 
 function roleLabel(role: string) {
@@ -43,10 +52,24 @@ const OrganizationTable = ({
   emptyTitle,
   emptyDescription,
   onSelect,
+  pageInfo,
+  isLoading = false,
+  onLoadMore,
 }: Props) => {
   const borderColor = useColorModeValue("gray.200", "gray.700");
   const muted = useColorModeValue("gray.600", "gray.400");
   const hoverBg = useColorModeValue("gray.50", "whiteAlpha.50");
+
+  if (isLoading && nodes.length === 0) {
+    return (
+      <Center py={12}>
+        <HStack color={muted}>
+          <Spinner size="sm" />
+          <Text fontSize="sm">Loading organization records...</Text>
+        </HStack>
+      </Center>
+    );
+  }
 
   if (nodes.length === 0) {
     return (
@@ -105,7 +128,9 @@ const OrganizationTable = ({
               <Td borderColor={borderColor}>
                 <Text fontWeight="700">{node.directReportCount} direct</Text>
                 <Text fontSize="xs" color={muted}>
-                  {node.totalReportCount} total
+                  {node.totalReportCount === null
+                    ? "Load details for total"
+                    : `${node.totalReportCount} total`}
                 </Text>
               </Td>
               <Td borderColor={borderColor}>
@@ -143,9 +168,15 @@ const OrganizationTable = ({
           ))}
         </Tbody>
       </Table>
+      {pageInfo?.hasNextPage && onLoadMore ? (
+        <Center py={4}>
+          <Button size="sm" variant="outline" isLoading={isLoading} onClick={onLoadMore}>
+            Load more
+          </Button>
+        </Center>
+      ) : null}
     </TableContainer>
   );
 };
 
 export default OrganizationTable;
-

@@ -3,7 +3,10 @@
 import PermissionGate from "@/app/component/common/PermissionGate";
 import { PERMISSION_KEYS, hasPermission } from "@/app/config/utils/permissions";
 import {
+  OrganizationFilters,
+  OrganizationListView,
   OrganizationNode,
+  OrganizationPageInfo,
 } from "@/app/store/organizationStore/organizationStore";
 import stores from "@/app/store/stores";
 import {
@@ -45,7 +48,7 @@ import {
   UserRoundSearch,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import OrganizationPersonDrawer from "./components/OrganizationPersonDrawer";
 import OrganizationTable from "./components/OrganizationTable";
 import OrganizationTree from "./components/OrganizationTree";
@@ -64,35 +67,18 @@ const emptyFilters: Filters = {
   locationId: "",
 };
 
-function nodeMatchesFilters(node: OrganizationNode, filters: Filters) {
-  const search = filters.search.trim().toLowerCase();
-  const matchesSearch =
-    !search ||
-    [
-      node.name,
-      node.email,
-      node.code,
-      node.profileId,
-      node.designation,
-      node.department,
-      node.team,
-      node.officeLocation?.name,
-    ]
-      .filter(Boolean)
-      .some((value) => String(value).toLowerCase().includes(search));
-
-  return (
-    matchesSearch &&
-    (!filters.department || node.department === filters.department) &&
-    (!filters.team || node.team === filters.team) &&
-    (!filters.locationId || node.officeLocation?._id === filters.locationId)
-  );
-}
-
 const OrganizationWorkspace = observer(() => {
   const { auth, companyStore, organizationStore } = stores;
   const [filters, setFilters] = useState<Filters>(emptyFilters);
+  const [debouncedFilters, setDebouncedFilters] = useState<Filters>(emptyFilters);
+  const [activeTab, setActiveTab] = useState(0);
   const [selectedNode, setSelectedNode] = useState<OrganizationNode | null>(null);
+  const [selectedDirectReports, setSelectedDirectReports] = useState<OrganizationNode[]>([]);
+  const [selectedDirectReportsPageInfo, setSelectedDirectReportsPageInfo] =
+    useState<OrganizationPageInfo | null>(null);
+  const [isLoadingPerson, setIsLoadingPerson] = useState(false);
+  const [isLoadingMoreDirectReports, setIsLoadingMoreDirectReports] = useState(false);
+  const personRequestRef = useRef(0);
   const drawer = useDisclosure();
   const role = String(auth.userType || auth.user?.role || "").toLowerCase();
   const isSuperadmin = role === "superadmin";
@@ -127,66 +113,54 @@ const OrganizationWorkspace = observer(() => {
     }
   }, [canViewOrganization, companyId, organizationStore]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedFilters(filters), 300);
+    return () => window.clearTimeout(timer);
+  }, [filters]);
+
   const data = organizationStore.data;
   const hasActiveFilters = Boolean(
-    filters.search || filters.department || filters.team || filters.locationId
+    debouncedFilters.search ||
+      debouncedFilters.department ||
+      debouncedFilters.team ||
+      debouncedFilters.locationId
   );
-  const filteredPrimaryNodes = useMemo(
-    () =>
-      data.nodes.filter(
-        (node) => !node.isContextOnly && nodeMatchesFilters(node, filters)
-      ),
-    [data.nodes, filters]
-  );
-  const visibleTreeIds = useMemo(() => {
-    if (!hasActiveFilters) {
-      return new Set(data.nodes.map((node) => node._id));
+  const activeListView: OrganizationListView | null =
+    activeTab === 1 ? "managers" : activeTab === 2 ? "unassigned" : hasActiveFilters ? "search" : null;
+
+  useEffect(() => {
+    if (!companyId || !canViewOrganization || !activeListView) {
+      return;
     }
-
-    const ids = new Set<string>();
-    const nodeById = new Map(data.nodes.map((node) => [node._id, node]));
-
-    filteredPrimaryNodes.forEach((node) => {
-      ids.add(node._id);
-      let managerId = node.reportingManagerId;
-      const visited = new Set<string>();
-
-      while (managerId && !visited.has(managerId)) {
-        visited.add(managerId);
-        const manager = nodeById.get(managerId);
-        if (!manager) {
-          break;
-        }
-
-        ids.add(managerId);
-        managerId = manager.reportingManagerId;
-      }
-    });
-
-    return ids;
-  }, [data.nodes, filteredPrimaryNodes, hasActiveFilters]);
-  const managerNodes = useMemo(
-    () =>
-      data.nodes
-        .filter((node) => node.isManager && nodeMatchesFilters(node, filters))
-        .sort(
-          (left, right) =>
-            right.directReportCount - left.directReportCount ||
-            left.name.localeCompare(right.name)
-        ),
-    [data.nodes, filters]
-  );
-  const unassignedNodes = useMemo(
-    () =>
-      filteredPrimaryNodes
-        .filter((node) => node.isUnassigned)
-        .sort((left, right) => left.name.localeCompare(right.name)),
-    [filteredPrimaryNodes]
-  );
+    organizationStore
+      .fetchList(activeListView, debouncedFilters as OrganizationFilters)
+      .catch(() => undefined);
+  }, [activeListView, canViewOrganization, companyId, debouncedFilters, organizationStore]);
 
   const openNode = (node: OrganizationNode) => {
+    const requestId = personRequestRef.current + 1;
+    personRequestRef.current = requestId;
     setSelectedNode(node);
+    setSelectedDirectReports([]);
+    setSelectedDirectReportsPageInfo(null);
+    setIsLoadingPerson(true);
     drawer.onOpen();
+    organizationStore
+      .fetchPerson(node._id)
+      .then((person) => {
+        if (!person || personRequestRef.current !== requestId) {
+          return;
+        }
+        setSelectedNode(person.node);
+        setSelectedDirectReports(person.directReports || []);
+        setSelectedDirectReportsPageInfo(person.directReportsPageInfo || null);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (personRequestRef.current === requestId) {
+          setIsLoadingPerson(false);
+        }
+      });
   };
 
   const refreshOrganization = async () => {
@@ -194,12 +168,40 @@ const OrganizationWorkspace = observer(() => {
       return;
     }
 
-    const nextData = await organizationStore.fetchOrganization(companyId);
-    if (selectedNode && nextData?.nodes) {
-      const refreshedNode =
-        nextData.nodes.find((node: OrganizationNode) => node._id === selectedNode._id) ||
-        null;
-      setSelectedNode(refreshedNode);
+    await organizationStore.fetchOrganization(companyId);
+    if (selectedNode) {
+      const person = await organizationStore.fetchPerson(selectedNode._id);
+      if (person) {
+        setSelectedNode(person.node);
+        setSelectedDirectReports(person.directReports || []);
+        setSelectedDirectReportsPageInfo(person.directReportsPageInfo || null);
+      }
+    }
+  };
+
+  const loadMoreDrawerDirectReports = async () => {
+    if (!selectedNode || !selectedDirectReportsPageInfo?.hasNextPage) {
+      return;
+    }
+
+    setIsLoadingMoreDirectReports(true);
+    try {
+      const page = await organizationStore.fetchDirectReportsPage(
+        selectedNode._id,
+        selectedDirectReportsPageInfo.nextCursor,
+        selectedDirectReportsPageInfo.limit
+      );
+      if (!page) {
+        return;
+      }
+      setSelectedDirectReports((current) => {
+        const reportById = new Map(current.map((report) => [report._id, report]));
+        page.nodes.forEach((report) => reportById.set(report._id, report));
+        return Array.from(reportById.values());
+      });
+      setSelectedDirectReportsPageInfo(page.pageInfo);
+    } finally {
+      setIsLoadingMoreDirectReports(false);
     }
   };
 
@@ -442,37 +444,73 @@ const OrganizationWorkspace = observer(() => {
               borderRadius="md"
               overflow="hidden"
             >
-              <Tabs colorScheme="blue" isLazy>
+              <Tabs colorScheme="blue" isLazy index={activeTab} onChange={setActiveTab}>
                 <TabList px={{ base: 2, md: 4 }} overflowX="auto" overflowY="hidden">
                   <Tab whiteSpace="nowrap">Org Chart</Tab>
-                  <Tab whiteSpace="nowrap">Managers ({managerNodes.length})</Tab>
+                  <Tab whiteSpace="nowrap">Managers ({data.summary.managerCount})</Tab>
                   <Tab whiteSpace="nowrap">
-                    Top-level / Unassigned ({unassignedNodes.length})
+                    Top-level / Unassigned ({data.summary.unassignedCount})
                   </Tab>
                 </TabList>
                 <TabPanels>
                   <TabPanel p={{ base: 3, md: 5 }}>
-                    <OrganizationTree
-                      nodes={data.nodes}
-                      roots={data.roots}
-                      visibleIds={visibleTreeIds}
-                      onSelect={openNode}
-                    />
+                    {hasActiveFilters ? (
+                      <OrganizationTable
+                        nodes={organizationStore.listPages.search.nodes}
+                        pageInfo={organizationStore.listPages.search.pageInfo}
+                        isLoading={organizationStore.listLoading.search}
+                        emptyTitle="No matching employees"
+                        emptyDescription="No employees match the current organization filters."
+                        onSelect={openNode}
+                        onLoadMore={() =>
+                          organizationStore
+                            .fetchList("search", debouncedFilters, true)
+                            .catch(() => undefined)
+                        }
+                      />
+                    ) : (
+                      <OrganizationTree
+                        key={companyId}
+                        nodes={data.nodes}
+                        roots={data.roots}
+                        rootPageInfo={data.rootPageInfo}
+                        childrenPageInfo={organizationStore.childrenPageInfo}
+                        loadingChildrenIds={organizationStore.loadingChildrenIds}
+                        isLoadingRoots={organizationStore.isLoadingRoots}
+                        onLoadChildren={organizationStore.fetchChildren}
+                        onLoadMoreRoots={organizationStore.loadMoreRoots}
+                        onSelect={openNode}
+                      />
+                    )}
                   </TabPanel>
                   <TabPanel p={0}>
                     <OrganizationTable
-                      nodes={managerNodes}
+                      nodes={organizationStore.listPages.managers.nodes}
+                      pageInfo={organizationStore.listPages.managers.pageInfo}
+                      isLoading={organizationStore.listLoading.managers}
                       emptyTitle="No matching managers"
                       emptyDescription="Managers appear automatically when employees report to them."
                       onSelect={openNode}
+                      onLoadMore={() =>
+                        organizationStore
+                          .fetchList("managers", debouncedFilters, true)
+                          .catch(() => undefined)
+                      }
                     />
                   </TabPanel>
                   <TabPanel p={0}>
                     <OrganizationTable
-                      nodes={unassignedNodes}
+                      nodes={organizationStore.listPages.unassigned.nodes}
+                      pageInfo={organizationStore.listPages.unassigned.pageInfo}
+                      isLoading={organizationStore.listLoading.unassigned}
                       emptyTitle="Everyone has a reporting manager"
                       emptyDescription="No top-level or unassigned employees match the current filters."
                       onSelect={openNode}
+                      onLoadMore={() =>
+                        organizationStore
+                          .fetchList("unassigned", debouncedFilters, true)
+                          .catch(() => undefined)
+                      }
                     />
                   </TabPanel>
                 </TabPanels>
@@ -484,19 +522,27 @@ const OrganizationWorkspace = observer(() => {
 
       <OrganizationPersonDrawer
         node={selectedNode}
-        nodes={data.nodes}
+        directReports={selectedDirectReports}
+        directReportsPageInfo={selectedDirectReportsPageInfo}
+        isLoadingDetails={isLoadingPerson}
+        isLoadingMoreDirectReports={isLoadingMoreDirectReports}
         companyId={companyId || ""}
         isOpen={drawer.isOpen}
         canAssignManagers={canAssignManagers}
         onClose={() => {
           drawer.onClose();
+          personRequestRef.current += 1;
           setSelectedNode(null);
+          setSelectedDirectReports([]);
+          setSelectedDirectReportsPageInfo(null);
         }}
         onHierarchyUpdated={refreshOrganization}
+        onLoadMoreDirectReports={() =>
+          loadMoreDrawerDirectReports().catch(() => undefined)
+        }
       />
     </PermissionGate>
   );
 });
 
 export default OrganizationWorkspace;
-

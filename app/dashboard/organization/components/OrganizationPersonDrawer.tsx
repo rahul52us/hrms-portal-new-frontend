@@ -1,7 +1,10 @@
 "use client";
 
 import CustomInput from "@/app/component/config/component/customInput/CustomInput";
-import { OrganizationNode } from "@/app/store/organizationStore/organizationStore";
+import {
+  OrganizationNode,
+  OrganizationPageInfo,
+} from "@/app/store/organizationStore/organizationStore";
 import stores from "@/app/store/stores";
 import {
   Avatar,
@@ -19,21 +22,26 @@ import {
   Flex,
   HStack,
   SimpleGrid,
+  Spinner,
   Stack,
   Text,
   useColorModeValue,
   useToast,
 } from "@chakra-ui/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Props = {
   node: OrganizationNode | null;
-  nodes: OrganizationNode[];
+  directReports: OrganizationNode[];
+  directReportsPageInfo?: OrganizationPageInfo | null;
+  isLoadingDetails?: boolean;
+  isLoadingMoreDirectReports?: boolean;
   companyId: string;
   isOpen: boolean;
   canAssignManagers: boolean;
   onClose: () => void;
   onHierarchyUpdated: () => Promise<void>;
+  onLoadMoreDirectReports?: () => void;
 };
 
 function roleLabel(role: string) {
@@ -64,12 +72,16 @@ function managerOption(node: OrganizationNode | null) {
 
 const OrganizationPersonDrawer = ({
   node,
-  nodes,
+  directReports,
+  directReportsPageInfo,
+  isLoadingDetails = false,
+  isLoadingMoreDirectReports = false,
   companyId,
   isOpen,
   canAssignManagers,
   onClose,
   onHierarchyUpdated,
+  onLoadMoreDirectReports,
 }: Props) => {
   const { userStore } = stores;
   const toast = useToast();
@@ -82,18 +94,6 @@ const OrganizationPersonDrawer = ({
   useEffect(() => {
     setSelectedManager(managerOption(node));
   }, [node]);
-
-  const nodeById = useMemo(
-    () => new Map(nodes.map((item) => [item._id, item])),
-    [nodes]
-  );
-  const directReports = useMemo(
-    () =>
-      (node?.directReportIds || [])
-        .map((id) => nodeById.get(id))
-        .filter((item): item is OrganizationNode => Boolean(item)),
-    [node, nodeById]
-  );
 
   const saveReportingManager = async () => {
     if (!node || node.isContextOnly || !canAssignManagers) {
@@ -185,10 +185,17 @@ const OrganizationPersonDrawer = ({
                     Total reports
                   </Text>
                   <Text mt={1} fontSize="xl" fontWeight="800">
-                    {node.totalReportCount}
+                    {node.totalReportCount === null ? "-" : node.totalReportCount}
                   </Text>
                 </Box>
               </SimpleGrid>
+
+              {isLoadingDetails ? (
+                <HStack color={muted}>
+                  <Spinner size="sm" />
+                  <Text fontSize="sm">Loading hierarchy details...</Text>
+                </HStack>
+              ) : null}
 
               <Box>
                 <Text fontWeight="800">Organization details</Text>
@@ -217,7 +224,7 @@ const OrganizationPersonDrawer = ({
               <Box>
                 <Text fontWeight="800">Reporting line</Text>
                 <Stack mt={3} spacing={2}>
-                  {node.managerChain.length > 0 ? (
+                  {node.managerChain?.length > 0 ? (
                     node.managerChain.map((manager) => (
                       <Flex
                         key={`${manager._id}:${manager.level}`}
@@ -272,6 +279,17 @@ const OrganizationPersonDrawer = ({
                         </Box>
                       </HStack>
                     ))}
+                    {directReportsPageInfo?.hasNextPage && onLoadMoreDirectReports ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        alignSelf="flex-start"
+                        isLoading={isLoadingMoreDirectReports}
+                        onClick={onLoadMoreDirectReports}
+                      >
+                        Load more direct reports
+                      </Button>
+                    ) : null}
                   </Stack>
                 </Box>
               ) : null}
