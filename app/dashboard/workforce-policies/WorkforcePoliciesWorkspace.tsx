@@ -66,6 +66,9 @@ import PolicyAssignmentDrawer, {
 } from "./components/PolicyAssignmentDrawer";
 import PolicyHistoryDrawer from "./components/PolicyHistoryDrawer";
 import WorkScheduleDrawer from "./components/WorkScheduleDrawer";
+import PolicyAssignmentsPanel from "./components/PolicyAssignmentsPanel";
+import PolicyAuditPanel from "./components/PolicyAuditPanel";
+import PolicyCoveragePanel from "./components/PolicyCoveragePanel";
 
 type EditorState = {
   type: PolicyResourceType;
@@ -82,24 +85,6 @@ function formatDate(value?: string | null) {
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(value));
-}
-
-function getResourceName(assignment: WorkforcePolicyAssignment) {
-  return typeof assignment.resource === "object"
-    ? assignment.resource.name
-    : "Policy configuration";
-}
-
-function getResourceTypeLabel(type: PolicyResourceType) {
-  if (type === "attendance_policy") return "Attendance";
-  if (type === "work_schedule") return "Schedule";
-  return "Holiday";
-}
-
-function getResourceTypeColor(type: PolicyResourceType) {
-  if (type === "attendance_policy") return "blue";
-  if (type === "work_schedule") return "cyan";
-  return "purple";
 }
 
 const WorkforcePoliciesWorkspace = observer(() => {
@@ -365,12 +350,12 @@ const WorkforcePoliciesWorkspace = observer(() => {
           <Box bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">
             <Tabs index={tabIndex} onChange={setTabIndex} colorScheme="blue" isLazy>
               <Flex direction={{ base: "column", md: "row" }} justify="space-between" gap={3} px={4} pt={4}>
-                <TabList overflowX="auto"><Tab whiteSpace="nowrap">Attendance policies</Tab><Tab whiteSpace="nowrap">Work schedules</Tab><Tab whiteSpace="nowrap">Holiday calendars</Tab><Tab whiteSpace="nowrap">Assignments</Tab></TabList>
+                <TabList overflowX="auto"><Tab whiteSpace="nowrap">Attendance policies</Tab><Tab whiteSpace="nowrap">Work schedules</Tab><Tab whiteSpace="nowrap">Holiday calendars</Tab><Tab whiteSpace="nowrap">Assignments</Tab><Tab whiteSpace="nowrap">Coverage</Tab><Tab whiteSpace="nowrap">Audit log</Tab></TabList>
                 <HStack pb={{ base: 0, md: 2 }}>
                   {tabIndex < 3 ? (
                     <InputGroup size="sm" maxW="260px"><InputLeftElement><FiSearch /></InputLeftElement><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" /></InputGroup>
                   ) : null}
-                  {canManage && companyId ? (
+                  {canManage && companyId && tabIndex <= 3 ? (
                     <Button size="sm" colorScheme="blue" leftIcon={<FiPlus />} flexShrink={0} onClick={() => tabIndex === 0 ? openEditor("attendance_policy", "create") : tabIndex === 1 ? openEditor("work_schedule", "create") : tabIndex === 2 ? openEditor("holiday_calendar", "create") : openAssignment()}>
                       {tabIndex === 0 ? "New policy" : tabIndex === 1 ? "New schedule" : tabIndex === 2 ? "New calendar" : "New assignment"}
                     </Button>
@@ -382,19 +367,17 @@ const WorkforcePoliciesWorkspace = observer(() => {
                 <TabPanel><PolicyList type="work_schedule" items={filteredSchedules} /></TabPanel>
                 <TabPanel><PolicyList type="holiday_calendar" items={filteredCalendars} /></TabPanel>
                 <TabPanel>
-                  {workforcePolicyStore.loading ? <Stack><Skeleton h="64px" /><Skeleton h="64px" /></Stack> : workforcePolicyStore.assignments.length === 0 ? (
-                    <Center borderWidth="1px" borderStyle="dashed" borderColor={borderColor} borderRadius="md" py={12}><Stack align="center"><Icon as={FiLink} boxSize={7} color="gray.400" /><Text color={muted}>No policy assignments yet.</Text></Stack></Center>
-                  ) : (
-                    <Stack spacing={0} borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">
-                      {workforcePolicyStore.assignments.map((assignment, index) => (
-                        <Flex key={assignment._id} direction={{ base: "column", md: "row" }} justify="space-between" gap={3} p={4} borderBottomWidth={index === workforcePolicyStore.assignments.length - 1 ? "0" : "1px"}>
-                          <Box><HStack flexWrap="wrap"><Text fontWeight="800">{getResourceName(assignment)}</Text><Badge colorScheme={getResourceTypeColor(assignment.resourceType)}>{getResourceTypeLabel(assignment.resourceType)}</Badge><Badge colorScheme={assignment.state === "active" ? "green" : assignment.state === "scheduled" ? "orange" : "gray"}>{assignment.state}</Badge></HStack><Text mt={1} fontSize="sm" color={muted}>{assignment.scopeType}: {assignment.scopeNameSnapshot}</Text><Text mt={1} fontSize="xs" color={muted}>{formatDate(assignment.effectiveFrom)} to {assignment.effectiveTo ? formatDate(assignment.effectiveTo) : "Open ended"}</Text></Box>
-                          {canManage && assignment.state !== "ended" ? <Button size="sm" variant="outline" colorScheme="orange" alignSelf={{ base: "stretch", md: "center" }} onClick={() => openAssignment(assignment)}>End assignment</Button> : null}
-                        </Flex>
-                      ))}
-                    </Stack>
-                  )}
+                  <PolicyAssignmentsPanel companyId={companyId} canManage={canManage} borderColor={borderColor} muted={muted} onEndAssignment={openAssignment} />
                 </TabPanel>
+                <TabPanel>
+                  <PolicyCoveragePanel
+                    companyId={companyId}
+                    borderColor={borderColor}
+                    muted={muted}
+                    onManageAssignments={() => setTabIndex(3)}
+                  />
+                </TabPanel>
+                <TabPanel><PolicyAuditPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel>
               </TabPanels>
             </Tabs>
           </Box>

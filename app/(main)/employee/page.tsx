@@ -180,6 +180,7 @@ const EmployeePage = observer(() => {
   const { user, sessionReady } = stores.auth;
   const role = String(stores.auth.userType || user?.role || "");
   const isEmployee = Boolean(user) && isEmployeeRole(role);
+  const accountStatus = String(user?.status || "PENDING").toUpperCase();
 
   useEffect(() => {
     if (!sessionReady) {
@@ -276,8 +277,13 @@ const EmployeePage = observer(() => {
                       Todays Punches
                     </Text>
                   </HStack>
-                  <Badge colorScheme={user?.is_active ? "green" : "yellow"} borderRadius="full" px={3} py={1}>
-                    {user?.is_active ? "Active" : "Pending"}
+                  <Badge
+                    colorScheme={accountStatus === "ACTIVE" ? "green" : accountStatus === "INACTIVE" ? "red" : "yellow"}
+                    borderRadius="full"
+                    px={3}
+                    py={1}
+                  >
+                    {accountStatus === "ACTIVE" ? "Active" : accountStatus === "INACTIVE" ? "Inactive" : "Pending"}
                   </Badge>
                 </HStack>
 

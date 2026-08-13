@@ -27,13 +27,14 @@ import {
 import stores from "@/app/store/stores";
 import { observer } from "mobx-react-lite";
 import { useEffect } from "react";
+import EmployeePolicyTab from "./EmployeePolicyTab";
 
 const getUserStatusMeta = (user: any) => {
   if (user?.status === "INACTIVE" || user?.isEnabled === false || user?.is_enabled === false) {
     return { label: "Inactive", colorScheme: "red" };
   }
 
-  if (user?.status === "ACTIVE" || user?.isActive) {
+  if (user?.status === "ACTIVE") {
     return { label: "Active", colorScheme: "green" };
   }
 
@@ -92,6 +93,9 @@ const UserDetailsModal = ({
   const muted = useColorModeValue("gray.600", "gray.400");
   const sectionBg = useColorModeValue("white", "gray.900");
   const statusMeta = getUserStatusMeta(user);
+  const isWorkforceEmployee = /^(user|manager|departmenthead|department head|department-head|l\d+[-\s]?manager)$/i.test(
+    String(user?.role || "")
+  );
 
   useEffect(() => {
     if (isOpen && user?._id) {
@@ -105,7 +109,7 @@ const UserDetailsModal = ({
   }, [isOpen, user?._id, userStore]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="4xl" isCentered>
+    <Modal isOpen={isOpen} onClose={onClose} size="5xl" isCentered>
       <ModalOverlay backdropFilter="blur(6px)" />
       <ModalContent borderRadius="2xl" overflow="hidden">
         <ModalHeader py={5}>
@@ -142,7 +146,16 @@ const UserDetailsModal = ({
           <Tabs colorScheme="blue" isLazy>
             <TabList>
               <Tab flex="1" whiteSpace="nowrap">Overview</Tab>
-              <Tab flex="1" whiteSpace="nowrap">Employment History</Tab>
+              <Tab flex="1" whiteSpace="nowrap">
+                <Text as="span" display={{ base: "none", md: "inline" }}>Employment History</Text>
+                <Text as="span" display={{ base: "inline", md: "none" }}>History</Text>
+              </Tab>
+              {isWorkforceEmployee ? (
+                <Tab flex="1" whiteSpace="nowrap">
+                  <Text as="span" display={{ base: "none", md: "inline" }}>Policy &amp; Schedule</Text>
+                  <Text as="span" display={{ base: "inline", md: "none" }}>Policies</Text>
+                </Tab>
+              ) : null}
             </TabList>
             <TabPanels>
               <TabPanel px={0} pt={5}>
@@ -318,6 +331,14 @@ const UserDetailsModal = ({
                   </VStack>
                 )}
               </TabPanel>
+              {isWorkforceEmployee ? (
+                <TabPanel px={0} pt={5}>
+                  <EmployeePolicyTab
+                    employeeId={String(user?._id || "")}
+                    assignmentHistory={userStore.assignmentHistory}
+                  />
+                </TabPanel>
+              ) : null}
             </TabPanels>
           </Tabs>
         </ModalBody>

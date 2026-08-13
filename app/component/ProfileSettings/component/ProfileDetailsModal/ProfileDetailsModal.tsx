@@ -109,10 +109,17 @@ const ProfileDetailsModal = observer(({ isOpen, onClose, user }: any) => {
     role,
     pic,
     code,
-    is_active,
+    status,
+    isEnabled,
+    is_enabled,
     companyDetails,
     createdAt,
   } = user;
+  const accountStatus = String(
+    status || (isEnabled === false || is_enabled === false ? "INACTIVE" : "PENDING")
+  ).toUpperCase();
+  const accountStatusColor =
+    accountStatus === "ACTIVE" ? "green" : accountStatus === "INACTIVE" ? "red" : "orange";
 
   const joinedDate = createdAt ? new Date(createdAt).toLocaleDateString() : "-";
 
@@ -150,12 +157,16 @@ const ProfileDetailsModal = observer(({ isOpen, onClose, user }: any) => {
                   {title} {name}
                 </Heading>
                 <Badge
-                  colorScheme={is_active ? "green" : "red"}
+                  colorScheme={accountStatusColor}
                   variant="solid"
                   borderRadius="full"
                   px={2}
                 >
-                  {is_active ? "Active" : "Inactive"}
+                  {accountStatus === "ACTIVE"
+                    ? "Active"
+                    : accountStatus === "INACTIVE"
+                      ? "Inactive"
+                      : "Pending"}
                 </Badge>
               </Flex>
               <Text fontSize="md" opacity={0.9} mt={1}>

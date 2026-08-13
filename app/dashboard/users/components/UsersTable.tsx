@@ -86,7 +86,7 @@ const getUserStatusMeta = (user: any) => {
     };
   }
 
-  if (user?.status === "ACTIVE" || user?.isActive) {
+  if (user?.status === "ACTIVE") {
     return {
       label: "Active",
       colorScheme: "green",

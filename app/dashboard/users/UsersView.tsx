@@ -1559,7 +1559,9 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
 
     <AlertDialogBody>
       {statusDialog?.nextIsEnabled
-        ? `${statusDialog?.user?.name || "This employee"} will be able to log in again immediately.`
+        ? statusDialog?.user?.passwordStatus === "SET"
+          ? `${statusDialog?.user?.name || "This employee"} will be able to log in again immediately.`
+          : `${statusDialog?.user?.name || "This employee"}'s account will be enabled, but password setup is still required before login.`
         : `${statusDialog?.user?.name || "This employee"} will no longer be able to log in. They’ll see a deactivation message and need an administrator to reactivate the account.`}
     </AlertDialogBody>
 

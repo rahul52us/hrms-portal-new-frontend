@@ -71,7 +71,50 @@ export interface WorkforcePolicyAssignment {
   effectiveTo?: string | null;
   changeReason: string;
   state: "active" | "scheduled" | "ended";
+  createdBy?: { _id: string; name?: string; email?: string } | string | null;
+  endedBy?: { _id: string; name?: string; email?: string } | string | null;
+  endReason?: string;
+  createdAt?: string;
 }
+
+export interface ResolvedPolicyResource {
+  assignment: WorkforcePolicyAssignment;
+  version: PolicyVersion;
+}
+
+export interface EmployeePolicyResolution {
+  employee: { _id: string; name?: string; email?: string; code?: string };
+  at: string;
+  organizationAssignment?: any;
+  attendancePolicy: ResolvedPolicyResource | null;
+  workSchedule: ResolvedPolicyResource | null;
+  holidayCalendar: ResolvedPolicyResource | null;
+  warnings: string[];
+}
+
+export interface PolicyCoverageItem extends EmployeePolicyResolution {
+  complete: boolean;
+  missing: PolicyResourceType[];
+}
+
+export interface PolicyAuditLog {
+  _id: string;
+  entityType: string;
+  entityId: string;
+  action: string;
+  actor?: { _id: string; name?: string; email?: string; role?: string } | null;
+  details?: Record<string, any>;
+  createdAt?: string;
+}
+
+type PaginationState = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+const EMPTY_PAGINATION: PaginationState = { page: 1, limit: 20, total: 0, totalPages: 1 };
 
 class WorkforcePolicyStore {
   private detailRequestSequence = 0;
@@ -79,6 +122,17 @@ class WorkforcePolicyStore {
   workSchedules: WorkforcePolicyItem[] = [];
   holidayCalendars: WorkforcePolicyItem[] = [];
   assignments: WorkforcePolicyAssignment[] = [];
+  assignmentsPagination: PaginationState = { ...EMPTY_PAGINATION };
+  assignmentsLoading = false;
+  auditLogs: PolicyAuditLog[] = [];
+  auditPagination: PaginationState = { ...EMPTY_PAGINATION };
+  auditLoading = false;
+  auditError: string | null = null;
+  coverageItems: PolicyCoverageItem[] = [];
+  coveragePagination: PaginationState = { ...EMPTY_PAGINATION };
+  coverageSummary = { employeesOnPage: 0, completeOnPage: 0, incompleteOnPage: 0 };
+  coverageLoading = false;
+  coverageError: string | null = null;
   selectedResource: {
     policy?: WorkforcePolicyItem;
     schedule?: WorkforcePolicyItem;
@@ -102,6 +156,14 @@ class WorkforcePolicyStore {
     this.workSchedules = [];
     this.holidayCalendars = [];
     this.assignments = [];
+    this.assignmentsPagination = { ...EMPTY_PAGINATION };
+    this.auditLogs = [];
+    this.auditPagination = { ...EMPTY_PAGINATION };
+    this.auditError = null;
+    this.coverageItems = [];
+    this.coveragePagination = { ...EMPTY_PAGINATION };
+    this.coverageSummary = { employeesOnPage: 0, completeOnPage: 0, incompleteOnPage: 0 };
+    this.coverageError = null;
     this.selectedResource = null;
     this.detailError = null;
     this.activeCompanyId = "";
@@ -124,6 +186,7 @@ class WorkforcePolicyStore {
       this.workSchedules = [];
       this.holidayCalendars = [];
       this.assignments = [];
+      this.assignmentsPagination = { ...EMPTY_PAGINATION };
     }
     this.activeCompanyId = companyId;
     try {
@@ -138,6 +201,7 @@ class WorkforcePolicyStore {
         this.workSchedules = schedules.data?.data || [];
         this.holidayCalendars = calendars.data?.data || [];
         this.assignments = assignments.data?.data || [];
+        this.assignmentsPagination = assignments.data?.pagination || { ...EMPTY_PAGINATION };
       });
     } catch (error: any) {
       runInAction(() => {
@@ -147,6 +211,109 @@ class WorkforcePolicyStore {
     } finally {
       runInAction(() => {
         this.loading = false;
+      });
+    }
+  };
+
+  fetchAssignments = async (
+    companyId: string,
+    params: {
+      page?: number;
+      limit?: number;
+      resourceType?: string;
+      scopeType?: string;
+      state?: string;
+    } = {}
+  ) => {
+    this.assignmentsLoading = true;
+    try {
+      const response = await axios.get("/workforce-policies/assignments", {
+        params: { companyId, page: 1, limit: 20, ...params },
+      });
+      runInAction(() => {
+        this.assignments = response.data?.data || [];
+        this.assignmentsPagination = response.data?.pagination || { ...EMPTY_PAGINATION };
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to load policy assignments"));
+    } finally {
+      runInAction(() => {
+        this.assignmentsLoading = false;
+      });
+    }
+  };
+
+  resolveEmployeePolicy = async (employeeId: string, at: string) => {
+    try {
+      const response = await axios.get(`/workforce-policies/resolve/${employeeId}`, {
+        params: { at },
+      });
+      return response.data?.data as EmployeePolicyResolution;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to resolve employee policies"));
+    }
+  };
+
+  fetchCoverage = async (
+    companyId: string,
+    params: { at: string; page?: number; limit?: number; search?: string }
+  ) => {
+    this.coverageLoading = true;
+    this.coverageError = null;
+    try {
+      const response = await axios.get("/workforce-policies/coverage", {
+        params: { companyId, limit: 20, ...params },
+      });
+      runInAction(() => {
+        this.coverageItems = response.data?.data || [];
+        this.coverageSummary = response.data?.summary || {
+          employeesOnPage: 0,
+          completeOnPage: 0,
+          incompleteOnPage: 0,
+        };
+        this.coveragePagination = response.data?.pagination || { ...EMPTY_PAGINATION };
+      });
+      return response.data;
+    } catch (error: any) {
+      const message = this.getError(error, "Failed to load policy coverage");
+      runInAction(() => {
+        this.coverageItems = [];
+        this.coverageError = message;
+      });
+      throw new Error(message);
+    } finally {
+      runInAction(() => {
+        this.coverageLoading = false;
+      });
+    }
+  };
+
+  fetchAudit = async (
+    companyId: string,
+    params: { page?: number; limit?: number; entityType?: string } = {}
+  ) => {
+    this.auditLoading = true;
+    this.auditError = null;
+    try {
+      const response = await axios.get("/workforce-policies/audit", {
+        params: { companyId, page: 1, limit: 20, ...params },
+      });
+      runInAction(() => {
+        this.auditLogs = response.data?.data || [];
+        this.auditPagination = response.data?.pagination || { ...EMPTY_PAGINATION };
+      });
+      return response.data;
+    } catch (error: any) {
+      const message = this.getError(error, "Failed to load policy audit history");
+      runInAction(() => {
+        this.auditLogs = [];
+        this.auditError = message;
+      });
+      throw new Error(message);
+    } finally {
+      runInAction(() => {
+        this.auditLoading = false;
       });
     }
   };

@@ -14,7 +14,7 @@ const getUserStatusMeta = (user: any) => {
     return { label: "Inactive", colorScheme: "red" };
   }
 
-  if (user?.status === "ACTIVE" || user?.is_active) {
+  if (user?.status === "ACTIVE") {
     return { label: "Active", colorScheme: "green" };
   }
 
@@ -165,7 +165,7 @@ const UserTable = observer(({
     },
     {
       headerName: "Status",
-      key: "is_active",
+      key: "status",
       type: "component",
       metaData: {
         component: (dt: any) => {
