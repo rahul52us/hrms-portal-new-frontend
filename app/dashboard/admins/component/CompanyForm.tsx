@@ -208,7 +208,16 @@ const CompanyForm = ({
       .trim()
       .min(2, "Company name should be at least 2 characters")
       .required("Company name is required"),
-    companyCode: Yup.string().trim().min(2, "Company code should be at least 2 characters").required("Company code is required"),
+    companyCode: Yup.string()
+      .trim()
+      .uppercase()
+      .min(2, "Company code should be at least 2 characters")
+      .max(20, "Company code cannot exceed 20 characters")
+      .matches(
+        /^[A-Z0-9]+(?:-[A-Z0-9]+)*$/,
+        "Use letters, numbers, and single hyphens only"
+      )
+      .required("Company code is required"),
     tenantSlug: Yup.string()
       .trim()
       .matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens only")
@@ -404,7 +413,14 @@ const CompanyForm = ({
                     placeholder="Enter company code"
                     value={values.companyCode}
                     onBlur={handleBlur}
-                    onChange={handleChange}
+                    onChange={(event: any) =>
+                      setFieldValue(
+                        "companyCode",
+                        String(event.target.value || "").toUpperCase()
+                      )
+                    }
+                    disabled={Boolean(values._id)}
+                    readOnly={Boolean(values._id)}
                     error={fieldError("companyCode")}
                     showError={showFieldError("companyCode")}
                   />

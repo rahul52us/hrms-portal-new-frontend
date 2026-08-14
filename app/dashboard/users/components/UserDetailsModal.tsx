@@ -162,6 +162,7 @@ const UserDetailsModal = ({
                 <VStack align="stretch" spacing={5}>
             <Box bg={sectionBg}>
               <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={4}>
+                <DetailCard label="Employee Number" value={user?.employeeNumber} />
                 <DetailCard label="Employee Code" value={user?.code} />
                 <DetailCard label="Mobile" value={user?.mobileNumber} />
                 <DetailCard label="Designation" value={user?.designation} />

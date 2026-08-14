@@ -108,7 +108,7 @@ const BulkUploadModal = ({
     (opt) => opt.value === bulkForm.uploadRole
   );
   const expectedColumns = [
-    "Employee Code",
+    "Employee Number",
     "Employee Name",
     "Phone Number",
     "Email ID",

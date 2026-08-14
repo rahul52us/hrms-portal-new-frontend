@@ -42,7 +42,7 @@ type UsersViewProps = {
 
 type UserFormState = {
   id?: string;
-  code: string;
+  employeeNumber: string;
   profileId: string;
   name: string;
   email: string;
@@ -181,7 +181,7 @@ const getUserOfficeLocationId = (user: any) => {
 };
 
 const initialForm = (): UserFormState => ({
-  code: "",
+  employeeNumber: "",
   profileId: "",
   name: "",
   email: "",
@@ -305,6 +305,11 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const selectedUserCompany = isSuperadmin
     ? managedCompanies.find((company: any) => company?._id === userForm.companyId)
     : auth.user?.companyDetails;
+  const selectedUserCompanyCode = String(
+    selectedUserCompany?.companyCode || scopedCompany?.companyCode || ""
+  )
+    .trim()
+    .toUpperCase();
   const selectedBulkCompany = isSuperadmin
     ? managedCompanies.find((company: any) => company?._id === bulkForm.companyId)
     : auth.user?.companyDetails;
@@ -654,7 +659,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
 
     setUserForm({
       id: user._id,
-      code: user.code || "",
+      employeeNumber: user.employeeNumber || user.code || "",
       profileId: user.profileId || "",
       name: user.name || "",
       email: user.email || user.username || "",
@@ -737,7 +742,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     }));
 
   const submitUser = async () => {
-    const code = userForm.code.trim();
+    const employeeNumber = userForm.employeeNumber.trim();
     const name = userForm.name.trim();
     const email = normalizeEmail(userForm.email);
     const roleValue = normalizeRole(userForm.role);
@@ -761,10 +766,16 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
 
     const isDepartmentRequired = roleValue === "departmenthead";
 
-    if (!code || !name || !email || !roleValue || (isDepartmentRequired && !department)) {
+    if (
+      (roleValue !== "admin" && !employeeNumber) ||
+      !name ||
+      !email ||
+      !roleValue ||
+      (isDepartmentRequired && !department)
+    ) {
       showToast({
         title: "Missing details",
-        description: `Employee code, full name, email, ${isDepartmentRequired ? "department, " : ""}and role are required.`,
+        description: `${roleValue === "admin" ? "Full name" : "Employee number, full name"}, email, ${isDepartmentRequired ? "department, " : ""}and role are required.`,
         status: "warning",
         duration: 3000,
       });
@@ -896,7 +907,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
 
     const isHrRole = roleValue === "hradmin" || roleValue === "hr";
     const payload: any = {
-      code,
+      employeeNumber,
       name,
       email: email || undefined,
       mobileNumber,
@@ -1490,6 +1501,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   onSubmit={submitUser}
   loading={userStore.submitting}
   canAssignManagers={canAssignManagers}
+  companyCode={selectedUserCompanyCode}
 />
 
 <BulkUploadModal
