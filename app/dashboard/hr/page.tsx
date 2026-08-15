@@ -87,7 +87,7 @@ const StatCard = ({ label, value, helper, icon, color }: any) => {
     >
       <Flex align="flex-start" justify="space-between" gap={3}>
         <Box minW={0}>
-          <Text fontSize="xs" fontWeight="800" color={muted} textTransform="uppercase" letterSpacing="wider">
+          <Text fontSize="xs" fontWeight="800" color={useColorModeValue(`${color}.600`, `${color}.300`)} textTransform="uppercase" letterSpacing="wider">
             {label}
           </Text>
           <Text mt={1.5} fontSize="3xl" fontWeight="900" lineHeight="1" letterSpacing="-1px">
@@ -125,8 +125,13 @@ const Section = ({ title, helper, children, action }: any) => {
         <Box minW={0}>
           <HStack spacing={3} align="center" mb={1.5}>
             <Box w="5px" h="20px" bg={brandColor} borderRadius="full" />
-            <Text fontSize="xl" fontWeight="900" letterSpacing="-0.5px" color={useColorModeValue("gray.800", "white")}>
-              {title}
+            <Text fontSize="xl" fontWeight="900" letterSpacing="-0.5px">
+              <Box as="span" color={useColorModeValue("gray.900", "white")}>
+                {title.split(" ")[0]}{" "}
+              </Box>
+              <Box as="span" bgGradient={useColorModeValue("linear(to-r, blue.600, blue.800)", "linear(to-r, blue.200, blue.400)")} bgClip="text">
+                {title.split(" ").slice(1).join(" ")}
+              </Box>
             </Text>
           </HStack>
           {helper ? (
