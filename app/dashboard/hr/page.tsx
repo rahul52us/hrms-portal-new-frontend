@@ -21,6 +21,7 @@ import {
   VStack,
   useColorModeValue,
 } from "@chakra-ui/react";
+import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
 import { observer } from "mobx-react-lite";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -68,13 +69,23 @@ const StatCard = ({ label, value, helper, icon, color }: any) => {
   const iconColor = useColorModeValue(`${color}.600`, `${color}.200`);
 
   return (
-    <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="lg" p={4} minW={0}>
+    <Box
+      bg={cardBg}
+      borderWidth="1px"
+      borderColor={borderColor}
+      borderRadius="xl"
+      p={5}
+      minW={0}
+      boxShadow="sm"
+      transition="all 0.2s"
+      _hover={{ boxShadow: "md", transform: "translateY(-2px)" }}
+    >
       <Flex align="flex-start" justify="space-between" gap={3}>
         <Box minW={0}>
-          <Text fontSize="xs" fontWeight="800" color={muted} textTransform="uppercase">
+          <Text fontSize="xs" fontWeight="800" color={muted} textTransform="uppercase" letterSpacing="wider">
             {label}
           </Text>
-          <Text mt={1} fontSize={{ base: "2xl", md: "3xl" }} fontWeight="900" lineHeight="1">
+          <Text mt={2} fontSize={{ base: "3xl", md: "4xl" }} fontWeight="900" lineHeight="1">
             {value}
           </Text>
           {helper ? (
@@ -83,8 +94,8 @@ const StatCard = ({ label, value, helper, icon, color }: any) => {
             </Text>
           ) : null}
         </Box>
-        <Center boxSize={10} borderRadius="lg" bg={iconBg} color={iconColor} flexShrink={0}>
-          <Icon as={icon} boxSize={5} />
+        <Center boxSize={12} borderRadius="xl" bg={iconBg} color={iconColor} flexShrink={0}>
+          <Icon as={icon} boxSize={6} />
         </Center>
       </Flex>
     </Box>
@@ -97,10 +108,10 @@ const Section = ({ title, helper, children, action }: any) => {
   const muted = useColorModeValue("gray.500", "gray.400");
 
   return (
-    <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="lg" p={4} minW={0}>
-      <Flex align="flex-start" justify="space-between" gap={4} mb={4}>
+    <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} minW={0} boxShadow="sm">
+      <Flex align="flex-start" justify="space-between" gap={4} mb={5}>
         <Box minW={0}>
-          <Text fontSize="lg" fontWeight="900">
+          <Text fontSize="xl" fontWeight="900">
             {title}
           </Text>
           {helper ? (
@@ -189,7 +200,6 @@ const PersonList = ({ items = [], emptyText }: any) => {
 const HrDashboardPage = observer(() => {
   const { auth, dashboardStore } = stores;
   const router = useRouter();
-  const pageBg = useColorModeValue("gray.50", "gray.900");
   const cardBg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
   const muted = useColorModeValue("gray.500", "gray.400");
@@ -256,38 +266,33 @@ const HrDashboardPage = observer(() => {
       description="This account does not currently have access to dashboard analytics."
       fallbackHref="/dashboard/profile"
     >
-      <Box minH="100dvh" bg={pageBg} px={{ base: 3, md: 6 }} py={{ base: 3, md: 6 }}>
-        <Stack spacing={5}>
-          <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="lg" p={{ base: 4, md: 5 }}>
-            <Flex direction={{ base: "column", lg: "row" }} align={{ base: "stretch", lg: "center" }} justify="space-between" gap={4}>
-              <Box minW={0}>
-                <HStack spacing={2} mb={2} wrap="wrap">
-                  <Badge colorScheme={scope.mode === "scoped" ? "orange" : "blue"} borderRadius="full" px={3} py={1}>
-                    {scope.mode === "scoped" ? "Scoped HR" : "Company-wide HR"}
-                  </Badge>
-                  <Badge colorScheme="gray" borderRadius="full" px={3} py={1}>
-                    {formatRole(role)}
-                  </Badge>
-                </HStack>
-                <Text fontSize={{ base: "2xl", md: "3xl" }} fontWeight="900" lineHeight="1.1">
-                  HR Dashboard
-                </Text>
-                <Text mt={2} color={muted} fontSize="sm">
-                  {scope.companyName || "Selected company"} employee health, setup gaps, organization coverage, and recent HR activity.
-                </Text>
-              </Box>
-              <HStack spacing={2} wrap="wrap">
-                <Button leftIcon={<FiUsers />} colorScheme="blue" onClick={() => router.push("/dashboard/users")}>
-                  Employees
+      <Box minH="100dvh">
+        <Stack spacing={6} maxW="1400px" mx="auto">
+          <PageBanner
+            titlePrefix="HR"
+            titleHighlight="DASHBOARD"
+            subtitle={`${scope.companyName || "Selected company"} employee health, setup gaps, organization coverage, and recent HR activity.`}
+            icon={FiUsers}
+            showBackButton={false}
+            colorScheme="blue"
+          >
+            <HStack spacing={3} wrap="wrap" justify="flex-end">
+              <Badge colorScheme={scope.mode === "scoped" ? "orange" : "blue"} borderRadius="full" px={3} py={1}>
+                {scope.mode === "scoped" ? "Scoped HR" : "Company-wide HR"}
+              </Badge>
+              <Badge colorScheme="gray" borderRadius="full" px={3} py={1}>
+                {formatRole(role)}
+              </Badge>
+              <Button leftIcon={<FiUsers />} colorScheme="blue" size="sm" borderRadius="md" onClick={() => router.push("/dashboard/users")}>
+                Employees
+              </Button>
+              {hasPermission(auth.user, PERMISSION_KEYS.CREATE_USERS) ? (
+                <Button variant="outline" leftIcon={<FiPlus />} size="sm" borderRadius="md" onClick={() => router.push("/dashboard/users")}>
+                  Add
                 </Button>
-                {hasPermission(auth.user, PERMISSION_KEYS.CREATE_USERS) ? (
-                  <Button variant="outline" leftIcon={<FiPlus />} onClick={() => router.push("/dashboard/users")}>
-                    Add
-                  </Button>
-                ) : null}
-              </HStack>
-            </Flex>
-          </Box>
+              ) : null}
+            </HStack>
+          </PageBanner>
 
           {loading ? (
             <Center minH="360px">

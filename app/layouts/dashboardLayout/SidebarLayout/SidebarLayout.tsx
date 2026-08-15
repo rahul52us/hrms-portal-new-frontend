@@ -54,17 +54,16 @@ interface SidebarProps {
   setOpenMobileSideDrawer: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const ACTIVE_BG = "rgba(255,255,255,0.1)";
-const HOVER_BG = "rgba(255,255,255,0.06)";
-const ACTIVE_TEXT = "rgba(255,255,255,0.95)"; // soft white (not harsh)
-const INACTIVE_TEXT = "rgba(255,255,255,0.65)"; // better readability
-const BORDER_COLOR = "rgba(255,255,255,0.07)";
-const ICON_ACTIVE = "#FFFFFF";
-const ICON_INACTIVE = "rgba(255,255,255,0.4)";
+const ACTIVE_BG = "var(--sidebar-active-bg, rgba(255,255,255,0.1))";
+const HOVER_BG = "var(--sidebar-hover-bg, rgba(255,255,255,0.06))";
+const ACTIVE_TEXT = "var(--sidebar-active-text, rgba(255,255,255,0.95))"; 
+const INACTIVE_TEXT = "var(--sidebar-inactive-text, rgba(255,255,255,0.65))"; 
+const BORDER_COLOR = "var(--sidebar-border, rgba(255,255,255,0.07))";
+const ICON_INACTIVE = "var(--sidebar-inactive-text, rgba(255,255,255,0.4))";
 
 const renderIcon = (depth: number, icon: any, isActive: boolean) => {
-  const active_color = "rgba(255,255,255,0.95)";
-  const inactive_color = "rgba(255,255,255,0.55)";
+  const active_color = "var(--sidebar-active-text, rgba(255,255,255,0.95))";
+  const inactive_color = "var(--sidebar-inactive-text, rgba(255,255,255,0.55))";
 
   // Small dot icons (sub items)
   if (depth === 1) {
@@ -233,10 +232,8 @@ const SidebarPopover = observer(
                 fontSize="sm"
                 fontWeight={itemIsActive ? "600" : "400"}
                 color={itemIsActive ? ACTIVE_TEXT : INACTIVE_TEXT}
-                bgGradient="linear(to-r, white, rgba(255,255,255,0.8))"
-                bgClip="text"
                 textShadow={
-                  itemIsActive ? "0 0 8px rgba(255,255,255,0.4)" : "none"
+                  itemIsActive ? "var(--sidebar-text-shadow, 0 0 8px rgba(255,255,255,0.4))" : "none"
                 }
               >
                 {item.name}
@@ -460,8 +457,34 @@ const SidebarLayout: React.FC<SidebarProps> = observer(
     const theme = useTheme();
     const brandScale = (theme.colors?.brand || {}) as Record<number, string>;
     const accentScale = (theme.colors?.purple || {}) as Record<number, string>;
-    const sidebarGradient = `linear-gradient(180deg, ${brandScale[900] || "#1a0533"} 0%, ${accentScale[800] || brandScale[700] || "#2d1b69"} 45%, ${brandScale[600] || "#4a1d96"} 100%)`;
-    const sidebarGradientDark = `linear-gradient(180deg, #12021f 0%, ${brandScale[900] || "#1e0a4a"} 52%, ${accentScale[800] || brandScale[800] || "#3b0764"} 100%)`;
+    const userThemeColor = user?.companyOrg?.primaryThemeColor || user?.companyDetails?.primaryThemeColor;
+    
+    const sidebarGradient = userThemeColor 
+      ? `linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.4) 100%)`
+      : `linear-gradient(180deg, ${brandScale[900] || "#1a0533"} 0%, ${accentScale[800] || brandScale[700] || "#2d1b69"} 45%, ${brandScale[600] || "#4a1d96"} 100%)`;
+      
+    const sidebarGradientDark = userThemeColor
+      ? `linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.6) 100%)`
+      : `linear-gradient(180deg, #12021f 0%, ${brandScale[900] || "#1e0a4a"} 52%, ${accentScale[800] || brandScale[800] || "#3b0764"} 100%)`;
+
+    const textMode = (() => {
+      if (!userThemeColor) return "light";
+      const hex = userThemeColor.replace("#", "");
+      if(hex.length !== 6 && hex.length !== 3) return "light";
+      const r = parseInt(hex.substring(0, 2), 16) || 0;
+      const g = parseInt(hex.substring(2, 4), 16) || 0;
+      const b = parseInt(hex.substring(4, 6), 16) || 0;
+      return ((r * 299 + g * 587 + b * 114) / 1000) >= 160 ? "dark" : "light";
+    })();
+
+    const cssVars = {
+      "--sidebar-active-text": textMode === "dark" ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.95)",
+      "--sidebar-inactive-text": textMode === "dark" ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.65)",
+      "--sidebar-hover-bg": textMode === "dark" ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)",
+      "--sidebar-active-bg": textMode === "dark" ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.1)",
+      "--sidebar-border": textMode === "dark" ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.07)",
+      "--sidebar-text-shadow": textMode === "dark" ? "none" : "0 0 8px rgba(255,255,255,0.4)",
+    } as React.CSSProperties;
 
     const [sidebarData, setSidebarData] = useState<SidebarItem[]>([]);
     const [footerItems, setFooterItems] = useState<SidebarItem[]>([]);
@@ -543,11 +566,13 @@ const SidebarLayout: React.FC<SidebarProps> = observer(
         >
           <DrawerOverlay />
           <DrawerContent
-            bgGradient={sidebarGradient}
+            bg={userThemeColor || "transparent"}
+            bgImage={sidebarGradient}
             maxW="320px"
             borderTopRightRadius="24px"
             borderBottomRightRadius="24px"
             overflow="hidden"
+            style={cssVars}
           >
             <DrawerCloseButton
               variant="ghost"
@@ -580,17 +605,19 @@ const SidebarLayout: React.FC<SidebarProps> = observer(
             minH="100vh"
             transition="width 0.3s ease"
             zIndex={1000}
-            bgGradient={sidebarGradientDark}
+            bg={userThemeColor || "transparent"}
+            bgImage={sidebarGradientDark}
             borderRight="1px solid"
             borderRightColor={BORDER_COLOR}
             boxShadow="4px 0 24px rgba(0,0,0,0.3)"
             className="customScrollBar"
+            style={cssVars}
           >
             <Box
               position="sticky"
               top={0}
               zIndex={200}
-              bgGradient={sidebarGradientDark}
+              bg="transparent"
               borderBottom="1px solid"
               borderBottomColor={BORDER_COLOR}
             >
@@ -638,7 +665,7 @@ const SidebarLayout: React.FC<SidebarProps> = observer(
               py={3}
               zIndex={11}
               overflowX="hidden"
-              bgGradient={sidebarGradientDark}
+              bg="transparent"
               borderTop="1px solid"
               borderTopColor={BORDER_COLOR}
             >

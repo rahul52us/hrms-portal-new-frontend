@@ -69,6 +69,7 @@ import UsersView from "../../users/UsersView";
 import UserDrawer from "../../users/components/UserDrawer";
 import CompanyForm from "./CompanyForm";
 import UserTable from "./users/UserTable";
+import DashboardDrawer from "../../../component/common/Drawer/DashboardDrawer";
 
 const createMemberForm = (companyId: string, role = "admin") => ({
   code: "",
@@ -959,34 +960,56 @@ const CompanyAdminWorkspace = ({
         tone="danger"
       />
 
-      <Drawer
-        size="xl"
+      <DashboardDrawer
         isOpen={isEditCompanyOpen}
-        placement="right"
         onClose={() => setIsEditCompanyOpen(false)}
-      >
-        <DrawerOverlay backdropFilter="blur(8px)" bg="blackAlpha.300" />
-        <DrawerContent borderLeftRadius={{ base: "none", md: "3xl" }} shadow="2xl">
-          <DrawerCloseButton top={4} right={4} size="lg" />
-          <DrawerHeader borderBottomWidth="1px" borderColor={borderColor} py={6} px={8}>
-            <Text fontSize="2xl" fontWeight="800">
-              Edit Company
-            </Text>
-            <Text fontSize="sm" color={mutedText} mt={1}>
-              Update the company profile, tenant, and contact details.
-            </Text>
-          </DrawerHeader>
-          <DrawerBody pb={8} pt={6} px={8}>
-            <CompanyForm
-              initialValues={company}
-              onSubmit={handleCompanyEditSubmit}
-              onClose={() => setIsEditCompanyOpen(false)}
+        titlePrefix="Edit"
+        titleSuffix="Company"
+        subtitle="Update the company profile, tenant, and contact details."
+        footerContent={
+          <Flex gap={4} w="100%" justify="flex-end">
+            <Button 
+              size="lg" 
+              onClick={() => setIsEditCompanyOpen(false)} 
+              borderRadius="xl"
+              fontWeight="bold"
+              w={{ base: "50%", sm: "220px" }}
+              bg="red.500"
+              color="white"
+              _hover={{ bg: "red.600", transform: "translateY(-1px)", boxShadow: "md" }}
+              transition="all 0.2s"
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit"
+              form="company-form"
+              size="lg" 
+              bg="#2B79C2" 
+              color="white" 
+              _hover={{ bg: "#2365a3", transform: "translateY(-1px)", boxShadow: "lg" }} 
               isLoading={loading}
-              submitLabel="Save Changes"
-            />
-          </DrawerBody>
-        </DrawerContent>
-      </Drawer>
+              borderRadius="xl"
+              textTransform="uppercase"
+              fontWeight="900"
+              letterSpacing="wider"
+              boxShadow="sm"
+              transition="all 0.2s"
+              w={{ base: "50%", sm: "220px" }}
+            >
+              Save Changes
+            </Button>
+          </Flex>
+        }
+      >
+        <CompanyForm
+          initialValues={company}
+          onSubmit={handleCompanyEditSubmit}
+          onClose={() => setIsEditCompanyOpen(false)}
+          isLoading={loading}
+          submitLabel="Save Changes"
+        />
+      </DashboardDrawer>
 
       <AlertDialog
   isOpen={isStatusDialogOpen}

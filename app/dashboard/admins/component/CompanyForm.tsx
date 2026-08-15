@@ -437,42 +437,39 @@ const CompanyForm = ({
                   <Badge colorScheme="purple">{previewUrl || "—"}</Badge>
                 </Flex>
               </SectionCard>
+              <SectionCard title="Company Branding" icon={Palette} color="blue">
+                <BrandColorField
+                  value={resolvedThemeColor}
+                  onChange={(nextColor) => setFieldValue("primaryThemeColor", nextColor)}
+                  helperText="This color will be used for employee-facing company pages and future HRMS branding."
+                  error={fieldError("primaryThemeColor")}
+                  showError={showFieldError("primaryThemeColor")}
+                />
 
-              {!simpleCreate && (
-                <SectionCard title="Company Branding" icon={Palette} color="blue">
-                  <BrandColorField
-                    value={resolvedThemeColor}
-                    onChange={(nextColor) => setFieldValue("primaryThemeColor", nextColor)}
-                    helperText="This color will be used for employee-facing company pages and future HRMS branding."
-                    error={fieldError("primaryThemeColor")}
-                    showError={showFieldError("primaryThemeColor")}
-                  />
-
-                  <HStack mt={4} spacing={3} flexWrap="wrap">
-                    <Text fontSize="sm">Preview:</Text>
-                    <Badge
-                      px={4}
-                      py={2}
-                      borderRadius="full"
-                      bg={resolvedThemeColor}
-                      color={previewTextColor}
-                      textTransform="none"
-                    >
-                      HRMS Portal
-                    </Badge>
-                    <Badge
-                      px={3}
-                      py={2}
-                      borderRadius="full"
-                      variant="outline"
-                      borderColor={resolvedThemeColor}
-                      color={resolvedThemeColor}
-                    >
-                      {resolvedThemeColor}
-                    </Badge>
-                  </HStack>
-                </SectionCard>
-              )}
+                <HStack mt={4} spacing={3} flexWrap="wrap">
+                  <Text fontSize="sm">Preview:</Text>
+                  <Badge
+                    px={4}
+                    py={2}
+                    borderRadius="full"
+                    bg={resolvedThemeColor}
+                    color={previewTextColor}
+                    textTransform="none"
+                  >
+                    HRMS Portal
+                  </Badge>
+                  <Badge
+                    px={3}
+                    py={2}
+                    borderRadius="full"
+                    variant="outline"
+                    borderColor={resolvedThemeColor}
+                    color={resolvedThemeColor}
+                  >
+                    {resolvedThemeColor}
+                  </Badge>
+                </HStack>
+              </SectionCard>
 
               {/* PROFILE */}
               <SectionCard title={simpleCreate ? "Contact & Logo" : "Company Profile"} icon={Building2} color="blue">

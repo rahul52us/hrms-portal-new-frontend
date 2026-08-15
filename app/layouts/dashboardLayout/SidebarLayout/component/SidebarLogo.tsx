@@ -28,13 +28,25 @@ const SidebarLogo: React.FC<SidebarLogoProps> = observer(({ showBrand = false })
   const theme = useTheme();
   const brandScale = (theme.colors?.brand || {}) as Record<number, string>;
   const accentScale = (theme.colors?.purple || {}) as Record<number, string>;
-  const ringBackground = `linear-gradient(135deg, ${brandScale[600] || "#7c3aed"} 0%, ${accentScale[500] || brandScale[500] || "#a855f7"} 50%, ${brandScale[400] || "#6366f1"} 100%)`;
-  const ringShadow = `0 0 0 2px ${(brandScale[500] || "#7c3aed")}40, 0 4px 12px ${(accentScale[500] || brandScale[500] || "#a855f7")}4D`;
-  const ringHoverShadow = `0 0 0 3px ${(accentScale[500] || brandScale[500] || "#a855f7")}66, 0 10px 24px ${(accentScale[500] || brandScale[500] || "#a855f7")}80`;
-  const accentLineBackground = `linear-gradient(90deg, transparent, ${(accentScale[500] || brandScale[500] || "#a855f7")}99 30%, ${(brandScale[400] || "#6366f1")}99 70%, transparent)`;
-
   const companyName = user?.companyDetails?.company_name ?? "Dashboard";
   const logoUrl = user?.companyDetails?.logo?.url;
+  const userThemeColor = user?.companyOrg?.primaryThemeColor || user?.companyDetails?.primaryThemeColor;
+
+  const ringBackground = userThemeColor
+    ? `linear-gradient(135deg, ${userThemeColor} 0%, rgba(255,255,255,0.2) 100%)`
+    : `linear-gradient(135deg, ${brandScale[600] || "#7c3aed"} 0%, ${accentScale[500] || brandScale[500] || "#a855f7"} 50%, ${brandScale[400] || "#6366f1"} 100%)`;
+    
+  const ringShadow = userThemeColor
+    ? `0 0 0 2px ${userThemeColor}40, 0 4px 12px ${userThemeColor}4D`
+    : `0 0 0 2px ${(brandScale[500] || "#7c3aed")}40, 0 4px 12px ${(accentScale[500] || brandScale[500] || "#a855f7")}4D`;
+    
+  const ringHoverShadow = userThemeColor
+    ? `0 0 0 3px ${userThemeColor}66, 0 10px 24px ${userThemeColor}80`
+    : `0 0 0 3px ${(accentScale[500] || brandScale[500] || "#a855f7")}66, 0 10px 24px ${(accentScale[500] || brandScale[500] || "#a855f7")}80`;
+    
+  const accentLineBackground = userThemeColor
+    ? `linear-gradient(90deg, transparent, ${userThemeColor}99 30%, ${userThemeColor}99 70%, transparent)`
+    : `linear-gradient(90deg, transparent, ${(accentScale[500] || brandScale[500] || "#a855f7")}99 30%, ${(brandScale[400] || "#6366f1")}99 70%, transparent)`;
 
   const initials = companyName
     .split(" ")
@@ -141,7 +153,7 @@ const Monogram = styled.span`
   font-family: "Sora", "DM Sans", sans-serif;
   font-size: 14px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--sidebar-active-text, #ffffff);
 `;
 
 const BrandText = styled.div`
@@ -150,15 +162,12 @@ const BrandText = styled.div`
   animation: ${fadeSlide} 0.25s ease both;
 `;
 
-const CompanyName = styled.span`
+const CompanyName = styled.h2`
   font-family: "Sora", "DM Sans", sans-serif;
   font-size: 14px;
   font-weight: 700;
-
-  /* ✅ Premium readable white */
-  color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
-
+  color: var(--sidebar-active-text, #ffffff);
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -166,14 +175,11 @@ const CompanyName = styled.span`
 `;
 
 const TagLine = styled.span`
-  font-family: "DM Sans", sans-serif;
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--sidebar-inactive-text, rgba(255, 255, 255, 0.7));
   text-transform: uppercase;
-
-  /* ✅ Fixed visibility */
-  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.5px;
 `;
 
 const AccentLine = styled.div<{ $background: string }>`
