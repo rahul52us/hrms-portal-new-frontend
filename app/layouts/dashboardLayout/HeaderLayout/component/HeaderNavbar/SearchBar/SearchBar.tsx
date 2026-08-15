@@ -81,21 +81,26 @@ const SearchBar = () => {
   return (
     <Box position="relative" width="100%" maxW={{ base: "full", md: "320px", xl: "360px" }} ref={dropdownRef}>
       <InputGroup>
-        <InputLeftElement h={{ base: "40px", md: "44px" }}>
-          <Icon as={FaSearch} color={useColorModeValue("brand.500", "brand.200")} boxSize={isCompact ? 3.5 : 4} />
+        <InputLeftElement h={{ base: "36px", md: "44px" }}>
+          <Icon as={FaSearch} color={useColorModeValue("gray.400", "gray.500")} boxSize={isCompact ? 3.5 : 4} />
         </InputLeftElement>
         <Input
-          placeholder={isCompact ? "Search dashboard" : "Start typing to search..."}
-          bg={useColorModeValue("white", "darkBrand.50")}
-          border="1px solid"
-          borderColor={useColorModeValue("brand.200", "darkBrand.200")}
-          _focus={{ borderColor: "brand.500", boxShadow: "0 0 4px brand.500" }}
-          _hover={{ borderColor: "brand.300" }}
-          borderRadius="full"
-          h={{ base: "40px", md: "44px" }}
-          pl={{ base: 10, md: 11 }}
+          placeholder={isCompact ? "Search..." : "Search dashboard..."}
+          bg={useColorModeValue("blackAlpha.100", "whiteAlpha.50")}
+          border="1px solid transparent"
+          _focus={{
+            bg: useColorModeValue("blackAlpha.200", "whiteAlpha.100"),
+            borderColor: "transparent",
+            boxShadow: "none"
+          }}
+          _hover={{ bg: useColorModeValue("blackAlpha.200", "whiteAlpha.100") }}
+          borderRadius="12px"
+          h={{ base: "36px", md: "44px" }}
+          pl={{ base: 10, md: 12 }}
           pr={4}
-          fontSize={{ base: "sm", md: "sm" }}
+          fontSize={{ base: "15px", md: "sm" }}
+          fontWeight="500"
+          transition="all 0.2s ease"
           value={searchQuery}
           onChange={(e) => handleSearchDebounced(e.target.value)}
         />

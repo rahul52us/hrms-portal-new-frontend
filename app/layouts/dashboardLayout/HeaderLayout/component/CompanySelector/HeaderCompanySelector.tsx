@@ -308,39 +308,26 @@ const HeaderCompanySelector = observer(() => {
     <HStack
       as="button"
       spacing={3}
-      px={2}
-      py="7px"
-      pr={3}
-      borderRadius="12px"
-      bg={triggerBg}
-      border="0.5px solid"
-      borderColor={isOpen ? triggerActiveBorder : staticBorder}
-      _hover={{ bg: triggerHoverBg }}
-      boxShadow={isOpen ? triggerActiveShadow : "none"}
-      transition="all 0.15s"
+      px={3}
+      py={1.5}
+      borderRadius="full"
+      bg={useColorModeValue('white', 'rgba(255, 255, 255, 0.05)')}
+      border="1px solid"
+      borderColor={useColorModeValue('gray.200', 'rgba(255, 255, 255, 0.1)')}
+      boxShadow={useColorModeValue('0 1px 2px rgba(0,0,0,0.05)', '0 1px 2px rgba(0,0,0,0.2)')}
+      _hover={{ bg: useColorModeValue('gray.50', 'rgba(255, 255, 255, 0.1)'), borderColor: useColorModeValue('gray.300', 'rgba(255, 255, 255, 0.2)') }}
+      transition="all 0.2s"
       cursor="pointer"
-      minW="220px"
       w="220px"
       aria-label="Select company"
     >
-      <CompanyAvatar company={selectedCompany} size={34} showOnlineDot />
-      <VStack spacing={0} align="start" flex={1} minW={0}>
-        <Text
-          fontSize="10px"
-          fontWeight="600"
-          color={labelColor}
-          textTransform="uppercase"
-          letterSpacing="0.7px"
-        >
-          Active Company
-        </Text>
-        <Text fontSize="13px" fontWeight="600" color={nameColor} noOfLines={1}>
-          {selectedCompany?.company_name || "Select Company"}
-        </Text>
-      </VStack>
+      <CompanyAvatar company={selectedCompany} size={28} />
+      <Text fontSize="14px" fontWeight="600" color={nameColor} noOfLines={1} flex={1} textAlign="left" letterSpacing="-0.2px">
+        {selectedCompany?.company_name || "Select Company"}
+      </Text>
       <Icon
         as={FiChevronDown}
-        boxSize="15px"
+        boxSize="16px"
         color={labelColor}
         transform={isOpen ? "rotate(180deg)" : "none"}
         transition="transform 0.2s"
@@ -363,12 +350,12 @@ const HeaderCompanySelector = observer(() => {
           <PopoverTrigger>{TriggerButton}</PopoverTrigger>
 
           <PopoverContent
-            w="320px"
-            bg={popoverBg}
-            borderColor={popoverBorder}
-            borderWidth="0.5px"
-            borderRadius="16px"
-            boxShadow="0 24px 60px rgba(0,0,0,0.25), 0 0 0 0.5px rgba(0,0,0,0.06)"
+            w="340px"
+            bg={useColorModeValue('white', 'gray.900')}
+            border="1px solid"
+            borderColor={useColorModeValue('gray.100', 'whiteAlpha.100')}
+            borderRadius="2xl"
+            boxShadow={useColorModeValue('0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01)', '0 10px 25px -5px rgba(0,0,0,0.5)')}
             overflow="hidden"
             _focusVisible={{ outline: "none" }}
           >
@@ -378,10 +365,11 @@ const HeaderCompanySelector = observer(() => {
                 {/* ── Popover header: title + search ── */}
                 <Box
                   px={4}
-                  pt="14px"
-                  pb="12px"
-                  borderBottomWidth="0.5px"
-                  borderColor={popoverBorder}
+                  pt={4}
+                  pb={3}
+                  borderBottom="1px solid"
+                  borderColor={useColorModeValue('gray.100', 'whiteAlpha.100')}
+                  bg={useColorModeValue('gray.50', 'whiteAlpha.50')}
                 >
                   <HStack justify="space-between" mb={3}>
                     <Text
@@ -419,22 +407,27 @@ const HeaderCompanySelector = observer(() => {
                     </InputLeftElement>
                     <Input
                       ref={searchRef}
+                      name="company-search-query"
+                      autoComplete="off"
+                      spellCheck="false"
                       pl="36px"
                       pr="50px"
                       placeholder="Search by name or email…"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      borderRadius="10px"
-                      bg={searchBg}
-                      borderColor={popoverBorder}
+                      borderRadius="12px"
+                      bg={useColorModeValue('white', 'gray.800')}
+                      border="1px solid"
+                      borderColor={useColorModeValue('gray.200', 'whiteAlpha.200')}
                       fontSize="13px"
                       color={nameColor}
                       _placeholder={{ color: mutedColor }}
                       _focus={{
                         borderColor: triggerActiveBorder,
-                        boxShadow: triggerActiveShadow,
-                        bg: popoverBg,
+                        boxShadow: `0 0 0 1px ${triggerActiveBorder}`,
+                        bg: useColorModeValue('white', 'gray.900'),
                       }}
+                      transition="all 0.2s"
                     />
                     {/* result count pill */}
                     <Box

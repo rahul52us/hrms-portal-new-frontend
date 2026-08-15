@@ -1,6 +1,6 @@
 "use client";
 
-import { Flex, useBreakpointValue, useColorMode, useTheme } from "@chakra-ui/react";
+import { Flex, useBreakpointValue, useColorMode, useTheme, Box } from "@chakra-ui/react";
 import HeaderNavbar from "./component/HeaderNavbar/HeaderNavbar";
 import HeaderLogo from "./component/Logo/HeaderLogo";
 import HeaderCompanySelector from "./component/CompanySelector/HeaderCompanySelector";
@@ -24,22 +24,27 @@ const HeaderLayout = observer(() => {
       direction="row"
       alignItems="center"
       justifyContent="space-between"
-      minH={{ base: "64px", md: "68px", xl: headerHeight }}
-      px={{ base: 3, md: 4, xl: 6 }}
-      py={{ base: 2, md: 2.5 }}
+      minH={{ base: "64px", md: headerHeight }}
+      h={{ base: "64px", md: headerHeight }}
+      px={{ base: 4, md: 5, xl: 8 }}
+      py={{ base: 2, md: 3 }}
       gap={{ base: 3, md: 4 }}
-      bg={isDark 
-        ? "linear-gradient(135deg, #1a202c 0%, #2d3748 50%, #1e1e2e 100%)" 
-        : `linear-gradient(135deg, #ffffff 0%, ${accentColor}12 30%, ${brandColor}1F 80%)`
+      bg={isDark
+        ? "#111827"
+        : "#ffffff"
       }
-      borderBottom={isDark ? "1px solid rgba(255, 255, 255, 0.08)" : `1px solid ${brandColor}26`}
-      boxShadow={isDark 
-        ? "0 4px 12px rgba(0, 0, 0, 0.3)" 
-        : `0 1px 3px rgba(30, 40, 100, 0.06), 0 4px 16px ${brandColor}1F`
+      borderBottom={isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(226, 232, 240, 0.8)"}
+      boxShadow={isDark
+        ? "0 10px 40px -10px rgba(0,0,0,0.5)"
+        : "0 10px 40px -10px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.02)"
       }
       color={isDark ? "#e2e8f0" : "#1e2850"}
-      transition="all 0.3s ease"
+      transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+      position="sticky"
+      top="0"
+      zIndex="1000"
     >
+
       <Flex flex="1" minW={0} align="center" gap={{ base: 2, md: 3 }}>
         <HeaderLogo />
         {!isCompactLayout ? <HeaderCompanySelector /> : null}

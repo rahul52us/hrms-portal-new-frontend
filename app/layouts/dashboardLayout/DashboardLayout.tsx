@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { observer } from 'mobx-react-lite';
-import { Box, Spinner, useBreakpointValue, useTheme } from '@chakra-ui/react';
+import { Box, Spinner, useBreakpointValue, useTheme, useColorModeValue } from '@chakra-ui/react';
 import styled from 'styled-components';
 import stores from '../../store/stores';
 // import { authenticastion } from '../../config/utils/routes';
@@ -33,6 +33,11 @@ const DashboardLayout = observer(({ children }: { children: React.ReactNode }) =
   const closeDrawerModel = () => {
     setOpenMobileSideDrawer(false);
   };
+
+  const pageBgColor = useColorModeValue(
+    "#FFFFFF",
+    themeConfig.colors.custom.dark.primary || "gray.900"
+  );
 
   const handleSidebarItemClick = (item: any) => {
     if (!item.children || item.url) {
@@ -78,7 +83,7 @@ const DashboardLayout = observer(({ children }: { children: React.ReactNode }) =
   }
 
   return user ? (
-    <Box>
+    <Box bg={pageBgColor} minH="100dvh">
       <MainContainer $isMobile={isMobile}>
         <Box ref={sidebarRef}>
           <SidebarLayout
@@ -103,6 +108,7 @@ const DashboardLayout = observer(({ children }: { children: React.ReactNode }) =
             }
           >
             {children}
+            <div className="block xl:hidden" style={{ height: '100px', width: '100%', flexShrink: 0 }} />
           </ContentContainer>
         </Container>
       </MainContainer>
@@ -147,21 +153,18 @@ const HeaderContainer = styled.div<{
 }>`
   z-index: 99;
   height: ${headerHeight};
+  padding-top: 0;
   position: fixed;
+
+  @media (max-width: 768px) {
+    height: calc(${headerHeight} + max(env(safe-area-inset-top, 0px), 36px));
+    padding-top: max(env(safe-area-inset-top, 0px), 36px);
+  }
   top: 0;
   right: 0;
   left: ${({ $sidebarOffset }) => $sidebarOffset};
   transition: all 0.3s ease-in-out;
-
-  /* White gradient with subtle slide-down animation on mount */
-  background: linear-gradient(
-    135deg,
-    #ffffff 0%,
-    ${({ $backgroundColor }) => `${$backgroundColor}12`} 32%,
-    ${({ $backgroundColor }) => `${$backgroundColor}1F`} 80%
-  );
-  border-bottom: 1px solid ${({ $backgroundColor }) => `${$backgroundColor}26`};
-  box-shadow: 0 1px 3px rgba(30, 40, 100, 0.06), 0 4px 16px ${({ $backgroundColor }) => `${$backgroundColor}1F`};
+  background: transparent;
 
   animation: navbarSlideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 
@@ -178,14 +181,15 @@ const HeaderContainer = styled.div<{
 `;
 
 const ContentContainer = styled.div<{ $isMobile: boolean }>`
-  padding: ${({ $isMobile }) =>
-    $isMobile ? '0 0 24px' : `${contentLargeBodyPadding}`};
+  padding: ${({ $isMobile }) => ($isMobile ? '0' : `${contentLargeBodyPadding}`)};
+  padding-bottom: ${({ $isMobile }) =>
+    $isMobile ? 'max(env(safe-area-inset-bottom, 0px), 48px)' : `${contentLargeBodyPadding}`};
   width: 100%;
   max-width: 100%;
   min-width: 0;
   overflow-x: hidden;
-  min-height: calc(100dvh - ${headerHeight});
+  min-height: calc(100dvh - calc(${headerHeight} + var(--safe-area-top, env(safe-area-inset-top, 0px))));
   transition: all 0.3s ease-in-out;
-  margin-top: ${headerHeight};
+  margin-top: calc(${headerHeight} + var(--safe-area-top, env(safe-area-inset-top, 0px)));
   box-sizing: border-box;
 `;
