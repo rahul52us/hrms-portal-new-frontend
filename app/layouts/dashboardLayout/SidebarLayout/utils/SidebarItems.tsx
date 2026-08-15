@@ -3,7 +3,7 @@ import { expandRoleAliases } from "@/app/config/utils/roleAccess";
 import { PERMISSION_KEYS, hasPermission } from "@/app/config/utils/permissions";
 import { LucideBriefcaseBusiness, Network } from "lucide-react";
 import { BiCategory } from "react-icons/bi";
-import { FiBell, FiCalendar, FiCamera, FiClock, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers } from "react-icons/fi";
+import { FiBell, FiCalendar, FiCamera, FiClock, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers, FiPieChart } from "react-icons/fi";
 
 interface SidebarItem {
   id: number;
@@ -19,7 +19,7 @@ const sidebarDatas: SidebarItem[] = [
   {
     id: 1,
     name: "Dashboard",
-    icon: <FaChartPie />,
+    icon: <FiPieChart />,
     url: "/dashboard",
     role: ["superadmin"],
     permissionKey: PERMISSION_KEYS.VIEW_DASHBOARD,
@@ -27,7 +27,7 @@ const sidebarDatas: SidebarItem[] = [
   {
     id: 2,
     name: "HR Dashboard",
-    icon: <FaChartPie />,
+    icon: <FiPieChart />,
     url: "/dashboard/hr",
     role: ["admin", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_DASHBOARD,
@@ -42,7 +42,7 @@ const sidebarDatas: SidebarItem[] = [
   {
     id: 100,
     name: "Employees",
-    icon: <FaUsers />,
+    icon: <FiUsers />,
     url: "/dashboard/users",
     role: ["admin", "superadmin", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_USERS,

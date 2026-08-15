@@ -15,7 +15,8 @@ import {
   Button,
   VStack,
   useColorModeValue,
-  useToast
+  useToast,
+  SimpleGrid
 } from "@chakra-ui/react";
 import { observer } from "mobx-react-lite";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -34,6 +35,8 @@ import UserDetailsModal from "./components/UserDetailsModal";
 import UserDrawer from "./components/UserDrawer";
 import UsersHeader from "./components/UsersHeader";
 import UsersTable from "./components/UsersTable";
+import { StatCard } from "../../component/common/StatCard/StatCard";
+import { FiUsers, FiFilter } from "react-icons/fi";
 
 type UsersViewProps = {
   scopedCompanyId?: string;
@@ -1446,6 +1449,25 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   canOpenBulk={canOpenBulk}
   canOpenCreate={canOpenCreate}
 />
+
+<Box mb={6}>
+  <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={4}>
+    <StatCard
+      label="Total Count"
+      value={userStore.pagination?.total || 0}
+      helper="In current view"
+      icon={FiUsers}
+      color="blue"
+    />
+    <StatCard
+      label="Current Role"
+      value={listTabs.find((t) => t.value === listTab)?.label || "Employees"}
+      helper="Active filter"
+      icon={FiFilter}
+      color="purple"
+    />
+  </SimpleGrid>
+</Box>
 
 <UsersTable
   users={userStore.users}

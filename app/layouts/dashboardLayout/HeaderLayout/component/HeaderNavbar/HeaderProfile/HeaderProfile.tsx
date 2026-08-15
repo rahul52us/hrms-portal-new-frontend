@@ -87,7 +87,7 @@ const HeaderProfile = observer(() => {
             </Box>
             <Box p={2}>
               {user && pathname !== main.home && (
-                <MenuItem bg="transparent" _focus={{ bg: colorMode === 'light' ? 'gray.100' : 'whiteAlpha.100' }} borderRadius="xl" px={3} py={2} mb={1} onClick={() => router.push(main.home)} _hover={{ bg: colorMode === 'light' ? 'gray.100' : 'whiteAlpha.100' }} transition="all 0.2s">
+                <MenuItem bg="transparent" _focus={{ bg: colorMode === 'light' ? 'gray.100' : 'whiteAlpha.100' }} borderRadius="xl" px={3} py={2} mb={1} onClick={() => router.push('/dashboard')} _hover={{ bg: colorMode === 'light' ? 'gray.100' : 'whiteAlpha.100' }} transition="all 0.2s">
                   <Flex align="center" gap={3}>
                     <Flex align="center" justify="center" w={8} h={8} borderRadius="md" bg={colorMode === 'light' ? 'blue.50' : 'rgba(59, 130, 246, 0.15)'} color={colorMode === 'light' ? 'blue.500' : 'blue.300'}>
                       <Icon as={FaHome} boxSize={4} />

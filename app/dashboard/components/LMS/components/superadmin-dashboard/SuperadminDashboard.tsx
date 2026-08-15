@@ -71,7 +71,7 @@ function asNumber(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-import StatCard from "../../../../../component/common/StatCard/StatCard";
+import { StatCard } from "../../../../../component/common/StatCard/StatCard";
 
 export function SuperadminDashboard({
   summary,

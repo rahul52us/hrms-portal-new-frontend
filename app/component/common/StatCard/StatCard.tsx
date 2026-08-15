@@ -1,104 +1,45 @@
-import { Box, HStack, Icon, Text } from "@chakra-ui/react";
+import { Box, Flex, Text, Center, Icon, useColorModeValue } from "@chakra-ui/react";
 
-import { IconType } from "react-icons";
-
-type StatCardProps = {
-  label: string;
-  value: string | number;
-  icon: IconType;
-  helper?: string;
-  colorScheme: "blue" | "green" | "orange" | "purple" | "teal" | "pink";
-};
-
-export default function StatCard({
-  label,
-  value,
-  helper,
-  icon,
-  colorScheme,
-}: StatCardProps) {
-  const colorMap = {
-    blue: {
-      lightBg: "blue.50",
-      hoverBg: "blue.100",
-      iconBg: "blue.100",
-      iconHoverBg: "blue.200",
-      iconColor: "blue.600",
-    },
-    green: {
-      lightBg: "green.50",
-      hoverBg: "green.100",
-      iconBg: "green.100",
-      iconHoverBg: "green.200",
-      iconColor: "green.600",
-    },
-    orange: {
-      lightBg: "orange.50",
-      hoverBg: "orange.100",
-      iconBg: "orange.100",
-      iconHoverBg: "orange.200",
-      iconColor: "orange.600",
-    },
-    purple: {
-      lightBg: "purple.50",
-      hoverBg: "purple.100",
-      iconBg: "purple.100",
-      iconHoverBg: "purple.200",
-      iconColor: "purple.600",
-    },
-    teal: {
-      lightBg: "teal.50",
-      hoverBg: "teal.100",
-      iconBg: "teal.100",
-      iconHoverBg: "teal.200",
-      iconColor: "teal.600",
-    },
-    pink: {
-      lightBg: "pink.50",
-      hoverBg: "pink.100",
-      iconBg: "pink.100",
-      iconHoverBg: "pink.200",
-      iconColor: "pink.600",
-    },
-  };
-
-  const styles = colorMap[colorScheme];
+export const StatCard = ({ label, value, helper, icon, color }: any) => {
+  const cardBg = useColorModeValue("white", "gray.800");
+  const shadow = useColorModeValue("0 4px 20px -5px rgba(0,0,0,0.05)", "0 4px 20px -5px rgba(0,0,0,0.5)");
+  const hoverShadow = useColorModeValue("0 10px 25px -5px rgba(0,0,0,0.1)", "0 10px 25px -5px rgba(0,0,0,0.7)");
+  const muted = useColorModeValue("gray.500", "gray.400");
+  const iconBg = useColorModeValue(`${color}.50`, `color-mix(in srgb, var(--chakra-colors-${color}-400) 15%, transparent)`);
+  const iconColor = useColorModeValue(`${color}.600`, `${color}.300`);
 
   return (
-    <Box p={4} borderRadius="xl" bg={styles.lightBg}>
-      <HStack spacing={3}>
-        <Box
-          w={{ base: "20px", md: "28px" }}
-          h={{ base: "20px", md: "28px" }}
-          bg={styles.iconBg}
-          borderRadius="full"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
-          <Icon
-            as={icon}
-            color={styles.iconColor}
-            boxSize={{ base: 3, md: 4 }}
-          />
-        </Box>
-
-        <Box>
-          <Text fontSize="xs" color="gray.500">
+    <Box
+      bg={cardBg}
+      borderRadius="xl"
+      p={5}
+      boxShadow={shadow}
+      transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+      _hover={{ transform: "translateY(-3px)", boxShadow: hoverShadow }}
+      position="relative"
+      borderWidth="1px"
+      borderColor={useColorModeValue("gray.100", "gray.700")}
+      borderLeftWidth="4px"
+      borderLeftColor={useColorModeValue(`${color}.400`, `${color}.500`)}
+    >
+      <Flex align="flex-start" justify="space-between" gap={3}>
+        <Box minW={0}>
+          <Text fontSize="xs" fontWeight="800" color={useColorModeValue(`${color}.600`, `${color}.300`)} textTransform="uppercase" letterSpacing="wider">
             {label}
           </Text>
-
-          <Text fontSize="sm" fontWeight="semibold" noOfLines={1}>
+          <Text mt={1.5} fontSize="3xl" fontWeight="900" lineHeight="1" letterSpacing="-1px">
             {value}
           </Text>
-
-          {helper && (
-            <Text fontSize="xs" color="gray.500" mt={1}>
+          {helper ? (
+            <Text mt={1.5} fontSize="xs" color={muted} noOfLines={1} fontWeight="500">
               {helper}
             </Text>
-          )}
+          ) : null}
         </Box>
-      </HStack>
+        <Center boxSize={10} borderRadius="lg" bg={iconBg} color={iconColor} flexShrink={0} borderWidth="1px" borderColor={useColorModeValue(`${color}.100`, "transparent")}>
+          <Icon as={icon} boxSize={4} strokeWidth={2.5} />
+        </Center>
+      </Flex>
     </Box>
   );
-}
+};
