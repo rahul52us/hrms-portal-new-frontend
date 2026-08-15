@@ -182,6 +182,7 @@ const UsersTable = ({
             <Avatar
               size="sm"
               name={user.name || "Employee"}
+              src={user?.pic?.url || (typeof user?.pic === 'string' ? user.pic : undefined)}
               bgGradient="linear(to-br, blue.400, purple.500)"
               color="white"
               fontWeight="bold"

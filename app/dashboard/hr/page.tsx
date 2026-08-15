@@ -6,6 +6,7 @@ import { PERMISSION_KEYS, hasPermission } from "@/app/config/utils/permissions";
 import { StatCard } from "@/app/component/common/StatCard/StatCard";
 import stores from "@/app/store/stores";
 import {
+  Avatar,
   Badge,
   Box,
   Button,
@@ -197,15 +198,23 @@ const PersonList = ({ items = [], emptyText }: any) => {
     <Stack spacing={0} borderTopWidth="1px" borderColor={borderColor}>
       {items.slice(0, 8).map((user: any) => (
         <Flex key={user._id || `${user.email}-${user.name}`} py={3} borderBottomWidth="1px" borderColor={borderColor} gap={3} align="center">
-          <Center boxSize={9} borderRadius="lg" bg="blue.50" color="blue.600" fontWeight="900" flexShrink={0}>
-            {String(user.name || user.email || "U").charAt(0).toUpperCase()}
-          </Center>
+          <Avatar
+            size="sm"
+            borderRadius="lg"
+            name={user.name || user.email || "Employee"}
+            src={user?.pic?.url || (typeof user?.pic === 'string' ? user.pic : undefined)}
+            bgGradient="linear(to-br, blue.400, purple.500)"
+            color="white"
+            fontWeight="bold"
+            fontSize="sm"
+            flexShrink={0}
+          />
           <Box minW={0} flex="1">
             <Text fontSize="sm" fontWeight="800" noOfLines={1}>
               {user.name || "Unnamed user"}
             </Text>
             <Text fontSize="xs" color={muted} noOfLines={1}>
-              {[formatRole(user.role), user.department, user.officeLocationName].filter(Boolean).join(" | ")}
+              {[user.designation, user.department, user.officeLocationName].filter(Boolean).join(" | ")}
             </Text>
           </Box>
           <Badge colorScheme={user.status === "active" ? "green" : user.status === "inactive" ? "red" : "orange"} borderRadius="full">
