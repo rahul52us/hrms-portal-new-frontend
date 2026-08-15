@@ -214,32 +214,30 @@ const OrganizationWorkspace = observer(() => {
     icon: any;
     label: string;
     value: number;
-    tone: "blue" | "green" | "orange" | "gray";
+    tone: "blue" | "green" | "orange" | "gray" | "teal" | "pink";
   }) => (
     <Flex
       align="center"
-      gap={3}
+      gap={4}
       bg={panelBg}
-      borderWidth="1px"
-      borderColor={borderColor}
-      borderRadius="md"
-      p={4}
+      p={5}
+      h="100%"
     >
       <Center
-        w={10}
-        h={10}
-        borderRadius="md"
-        bg={`${tone}.50`}
-        color={`${tone}.600`}
+        w={12}
+        h={12}
+        borderRadius="xl"
+        bg={useColorModeValue(`${tone}.50`, `${tone}.900`)}
+        color={useColorModeValue(`${tone}.600`, `${tone}.200`)}
         flexShrink={0}
       >
-        <Icon as={icon} boxSize={5} />
+        <Icon as={icon} boxSize={6} />
       </Center>
       <Box minW={0}>
-        <Text fontSize="xs" fontWeight="700" color={muted} textTransform="uppercase">
+        <Text fontSize="xs" fontWeight="700" color={muted} textTransform="uppercase" letterSpacing="wider" mb={1}>
           {label}
         </Text>
-        <Text fontSize="xl" fontWeight="800" color={headingColor}>
+        <Text fontSize="2xl" fontWeight="800" color={headingColor} lineHeight="1">
           {value}
         </Text>
       </Box>
@@ -253,84 +251,53 @@ const OrganizationWorkspace = observer(() => {
       description="This account does not currently have access to employee organization data."
       fallbackHref="/dashboard/profile"
     >
-      <Box minH="100dvh" bg={pageBg} px={{ base: 3, md: 6 }} py={{ base: 4, md: 6 }}>
-        <Stack spacing={5}>
-          <Flex
-            direction={{ base: "column", lg: "row" }}
-            justify="space-between"
-            align={{ base: "stretch", lg: "center" }}
-            gap={4}
+      <Box minH="100dvh" bg={pageBg}>
+        {/* MAIN LAYOUT */}
+        <Flex direction={{ base: "column", lg: "row" }} minH="100vh">
+          
+          {/* LEFT FILTER SIDEBAR */}
+          <Box 
+            w={{ base: "full", lg: "280px" }} 
+            bg={useColorModeValue("gray.50", "gray.900")}
+            p={5} 
+            borderRightWidth="1px"
+            borderColor={useColorModeValue("gray.200", "gray.700")}
+            flexShrink={0}
           >
-            <Box>
-              <HStack spacing={2} mb={1}>
-                <Heading size="lg" color={headingColor}>
-                  Organization
-                </Heading>
-                {data.scope?.mode && data.scope.mode !== "company" ? (
-                  <Badge colorScheme="blue" variant="subtle">
-                    Scoped view
-                  </Badge>
-                ) : null}
-              </HStack>
-              <Text color={muted}>
-                Reporting structure for {data.company?.name || "the selected company"}
-              </Text>
-            </Box>
+            <Stack spacing={4}>
+              <Box>
+                <Text fontSize="xs" fontWeight="700" color="gray.700" mb={1}>Search by Name</Text>
+                <InputGroup size="sm">
+                  <InputLeftElement pointerEvents="none">
+                    <Search size={14} color="gray.400" />
+                  </InputLeftElement>
+                  <Input
+                    bg="white"
+                    borderColor="gray.200"
+                    _hover={{ borderColor: "gray.300" }}
+                    _focus={{ borderColor: "blue.500", boxShadow: "none" }}
+                    value={filters.search}
+                    placeholder="Type a name..."
+                    onChange={(event) =>
+                      setFilters((current) => ({
+                        ...current,
+                        search: event.target.value,
+                      }))
+                    }
+                    borderRadius="sm"
+                  />
+                </InputGroup>
+              </Box>
 
-            <Button
-              leftIcon={<RefreshCw size={17} />}
-              variant="outline"
-              isLoading={organizationStore.isLoading}
-              isDisabled={!companyId}
-              onClick={() => refreshOrganization().catch(() => undefined)}
-            >
-              Refresh
-            </Button>
-          </Flex>
-
-          <SimpleGrid columns={{ base: 1, sm: 2, xl: 4 }} spacing={3}>
-            <StatCard icon={Users} label="People" value={data.summary.totalPeople} tone="blue" />
-            <StatCard icon={Network} label="Managers" value={data.summary.managerCount} tone="green" />
-            <StatCard
-              icon={UserRoundSearch}
-              label="Top-level / unassigned"
-              value={data.summary.unassignedCount}
-              tone="orange"
-            />
-            <StatCard
-              icon={AlertTriangle}
-              label="Hierarchy issues"
-              value={data.summary.hierarchyIssueCount}
-              tone="gray"
-            />
-          </SimpleGrid>
-
-          <Box
-            bg={panelBg}
-            borderWidth="1px"
-            borderColor={borderColor}
-            borderRadius="md"
-            p={{ base: 3, md: 4 }}
-          >
-            <Stack spacing={3}>
-              <InputGroup>
-                <InputLeftElement pointerEvents="none">
-                  <Search size={17} color="currentColor" />
-                </InputLeftElement>
-                <Input
-                  value={filters.search}
-                  placeholder="Search name, designation, department, team, or location"
-                  onChange={(event) =>
-                    setFilters((current) => ({
-                      ...current,
-                      search: event.target.value,
-                    }))
-                  }
-                />
-              </InputGroup>
-
-              <SimpleGrid columns={{ base: 1, md: 4 }} spacing={3}>
+              <Box>
+                <Text fontSize="xs" fontWeight="700" color="gray.700" mb={1}>Department</Text>
                 <Select
+                  size="sm"
+                  bg="white"
+                  borderColor="gray.200"
+                  borderRadius="sm"
+                  _hover={{ borderColor: "gray.300" }}
+                  _focus={{ borderColor: "blue.500", boxShadow: "none" }}
                   value={filters.department}
                   onChange={(event) =>
                     setFilters((current) => ({
@@ -339,14 +306,24 @@ const OrganizationWorkspace = observer(() => {
                     }))
                   }
                 >
-                  <option value="">All departments</option>
+                  <option value="">All</option>
                   {data.filters.departments.map((department) => (
                     <option key={department} value={department}>
                       {department}
                     </option>
                   ))}
                 </Select>
+              </Box>
+
+              <Box>
+                <Text fontSize="xs" fontWeight="700" color="gray.700" mb={1}>Team</Text>
                 <Select
+                  size="sm"
+                  bg="white"
+                  borderColor="gray.200"
+                  borderRadius="sm"
+                  _hover={{ borderColor: "gray.300" }}
+                  _focus={{ borderColor: "blue.500", boxShadow: "none" }}
                   value={filters.team}
                   onChange={(event) =>
                     setFilters((current) => ({
@@ -355,14 +332,24 @@ const OrganizationWorkspace = observer(() => {
                     }))
                   }
                 >
-                  <option value="">All teams</option>
+                  <option value="">All</option>
                   {data.filters.teams.map((team) => (
                     <option key={team} value={team}>
                       {team}
                     </option>
                   ))}
                 </Select>
+              </Box>
+
+              <Box>
+                <Text fontSize="xs" fontWeight="700" color="gray.700" mb={1}>Location</Text>
                 <Select
+                  size="sm"
+                  bg="white"
+                  borderColor="gray.200"
+                  borderRadius="sm"
+                  _hover={{ borderColor: "gray.300" }}
+                  _focus={{ borderColor: "blue.500", boxShadow: "none" }}
                   value={filters.locationId}
                   onChange={(event) =>
                     setFilters((current) => ({
@@ -371,90 +358,107 @@ const OrganizationWorkspace = observer(() => {
                     }))
                   }
                 >
-                  <option value="">All locations</option>
+                  <option value="">All</option>
                   {data.filters.locations.map((location) => (
                     <option key={location._id} value={location._id}>
                       {location.name}
                     </option>
                   ))}
                 </Select>
-                <Button
-                  variant="outline"
-                  isDisabled={!hasActiveFilters}
-                  onClick={() => setFilters(emptyFilters)}
-                >
-                  Reset filters
-                </Button>
-              </SimpleGrid>
+              </Box>
+
+              <Button
+                w="full"
+                colorScheme="blue"
+                size="sm"
+                isDisabled={!hasActiveFilters}
+                onClick={() => setFilters(emptyFilters)}
+                mt={4}
+                borderRadius="sm"
+              >
+                Clear Filters
+              </Button>
             </Stack>
           </Box>
 
-          {organizationStore.error ? (
-            <Alert status="error" borderRadius="md">
-              <AlertIcon />
-              <Box flex="1">
-                <AlertTitle>Organization data could not be loaded</AlertTitle>
-                <AlertDescription>{organizationStore.error}</AlertDescription>
+          {/* RIGHT MAIN AREA */}
+          <Box flex="1" minW={0} w="full" bg={useColorModeValue("white", "gray.900")}>
+            <Flex justify="space-between" align="center" wrap="wrap" gap={4} 
+              bg={useColorModeValue("white", "gray.800")}
+              p={5} 
+              borderBottomWidth="1px"
+              borderColor={useColorModeValue("gray.100", "gray.700")}
+            >
+              <Box>
+                <Heading size="md" color="gray.700" fontWeight="700">
+                  Organisation Chart
+                </Heading>
+                <Text color="gray.500" mt={1} fontSize="xs">
+                  Check your company's organisation chart
+                </Text>
               </Box>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => refreshOrganization().catch(() => undefined)}
-              >
-                Retry
-              </Button>
-            </Alert>
-          ) : null}
+              <Flex align="center" gap={3} borderWidth="1px" borderColor="gray.200" p={2} px={4} borderRadius="md" bg="white" boxShadow="sm">
+                 <Icon as={Users} boxSize={5} color="blue.500" />
+                 <Box>
+                    <Text fontSize="2xs" color="gray.500" fontWeight="600" textTransform="uppercase">Total Employee</Text>
+                    <Text fontSize="xl" fontWeight="700" color="gray.800" lineHeight={1}>{data.summary.totalPeople}</Text>
+                 </Box>
+              </Flex>
+            </Flex>
 
-          {!companyId ? (
-            <Box
-              bg={panelBg}
-              borderWidth="1px"
-              borderColor={borderColor}
-              borderRadius="md"
-              py={16}
-              textAlign="center"
-            >
-              <Icon as={Building2} boxSize={8} color={muted} />
-              <Text mt={3} fontWeight="800">
-                Select a company
-              </Text>
-              <Text mt={1} fontSize="sm" color={muted}>
-                Choose a company from the header to view its organization.
-              </Text>
-            </Box>
-          ) : organizationStore.isLoading && data.nodes.length === 0 ? (
-            <Center
-              minH="320px"
-              bg={panelBg}
-              borderWidth="1px"
-              borderColor={borderColor}
-              borderRadius="md"
-            >
-              <Stack align="center" spacing={3}>
-                <Spinner color="blue.500" />
-                <Text color={muted}>Loading organization structure...</Text>
-              </Stack>
-            </Center>
-          ) : (
-            <Box
-              bg={panelBg}
-              borderWidth="1px"
-              borderColor={borderColor}
-              borderRadius="md"
-              overflow="hidden"
-            >
-              <Tabs colorScheme="blue" isLazy index={activeTab} onChange={setActiveTab}>
-                <TabList px={{ base: 2, md: 4 }} overflowX="auto" overflowY="hidden">
-                  <Tab whiteSpace="nowrap">Org Chart</Tab>
-                  <Tab whiteSpace="nowrap">Managers ({data.summary.managerCount})</Tab>
-                  <Tab whiteSpace="nowrap">
-                    Top-level / Unassigned ({data.summary.unassignedCount})
-                  </Tab>
-                </TabList>
-                <TabPanels>
-                  <TabPanel p={{ base: 3, md: 5 }}>
-                    {hasActiveFilters ? (
+            {organizationStore.error ? (
+              <Alert status="error" borderRadius="md" mb={6}>
+                <AlertIcon />
+                <Box flex="1">
+                  <AlertTitle>Organization data could not be loaded</AlertTitle>
+                  <AlertDescription>{organizationStore.error}</AlertDescription>
+                </Box>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => refreshOrganization().catch(() => undefined)}
+                >
+                  Retry
+                </Button>
+              </Alert>
+            ) : null}
+
+            {!companyId ? (
+              <Box
+                bg={panelBg}
+                borderWidth="1px"
+                borderColor={useColorModeValue("gray.100", "gray.700")}
+                borderRadius="xl"
+                py={16}
+                textAlign="center"
+                boxShadow="sm"
+              >
+                <Icon as={Building2} boxSize={8} color={muted} />
+                <Text mt={3} fontWeight="800">
+                  Select a company
+                </Text>
+                <Text mt={1} fontSize="sm" color={muted}>
+                  Choose a company from the header to view its organization.
+                </Text>
+              </Box>
+            ) : organizationStore.isLoading && data.nodes.length === 0 ? (
+              <Center
+                minH="320px"
+                bg={panelBg}
+                borderWidth="1px"
+                borderColor={useColorModeValue("gray.100", "gray.700")}
+                borderRadius="xl"
+                boxShadow="sm"
+              >
+                <Stack align="center" spacing={3}>
+                  <Spinner color="blue.500" />
+                  <Text color={muted}>Loading organization structure...</Text>
+                </Stack>
+              </Center>
+            ) : (
+              <Box bg={useColorModeValue("white", "gray.900")}>
+                <Box p={6} overflowX="auto" minH="calc(100vh - 100px)">
+                   {hasActiveFilters ? (
                       <OrganizationTable
                         nodes={organizationStore.listPages.search.nodes}
                         pageInfo={organizationStore.listPages.search.pageInfo}
@@ -482,42 +486,11 @@ const OrganizationWorkspace = observer(() => {
                         onSelect={openNode}
                       />
                     )}
-                  </TabPanel>
-                  <TabPanel p={0}>
-                    <OrganizationTable
-                      nodes={organizationStore.listPages.managers.nodes}
-                      pageInfo={organizationStore.listPages.managers.pageInfo}
-                      isLoading={organizationStore.listLoading.managers}
-                      emptyTitle="No matching managers"
-                      emptyDescription="Managers appear automatically when employees report to them."
-                      onSelect={openNode}
-                      onLoadMore={() =>
-                        organizationStore
-                          .fetchList("managers", debouncedFilters, true)
-                          .catch(() => undefined)
-                      }
-                    />
-                  </TabPanel>
-                  <TabPanel p={0}>
-                    <OrganizationTable
-                      nodes={organizationStore.listPages.unassigned.nodes}
-                      pageInfo={organizationStore.listPages.unassigned.pageInfo}
-                      isLoading={organizationStore.listLoading.unassigned}
-                      emptyTitle="Everyone has a reporting manager"
-                      emptyDescription="No top-level or unassigned employees match the current filters."
-                      onSelect={openNode}
-                      onLoadMore={() =>
-                        organizationStore
-                          .fetchList("unassigned", debouncedFilters, true)
-                          .catch(() => undefined)
-                      }
-                    />
-                  </TabPanel>
-                </TabPanels>
-              </Tabs>
-            </Box>
-          )}
-        </Stack>
+                </Box>
+              </Box>
+            )}
+          </Box>
+        </Flex>
       </Box>
 
       <OrganizationPersonDrawer
