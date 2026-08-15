@@ -285,6 +285,17 @@ class UserStore {
     }
   };
 
+  getManagedUserProfileDetails = async (id: string) => {
+    try {
+      const response = await axios.get(`/admin/users/${id}/profile-details`);
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    }
+  };
+
+
+
   fetchEmployeeAssignmentHistory = async (id: string) => {
     this.assignmentHistoryLoading = true;
     this.assignmentHistoryError = null;
@@ -548,6 +559,52 @@ class UserStore {
       throw err;
     } finally {
       this.isLoading = false;
+    }
+  };
+
+
+  updatePersonalDetails = async (id: string, payload: any) => {
+    try {
+      const response = await axios.put(`/admin/users/${id}/profile/personal`, payload);
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    }
+  };
+
+  updateFamilyContacts = async (id: string, payload: any) => {
+    try {
+      const response = await axios.put(`/admin/users/${id}/profile/family`, payload);
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    }
+  };
+
+  updateSkills = async (id: string, payload: any) => {
+    try {
+      const response = await axios.put(`/admin/users/${id}/profile/skills`, payload);
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    }
+  };
+
+  updateStatutoryDetails = async (id: string, payload: any) => {
+    try {
+      const response = await axios.put(`/admin/users/${id}/profile/statutory`, payload);
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    }
+  };
+
+  updateEmployeeDocuments = async (id: string, payload: any) => {
+    try {
+      const response = await axios.put(`/admin/users/${id}/profile/documents`, payload);
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
     }
   };
 }

@@ -35,6 +35,7 @@ import UserDetailsModal from "./components/UserDetailsModal";
 import UserDrawer from "./components/UserDrawer";
 import UsersHeader from "./components/UsersHeader";
 import UsersTable from "./components/UsersTable";
+import ProfileDetailsDrawer from "./components/ProfileDetailsDrawer";
 import { StatCard } from "../../component/common/StatCard/StatCard";
 import { FiUsers, FiFilter } from "react-icons/fi";
 
@@ -253,8 +254,10 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const [listTab, setListTab] = useState("user");
   const [locationFilter, setLocationFilter] = useState("");
   const [isUserDrawerOpen, setIsUserDrawerOpen] = useState(false);
+  const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [selectedProfileUser, setSelectedProfileUser] = useState<any | null>(null);
   const [statusDialog, setStatusDialog] = useState<{ user: any; nextIsEnabled: boolean } | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<any | null>(null);
   const [uploadResults, setUploadResults] = useState<any | null>(null);
@@ -733,8 +736,11 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     setIsUserDrawerOpen(true);
   };
 
-  const openView = (user: any) => {
-    setSelectedUser(user);
+  const openView = (user: any) => setSelectedUser(user);
+  
+  const openProfileDetails = (user: any) => {
+    setSelectedProfileUser(user);
+    setIsProfileDrawerOpen(true);
   };
 
   const openDelete = (user: any) => {
@@ -1511,6 +1517,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   locationFilter={locationFilter}
   setLocationFilter={setLocationFilter}
   onResetFilters={clearIssueFilter}
+  onProfileDetails={openProfileDetails}
 />
 
       </VStack>
@@ -1569,6 +1576,15 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   formatRoleLabel={formatRoleLabel}
   canEditReportingManager={canEditUsers && canAssignManagers}
   onEditReportingManager={openEdit}
+/>
+
+<ProfileDetailsDrawer
+  isOpen={isProfileDrawerOpen}
+  onClose={() => {
+    setIsProfileDrawerOpen(false);
+    setSelectedProfileUser(null);
+  }}
+  user={selectedProfileUser}
 />
 
 <BulkUploadResultModal

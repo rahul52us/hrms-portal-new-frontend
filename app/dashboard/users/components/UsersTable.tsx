@@ -17,6 +17,7 @@ import {
   VStack,
   Avatar,
   Icon,
+  IconButton,
   Stat,
   StatLabel,
   StatNumber,
@@ -40,6 +41,7 @@ import {
 } from "react-icons/fi";
 import { StatCard } from "../../../component/common/StatCard/StatCard";
 import CustomTable from "../../../component/config/component/CustomTable/CustomTable";
+import { FiEdit2, FiTrash2, FiEye, FiFileText } from "react-icons/fi";
 
 type Props = {
   users: any[];
@@ -70,6 +72,7 @@ type Props = {
   locationFilter?: string;
   setLocationFilter?: (v: string) => void;
   onResetFilters?: () => void;
+  onProfileDetails: (user: any) => void;
   // User source separation for admin-created vs externally linked accounts.
   showUserSourceTabs?: boolean;
   userSourceTab?: "all" | "manual" | "public_enrolled";
@@ -140,6 +143,7 @@ const UsersTable = ({
   locationFilter = "",
   setLocationFilter,
   onResetFilters,
+  onProfileDetails,
   showUserSourceTabs = false,
   userSourceTab = "all",
   setUserSourceTab,
@@ -378,12 +382,70 @@ const UsersTable = ({
     },
     {
       headerName: "Actions",
-      key: "table-actions",
-      type: "table-actions",
-      width: "100px",
-      props: {
-        row: { minW: 100, textAlign: "center" },
-        column: { textAlign: "center" },
+      key: "actions",
+      type: "component",
+      width: "160px",
+      metaData: {
+        component: (user: any) => (
+          <HStack spacing={1} justify="center">
+            <Tooltip label="Extended Profile" hasArrow>
+              <IconButton
+                aria-label="Profile"
+                icon={<Icon as={FiFileText} />}
+                size="sm"
+                variant="ghost"
+                colorScheme="purple"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onProfileDetails(user);
+                }}
+              />
+            </Tooltip>
+            <Tooltip label="View" hasArrow>
+              <IconButton
+                aria-label="View"
+                icon={<Icon as={FiBriefcase} />}
+                size="sm"
+                variant="ghost"
+                colorScheme="blue"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onView(user);
+                }}
+              />
+            </Tooltip>
+            {canEdit && !isPublicEnrolledUser?.(user) && (
+              <Tooltip label="Edit" hasArrow>
+                <IconButton
+                  aria-label="Edit"
+                  icon={<Icon as={FiEdit2} />} 
+                  size="sm"
+                  variant="ghost"
+                  colorScheme="green"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(user);
+                  }}
+                />
+              </Tooltip>
+            )}
+            {canDelete && !isPublicEnrolledUser?.(user) && (
+              <Tooltip label="Delete" hasArrow>
+                <IconButton
+                  aria-label="Delete"
+                  icon={<Icon as={FiTrash2} />} 
+                  size="sm"
+                  variant="ghost"
+                  colorScheme="red"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete?.(user);
+                  }}
+                />
+              </Tooltip>
+            )}
+          </HStack>
+        ),
       },
     },
   ];
@@ -696,6 +758,7 @@ const UsersTable = ({
                     </Text>
 
                     <HStack spacing={2} flexWrap="wrap">
+                      <Button size="sm" variant="outline" colorScheme="purple" onClick={() => onProfileDetails(user)}>Profile</Button>
                       <Button size="sm" variant="outline" onClick={() => onView(user)}>View</Button>
                       {canEdit ? <Button size="sm" variant="outline" colorScheme="blue" onClick={() => onEdit(user)}>Edit</Button> : null}
                       {canToggleStatus ? (
