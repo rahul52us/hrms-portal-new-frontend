@@ -7,12 +7,7 @@ import {
   Divider,
   Flex,
   HStack,
-  Modal,
   ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalHeader,
-  ModalOverlay,
   SimpleGrid,
   Spinner,
   Tab,
@@ -24,6 +19,7 @@ import {
   VStack,
   useColorModeValue,
 } from "@chakra-ui/react";
+import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
 import stores from "@/app/store/stores";
 import { observer } from "mobx-react-lite";
 import { useEffect } from "react";
@@ -109,41 +105,32 @@ const UserDetailsModal = ({
   }, [isOpen, user?._id, userStore]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="5xl" isCentered>
-      <ModalOverlay backdropFilter="blur(6px)" />
-      <ModalContent borderRadius="2xl" overflow="hidden">
-        <ModalHeader py={5}>
-          <Flex justify="space-between" align="center" pr={8} gap={3}>
-            <Box>
-              <Text fontSize="xl" fontWeight="700">
-                {user?.name || "Employee details"}
-              </Text>
-              <Text color={muted} fontSize="sm" mt={1}>
-                {user?.email || "No email available"}
-              </Text>
-            </Box>
-            <HStack spacing={2} flexWrap="wrap">
-              <Badge colorScheme="blue" borderRadius="full" px={3} py={1}>
-                {formatRoleLabel(user?.role || "user")}
-              </Badge>
-              <Badge colorScheme={statusMeta.colorScheme} borderRadius="full" px={3} py={1}>
-                {statusMeta.label}
-              </Badge>
-              <Badge
-                colorScheme={user?.passwordStatus === "SET" ? "green" : "orange"}
-                borderRadius="full"
-                px={3}
-                py={1}
-              >
-                {user?.passwordStatus === "SET" ? "Password" : "Setup Pending"}
-              </Badge>
-            </HStack>
-          </Flex>
-        </ModalHeader>
-        <ModalCloseButton top={5} />
-
-        <ModalBody pb={6}>
-          <Tabs colorScheme="blue" isLazy>
+    <DashboardDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      titlePrefix={user?.name || "Employee details"}
+      subtitle={user?.email || "No email available"}
+      badgeContent={
+        <HStack spacing={2} flexWrap="wrap">
+          <Badge colorScheme="blue" borderRadius="full" px={3} py={1}>
+            {formatRoleLabel(user?.role || "user")}
+          </Badge>
+          <Badge colorScheme={statusMeta.colorScheme} borderRadius="full" px={3} py={1}>
+            {statusMeta.label}
+          </Badge>
+          <Badge
+            colorScheme={user?.passwordStatus === "SET" ? "green" : "orange"}
+            borderRadius="full"
+            px={3}
+            py={1}
+          >
+            {user?.passwordStatus === "SET" ? "Password" : "Setup Pending"}
+          </Badge>
+        </HStack>
+      }
+    >
+      <Box pb={6}>
+        <Tabs colorScheme="blue" isLazy>
             <TabList>
               <Tab flex="1" whiteSpace="nowrap">Overview</Tab>
               <Tab flex="1" whiteSpace="nowrap">
@@ -342,9 +329,8 @@ const UserDetailsModal = ({
               ) : null}
             </TabPanels>
           </Tabs>
-        </ModalBody>
-      </ModalContent>
-    </Modal>
+      </Box>
+    </DashboardDrawer>
   );
 };
 

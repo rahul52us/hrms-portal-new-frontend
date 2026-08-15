@@ -23,6 +23,7 @@ export interface DashboardDrawerProps {
   titleSuffix?: string;
   subtitle?: string;
   badgeLabel?: string;
+  badgeContent?: React.ReactNode;
   footerContent?: React.ReactNode;
   children: React.ReactNode;
   maxW?: any;
@@ -35,6 +36,7 @@ const DashboardDrawer: React.FC<DashboardDrawerProps> = ({
   titleSuffix = "",
   subtitle = "",
   badgeLabel = "",
+  badgeContent,
   footerContent,
   children,
   maxW = { base: "100%", md: "85%" },
@@ -90,7 +92,9 @@ const DashboardDrawer: React.FC<DashboardDrawerProps> = ({
               </Box>
             </Flex>
 
-            {badgeLabel && (
+            {badgeContent ? (
+              badgeContent
+            ) : badgeLabel ? (
               <Badge
                 bg={useColorModeValue("blue.100", "rgba(66,153,225,0.15)")}
                 color={useColorModeValue("blue.700", "blue.300")}
@@ -103,7 +107,7 @@ const DashboardDrawer: React.FC<DashboardDrawerProps> = ({
               >
                 {badgeLabel}
               </Badge>
-            )}
+            ) : null}
           </Flex>
         </DrawerHeader>
 
