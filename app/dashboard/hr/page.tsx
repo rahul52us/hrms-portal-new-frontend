@@ -31,7 +31,9 @@ import {
   FiCalendar,
   FiCheckCircle,
   FiClock,
+  FiInbox,
   FiMapPin,
+  FiPieChart,
   FiPlus,
   FiShield,
   FiTrendingUp,
@@ -63,39 +65,42 @@ const formatDate = (value: any) => {
 
 const StatCard = ({ label, value, helper, icon, color }: any) => {
   const cardBg = useColorModeValue("white", "gray.800");
-  const borderColor = useColorModeValue("gray.200", "gray.700");
+  const shadow = useColorModeValue("0 4px 20px -5px rgba(0,0,0,0.05)", "0 4px 20px -5px rgba(0,0,0,0.5)");
+  const hoverShadow = useColorModeValue("0 10px 25px -5px rgba(0,0,0,0.1)", "0 10px 25px -5px rgba(0,0,0,0.7)");
   const muted = useColorModeValue("gray.500", "gray.400");
-  const iconBg = useColorModeValue(`${color}.50`, `${color}.900`);
-  const iconColor = useColorModeValue(`${color}.600`, `${color}.200`);
+  const iconBg = useColorModeValue(`${color}.50`, `color-mix(in srgb, var(--chakra-colors-${color}-400) 15%, transparent)`);
+  const iconColor = useColorModeValue(`${color}.600`, `${color}.300`);
 
   return (
     <Box
       bg={cardBg}
-      borderWidth="1px"
-      borderColor={borderColor}
       borderRadius="xl"
       p={5}
-      minW={0}
-      boxShadow="sm"
-      transition="all 0.2s"
-      _hover={{ boxShadow: "md", transform: "translateY(-2px)" }}
+      boxShadow={shadow}
+      transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+      _hover={{ transform: "translateY(-3px)", boxShadow: hoverShadow }}
+      position="relative"
+      borderWidth="1px"
+      borderColor={useColorModeValue("gray.100", "gray.700")}
+      borderLeftWidth="4px"
+      borderLeftColor={useColorModeValue(`${color}.400`, `${color}.500`)}
     >
       <Flex align="flex-start" justify="space-between" gap={3}>
         <Box minW={0}>
           <Text fontSize="xs" fontWeight="800" color={muted} textTransform="uppercase" letterSpacing="wider">
             {label}
           </Text>
-          <Text mt={2} fontSize={{ base: "3xl", md: "4xl" }} fontWeight="900" lineHeight="1">
+          <Text mt={1.5} fontSize="3xl" fontWeight="900" lineHeight="1" letterSpacing="-1px">
             {value}
           </Text>
           {helper ? (
-            <Text mt={2} fontSize="sm" color={muted} noOfLines={2}>
+            <Text mt={1.5} fontSize="xs" color={muted} noOfLines={1} fontWeight="500">
               {helper}
             </Text>
           ) : null}
         </Box>
-        <Center boxSize={12} borderRadius="xl" bg={iconBg} color={iconColor} flexShrink={0}>
-          <Icon as={icon} boxSize={6} />
+        <Center boxSize={10} borderRadius="lg" bg={iconBg} color={iconColor} flexShrink={0} borderWidth="1px" borderColor={useColorModeValue(`${color}.100`, "transparent")}>
+          <Icon as={icon} boxSize={4} strokeWidth={2.5} />
         </Center>
       </Flex>
     </Box>
@@ -104,18 +109,28 @@ const StatCard = ({ label, value, helper, icon, color }: any) => {
 
 const Section = ({ title, helper, children, action }: any) => {
   const cardBg = useColorModeValue("white", "gray.800");
-  const borderColor = useColorModeValue("gray.200", "gray.700");
+  const shadow = useColorModeValue("0 4px 24px -6px rgba(0,0,0,0.06)", "0 4px 24px -6px rgba(0,0,0,0.5)");
   const muted = useColorModeValue("gray.500", "gray.400");
+  const brandColor = useColorModeValue("blue.500", "blue.400");
 
   return (
-    <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} minW={0} boxShadow="sm">
-      <Flex align="flex-start" justify="space-between" gap={4} mb={5}>
+    <Box
+      bg={cardBg}
+      borderRadius="2xl"
+      p={{ base: 5, md: 7 }}
+      boxShadow={shadow}
+      transition="all 0.3s ease"
+    >
+      <Flex align="flex-start" justify="space-between" gap={4} mb={6}>
         <Box minW={0}>
-          <Text fontSize="xl" fontWeight="900">
-            {title}
-          </Text>
+          <HStack spacing={3} align="center" mb={1.5}>
+            <Box w="5px" h="20px" bg={brandColor} borderRadius="full" />
+            <Text fontSize="xl" fontWeight="900" letterSpacing="-0.5px" color={useColorModeValue("gray.800", "white")}>
+              {title}
+            </Text>
+          </HStack>
           {helper ? (
-            <Text mt={1} fontSize="sm" color={muted}>
+            <Text fontSize="sm" color={muted} fontWeight="500" pl={4}>
               {helper}
             </Text>
           ) : null}
@@ -127,14 +142,36 @@ const Section = ({ title, helper, children, action }: any) => {
   );
 };
 
-const BreakdownList = ({ items = [], total = 0, emptyText = "No data yet" }: any) => {
+const BreakdownList = ({ items = [], total = 0, emptyText = "No data yet", colorScheme = "blue", icon = FiPieChart }: any) => {
   const muted = useColorModeValue("gray.500", "gray.400");
 
   if (!items.length) {
     return (
-      <Text fontSize="sm" color={muted}>
-        {emptyText}
-      </Text>
+      <Center
+        py={8}
+        px={4}
+        bg={useColorModeValue(`${colorScheme}.50`, `color-mix(in srgb, var(--chakra-colors-${colorScheme}-400) 15%, transparent)`)}
+        borderRadius="2xl"
+        borderWidth="1px"
+        borderColor={useColorModeValue(`${colorScheme}.200`, `color-mix(in srgb, var(--chakra-colors-${colorScheme}-400) 30%, transparent)`)}
+      >
+        <VStack spacing={3}>
+          <Center
+            boxSize={12}
+            bg={useColorModeValue("white", `color-mix(in srgb, var(--chakra-colors-${colorScheme}-400) 25%, transparent)`)}
+            borderRadius="full"
+            boxShadow="sm"
+            color={useColorModeValue(`${colorScheme}.500`, `${colorScheme}.300`)}
+            borderWidth="1px"
+            borderColor={useColorModeValue(`${colorScheme}.100`, "transparent")}
+          >
+            <Icon as={icon} boxSize={5} />
+          </Center>
+          <Text fontSize="sm" fontWeight="700" color={useColorModeValue(`${colorScheme}.800`, `${colorScheme}.200`)}>
+            {emptyText}
+          </Text>
+        </VStack>
+      </Center>
     );
   }
 
@@ -167,9 +204,29 @@ const PersonList = ({ items = [], emptyText }: any) => {
 
   if (!items.length) {
     return (
-      <Text fontSize="sm" color={muted}>
-        {emptyText}
-      </Text>
+      <Center
+        py={8}
+        px={4}
+        bg={useColorModeValue("purple.50", "purple.900/20")}
+        borderRadius="2xl"
+        borderWidth="1px"
+        borderColor={useColorModeValue("purple.100", "purple.800/50")}
+      >
+        <VStack spacing={3}>
+          <Center
+            boxSize={12}
+            bg={useColorModeValue("white", "purple.800")}
+            borderRadius="full"
+            boxShadow="sm"
+            color={useColorModeValue("purple.500", "purple.300")}
+          >
+            <Icon as={FiUsers} boxSize={5} />
+          </Center>
+          <Text fontSize="sm" fontWeight="700" color={useColorModeValue("purple.800", "purple.200")}>
+            {emptyText}
+          </Text>
+        </VStack>
+      </Center>
     );
   }
 
@@ -275,24 +332,7 @@ const HrDashboardPage = observer(() => {
             icon={FiUsers}
             showBackButton={false}
             colorScheme="blue"
-          >
-            <HStack spacing={3} wrap="wrap" justify="flex-end">
-              <Badge colorScheme={scope.mode === "scoped" ? "orange" : "blue"} borderRadius="full" px={3} py={1}>
-                {scope.mode === "scoped" ? "Scoped HR" : "Company-wide HR"}
-              </Badge>
-              <Badge colorScheme="gray" borderRadius="full" px={3} py={1}>
-                {formatRole(role)}
-              </Badge>
-              <Button leftIcon={<FiUsers />} colorScheme="blue" size="sm" borderRadius="md" onClick={() => router.push("/dashboard/users")}>
-                Employees
-              </Button>
-              {hasPermission(auth.user, PERMISSION_KEYS.CREATE_USERS) ? (
-                <Button variant="outline" leftIcon={<FiPlus />} size="sm" borderRadius="md" onClick={() => router.push("/dashboard/users")}>
-                  Add
-                </Button>
-              ) : null}
-            </HStack>
-          </PageBanner>
+          />
 
           {loading ? (
             <Center minH="360px">
@@ -332,16 +372,40 @@ const HrDashboardPage = observer(() => {
                   <Stack spacing={5}>
                     <Section title="Pending HR Work" helper="Operational gaps to clean up before employee records are reliable.">
                       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
-                        {(summary.pendingWork || []).map((item: any) => (
+                        {(summary.pendingWork || []).map((item: any, index: number) => {
+                          const hasWork = !!numberValue(item.count);
+                          const pastelSchemes = ["red", "green", "blue", "cyan", "orange"];
+                          const scheme = hasWork ? "orange" : pastelSchemes[index % pastelSchemes.length];
+
+                          return (
                           <Button
                             key={item.key}
-                            variant="outline"
+                            variant="unstyled"
                             height="auto"
-                            p={3}
+                            p={4}
+                            borderWidth="1px"
+                            borderColor={useColorModeValue(
+                              `${scheme}.200`,
+                              `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 40%, transparent)`
+                            )}
+                            bg={useColorModeValue(
+                              `${scheme}.50`,
+                              `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 25%, transparent)`
+                            )}
+                            borderRadius="xl"
                             whiteSpace="normal"
-                            justifyContent="stretch"
-                            isDisabled={!numberValue(item.count)}
+                            display="block"
+                            w="100%"
+                            isDisabled={!hasWork}
                             onClick={() => router.push(item.href)}
+                            _hover={hasWork ? {
+                              transform: "translateY(-2px)",
+                              boxShadow: "sm",
+                              borderColor: useColorModeValue(`${scheme}.300`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 60%, transparent)`),
+                              bg: useColorModeValue(`${scheme}.100`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 35%, transparent)`)
+                            } : undefined}
+                            transition="all 0.2s"
+                            _disabled={{ opacity: 0.75, cursor: "not-allowed" }}
                           >
                             <Flex
                               align="center"
@@ -350,36 +414,44 @@ const HrDashboardPage = observer(() => {
                               width="full"
                             >
                               <Box minW={0} textAlign="left">
-                                <Text fontSize="sm" fontWeight="800" noOfLines={1}>
+                                <Text fontSize="sm" fontWeight="800" color={useColorModeValue(`${scheme}.800`, `${scheme}.100`)} noOfLines={1}>
                                   {item.label}
                                 </Text>
-                                <Text fontSize="xs" color={muted}>
-                                  {numberValue(item.count)
+                                <Text fontSize="xs" color={useColorModeValue(`${scheme}.700`, `${scheme}.300`)} mt={1}>
+                                  {hasWork
                                     ? "Open employee work queue"
                                     : "No action required"}
                                 </Text>
                               </Box>
-                              <Badge colorScheme={numberValue(item.count) ? "orange" : "green"} borderRadius="full" px={3} py={1}>
+                              <Badge
+                                colorScheme={scheme}
+                                borderRadius="full"
+                                px={3}
+                                py={1}
+                                fontSize="xs"
+                                variant={hasWork ? "solid" : "subtle"}
+                              >
                                 {numberValue(item.count)}
                               </Badge>
                             </Flex>
                           </Button>
-                        ))}
+                          );
+                        })}
                       </SimpleGrid>
                     </Section>
 
                     <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={5}>
                       <Section title="By Department" helper="Employee distribution across departments.">
-                        <BreakdownList items={summary.breakdowns?.departments || []} total={totalEmployees} />
+                        <BreakdownList items={summary.breakdowns?.departments || []} total={totalEmployees} colorScheme="purple" icon={FiBriefcase} />
                       </Section>
                       <Section title="By Location" helper="Employee distribution across office locations.">
-                        <BreakdownList items={summary.breakdowns?.locations || []} total={totalEmployees} />
+                        <BreakdownList items={summary.breakdowns?.locations || []} total={totalEmployees} colorScheme="teal" icon={FiMapPin} />
                       </Section>
                       <Section title="By Team" helper="Optional team coverage inside departments.">
-                        <BreakdownList items={summary.breakdowns?.teams || []} total={totalEmployees} />
+                        <BreakdownList items={summary.breakdowns?.teams || []} total={totalEmployees} colorScheme="pink" icon={FiUsers} />
                       </Section>
                       <Section title="Account Status" helper="Active, pending, and inactive employees.">
-                        <BreakdownList items={summary.breakdowns?.statuses || []} total={totalEmployees} />
+                        <BreakdownList items={summary.breakdowns?.statuses || []} total={totalEmployees} colorScheme="orange" icon={FiUserCheck} />
                       </Section>
                     </SimpleGrid>
 
@@ -393,34 +465,64 @@ const HrDashboardPage = observer(() => {
                   <Stack spacing={5}>
                     <Section title="Quick Actions" helper="Shortcuts based on this account's permissions.">
                       <SimpleGrid columns={{ base: 1, sm: 2, xl: 1 }} spacing={3}>
-                        {quickActions.map((action) => (
+                        {quickActions.map((action, index) => {
+                          const schemes = ["red", "cyan", "yellow", "green", "pink", "orange"];
+                          const scheme = schemes[index % schemes.length];
+
+                          return (
                           <Button
                             key={action.label}
                             justifyContent="flex-start"
-                            variant="outline"
-                            leftIcon={<Icon as={action.icon} />}
+                            variant="unstyled"
+                            size="lg"
+                            height="auto"
+                            py={3}
+                            px={4}
+                            borderRadius="xl"
+                            borderWidth="1px"
+                            borderColor={useColorModeValue(`${scheme}.200`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 40%, transparent)`)}
+                            bg={useColorModeValue(`${scheme}.50`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 25%, transparent)`)}
+                            leftIcon={
+                              <Center boxSize={8} borderRadius="md" bg={useColorModeValue(`${scheme}.100`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 35%, transparent)`)} color={useColorModeValue(`${scheme}.600`, `${scheme}.200`)} mr={2}>
+                                <Icon as={action.icon} boxSize={4} />
+                              </Center>
+                            }
                             onClick={() => router.push(action.href)}
+                            _hover={{
+                              bg: useColorModeValue(`${scheme}.100`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 35%, transparent)`),
+                              transform: "translateX(4px)",
+                              borderColor: useColorModeValue(`${scheme}.300`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 60%, transparent)`),
+                            }}
+                            transition="all 0.2s"
+                            fontWeight="700"
+                            fontSize="sm"
+                            display="flex"
+                            alignItems="center"
+                            color={useColorModeValue(`${scheme}.800`, `${scheme}.100`)}
                           >
                             {action.label}
                           </Button>
-                        ))}
+                          );
+                        })}
                       </SimpleGrid>
                     </Section>
 
                     <Section title="Scope" helper={scope.mode === "scoped" ? "This HR user is limited to the scope below." : "This account can work across the company."}>
-                      <Stack spacing={3}>
-                        <HStack justify="space-between">
-                          <Text fontSize="sm" color={muted}>Departments</Text>
-                          <Badge borderRadius="full">{numberValue(stats.departments)}</Badge>
-                        </HStack>
-                        <HStack justify="space-between">
-                          <Text fontSize="sm" color={muted}>Teams</Text>
-                          <Badge borderRadius="full">{numberValue(stats.teams)}</Badge>
-                        </HStack>
-                        <HStack justify="space-between">
-                          <Text fontSize="sm" color={muted}>Locations</Text>
-                          <Badge borderRadius="full">{numberValue(stats.locations)}</Badge>
-                        </HStack>
+                      <Stack spacing={4}>
+                        <SimpleGrid columns={3} spacing={3}>
+                          <Box bg={useColorModeValue("purple.50", "color-mix(in srgb, var(--chakra-colors-purple-400) 15%, transparent)")} p={3} borderRadius="xl" borderWidth="1px" borderColor={useColorModeValue("purple.200", "color-mix(in srgb, var(--chakra-colors-purple-400) 30%, transparent)")}>
+                            <Text fontSize="xs" fontWeight="800" color={useColorModeValue("purple.600", "purple.300")} textTransform="uppercase">Depts</Text>
+                            <Text fontSize="xl" fontWeight="900" mt={1} color={useColorModeValue("purple.900", "purple.100")}>{numberValue(stats.departments)}</Text>
+                          </Box>
+                          <Box bg={useColorModeValue("teal.50", "color-mix(in srgb, var(--chakra-colors-teal-400) 15%, transparent)")} p={3} borderRadius="xl" borderWidth="1px" borderColor={useColorModeValue("teal.200", "color-mix(in srgb, var(--chakra-colors-teal-400) 30%, transparent)")}>
+                            <Text fontSize="xs" fontWeight="800" color={useColorModeValue("teal.600", "teal.300")} textTransform="uppercase">Teams</Text>
+                            <Text fontSize="xl" fontWeight="900" mt={1} color={useColorModeValue("teal.900", "teal.100")}>{numberValue(stats.teams)}</Text>
+                          </Box>
+                          <Box bg={useColorModeValue("blue.50", "color-mix(in srgb, var(--chakra-colors-blue-400) 15%, transparent)")} p={3} borderRadius="xl" borderWidth="1px" borderColor={useColorModeValue("blue.200", "color-mix(in srgb, var(--chakra-colors-blue-400) 30%, transparent)")}>
+                            <Text fontSize="xs" fontWeight="800" color={useColorModeValue("blue.600", "blue.300")} textTransform="uppercase">Locations</Text>
+                            <Text fontSize="xl" fontWeight="900" mt={1} color={useColorModeValue("blue.900", "blue.100")}>{numberValue(stats.locations)}</Text>
+                          </Box>
+                        </SimpleGrid>
                         {scope.mode === "scoped" ? (
                           <Stack spacing={2} pt={2}>
                             <Text fontSize="xs" fontWeight="900" color={muted} textTransform="uppercase">
@@ -443,50 +545,56 @@ const HrDashboardPage = observer(() => {
                     </Section>
 
                     <Section title="Upcoming" helper="Useful dates from employee records.">
-                      <Stack spacing={4}>
-                        <Box>
+                      <Stack spacing={5}>
+                        <Box pl={4} py={1} borderLeftWidth="3px" borderLeftColor="green.400">
                           <HStack mb={2}>
                             <Icon as={FiTrendingUp} color="green.500" />
-                            <Text fontSize="sm" fontWeight="900">New Joiners</Text>
+                            <Text fontSize="sm" fontWeight="800" color={useColorModeValue("gray.800", "white")}>New Joiners</Text>
                           </HStack>
                           {(summary.upcoming?.newJoiners || []).length ? (
-                            (summary.upcoming.newJoiners || []).slice(0, 3).map((user: any) => (
-                              <Text key={`join-${user._id}`} fontSize="sm" color={muted}>
-                                {user.name} | {formatDate(user.joiningDate)}
-                              </Text>
-                            ))
+                            <Stack spacing={1}>
+                              {(summary.upcoming.newJoiners || []).slice(0, 3).map((user: any) => (
+                                <Text key={`join-${user._id}`} fontSize="sm" color={muted}>
+                                  <Text as="span" fontWeight="600">{user.name}</Text> • {formatDate(user.joiningDate)}
+                                </Text>
+                              ))}
+                            </Stack>
                           ) : (
-                            <Text fontSize="sm" color={muted}>No new joiners this month.</Text>
+                            <Text fontSize="sm" color={muted} fontStyle="italic">No new joiners this month.</Text>
                           )}
                         </Box>
-                        <Box>
+                        <Box pl={4} py={1} borderLeftWidth="3px" borderLeftColor="purple.400">
                           <HStack mb={2}>
                             <Icon as={FiCalendar} color="purple.500" />
-                            <Text fontSize="sm" fontWeight="900">Birthdays</Text>
+                            <Text fontSize="sm" fontWeight="800" color={useColorModeValue("gray.800", "white")}>Birthdays</Text>
                           </HStack>
                           {(summary.upcoming?.birthdays || []).length ? (
-                            (summary.upcoming.birthdays || []).slice(0, 3).map((user: any) => (
-                              <Text key={`birth-${user._id}`} fontSize="sm" color={muted}>
-                                {user.name} | {formatDate(user.dateOfBirth)}
-                              </Text>
-                            ))
+                            <Stack spacing={1}>
+                              {(summary.upcoming.birthdays || []).slice(0, 3).map((user: any) => (
+                                <Text key={`birth-${user._id}`} fontSize="sm" color={muted}>
+                                  <Text as="span" fontWeight="600">{user.name}</Text> • {formatDate(user.dateOfBirth)}
+                                </Text>
+                              ))}
+                            </Stack>
                           ) : (
-                            <Text fontSize="sm" color={muted}>No birthdays this month.</Text>
+                            <Text fontSize="sm" color={muted} fontStyle="italic">No birthdays this month.</Text>
                           )}
                         </Box>
-                        <Box>
+                        <Box pl={4} py={1} borderLeftWidth="3px" borderLeftColor="orange.400">
                           <HStack mb={2}>
                             <Icon as={FiClock} color="orange.500" />
-                            <Text fontSize="sm" fontWeight="900">Anniversaries</Text>
+                            <Text fontSize="sm" fontWeight="800" color={useColorModeValue("gray.800", "white")}>Anniversaries</Text>
                           </HStack>
                           {(summary.upcoming?.anniversaries || []).length ? (
-                            (summary.upcoming.anniversaries || []).slice(0, 3).map((user: any) => (
-                              <Text key={`ann-${user._id}`} fontSize="sm" color={muted}>
-                                {user.name} | {formatDate(user.joiningDate)}
-                              </Text>
-                            ))
+                            <Stack spacing={1}>
+                              {(summary.upcoming.anniversaries || []).slice(0, 3).map((user: any) => (
+                                <Text key={`ann-${user._id}`} fontSize="sm" color={muted}>
+                                  <Text as="span" fontWeight="600">{user.name}</Text> • {formatDate(user.joiningDate)}
+                                </Text>
+                              ))}
+                            </Stack>
                           ) : (
-                            <Text fontSize="sm" color={muted}>No anniversaries this month.</Text>
+                            <Text fontSize="sm" color={muted} fontStyle="italic">No anniversaries this month.</Text>
                           )}
                         </Box>
                       </Stack>
