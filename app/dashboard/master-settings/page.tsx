@@ -28,7 +28,8 @@ import {
   Menu,
   MenuButton,
   MenuList,
-  MenuItem
+  MenuItem,
+  Skeleton
 } from "@chakra-ui/react";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState, useRef } from "react";
@@ -195,16 +196,35 @@ const MasterSettingsPage = observer(() => {
       [category]: updatedArray
     }));
     await updateCategoryAPI(category, updatedArray);
+
+    if (category === "coreDomains") {
+      let updatedDomainSkills = [...(masterData.domainSkills || [])];
+      const domainIndex = updatedDomainSkills.findIndex(ds => ds.domain === itemToRemove);
+      if (domainIndex >= 0) {
+        updatedDomainSkills = updatedDomainSkills.filter(ds => ds.domain !== itemToRemove);
+        setMasterData((prev: any) => ({ ...prev, domainSkills: updatedDomainSkills }));
+        await updateCategoryAPI("domainSkills", updatedDomainSkills);
+        
+        if (selectedDomain === itemToRemove) {
+          setSelectedDomain("");
+        }
+      }
+    }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (itemToDelete) {
-      if (itemToDelete.category === "domainSkills") {
-         handleRemoveDomainSkill(itemToDelete.item);
-      } else {
-         handleRemoveItem(itemToDelete.category, itemToDelete.item);
+      setSaving(true);
+      try {
+        if (itemToDelete.category === "domainSkills") {
+           await handleRemoveDomainSkill(itemToDelete.item);
+        } else {
+           await handleRemoveItem(itemToDelete.category, itemToDelete.item);
+        }
+      } finally {
+        setSaving(false);
+        setItemToDelete(null);
       }
-      setItemToDelete(null);
     }
   };
 
@@ -226,19 +246,29 @@ const MasterSettingsPage = observer(() => {
   if (loading) {
     return (
       <Box minH="100vh">
-        <Box
-          bg={cardBg}
-          p={10}
-          borderRadius="2xl"
-          borderWidth="1px"
-          borderColor={borderColor}
-          textAlign="center"
-        >
-          <Spinner size="lg" color="blue.500" />
-          <Text mt={4} color={muted}>
-            Loading master data...
-          </Text>
-        </Box>
+        <VStack align="stretch" spacing={3}>
+          <Skeleton height="100px" borderRadius="2xl" />
+          <Box>
+            <HStack mb={6} spacing={2}>
+              <Skeleton height="40px" width="120px" borderRadius="full" />
+              <Skeleton height="40px" width="120px" borderRadius="full" />
+              <Skeleton height="40px" width="120px" borderRadius="full" />
+            </HStack>
+            <Box bg={cardBg} p={6} borderRadius="2xl" borderWidth="1px" borderColor={borderColor}>
+              <VStack align="stretch" spacing={8} mt={4}>
+                <HStack w={{ base: "100%", lg: "60%" }} spacing={4}>
+                  <Skeleton height="40px" width="full" borderRadius="full" />
+                  <Skeleton height="40px" width="120px" borderRadius="full" />
+                </HStack>
+                <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <Skeleton key={i} height="50px" borderRadius="xl" />
+                  ))}
+                </SimpleGrid>
+              </VStack>
+            </Box>
+          </Box>
+        </VStack>
       </Box>
     );
   }
@@ -579,7 +609,9 @@ const MasterSettingsPage = observer(() => {
         cancelText="Cancel"
         isLoading={saving}
         tone="danger"
-        note="This action cannot be undone."
+        note={itemToDelete?.category === "coreDomains" 
+          ? "Warning: This will also permanently delete all skills mapped to this Core Domain." 
+          : "This action cannot be undone."}
       />
     </Box>
   );

@@ -23,6 +23,7 @@ import {
   Text,
   VStack,
   useColorModeValue,
+  Skeleton
 } from "@chakra-ui/react";
 import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
 import { observer } from "mobx-react-lite";
@@ -307,14 +308,38 @@ const HrDashboardPage = observer(() => {
           />
 
           {loading ? (
-            <Center minH="360px">
-              <VStack spacing={3}>
-                <Spinner size="xl" color="blue.500" thickness="4px" />
-                <Text color={muted} fontWeight="700">
-                  Loading HR dashboard...
-                </Text>
-              </VStack>
-            </Center>
+            <Box>
+              <SimpleGrid columns={{ base: 1, sm: 2, xl: 4 }} spacing={4} mb={5}>
+                <Skeleton height="100px" borderRadius="xl" />
+                <Skeleton height="100px" borderRadius="xl" />
+                <Skeleton height="100px" borderRadius="xl" />
+                <Skeleton height="100px" borderRadius="xl" />
+              </SimpleGrid>
+              <Grid templateColumns={{ base: "1fr", xl: "1.35fr 0.65fr" }} gap={5}>
+                <GridItem>
+                  <VStack align="stretch" spacing={5}>
+                    <Skeleton height="40px" width="200px" />
+                    <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
+                      <Skeleton height="80px" borderRadius="xl" />
+                      <Skeleton height="80px" borderRadius="xl" />
+                      <Skeleton height="80px" borderRadius="xl" />
+                      <Skeleton height="80px" borderRadius="xl" />
+                    </SimpleGrid>
+                  </VStack>
+                </GridItem>
+                <GridItem>
+                  <VStack align="stretch" spacing={5}>
+                    <Skeleton height="40px" width="150px" />
+                    <VStack spacing={3} align="stretch">
+                      <Skeleton height="50px" borderRadius="xl" />
+                      <Skeleton height="50px" borderRadius="xl" />
+                      <Skeleton height="50px" borderRadius="xl" />
+                      <Skeleton height="50px" borderRadius="xl" />
+                    </VStack>
+                  </VStack>
+                </GridItem>
+              </Grid>
+            </Box>
           ) : error ? (
             <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="lg" p={6}>
               <HStack align="flex-start" spacing={3}>
