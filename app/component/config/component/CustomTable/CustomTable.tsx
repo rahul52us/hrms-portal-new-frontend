@@ -22,6 +22,7 @@ import {
   useColorModeValue,
   ScaleFade,
   HStack,
+  Spinner,
 } from "@chakra-ui/react";
 import dynamic from "next/dynamic";
 import React from "react";
@@ -71,7 +72,9 @@ const TableActions: React.FC<any> = ({ actions, column, row }) => {
       position={column?.props?.isSticky ? "sticky" : "relative"}
       right={column?.props?.isSticky ? "0" : undefined}
       zIndex={column?.props?.isSticky ? 10 : undefined}
-      bg={useColorModeValue("white", "gray.900")}
+      bg={useColorModeValue("white", "gray.800")}
+      borderBottomWidth="1px"
+      borderBottomColor={useColorModeValue("gray.300", "gray.600")}
       p={1}
       textAlign="center"
     >
@@ -147,17 +150,17 @@ const TableActions: React.FC<any> = ({ actions, column, row }) => {
 };
 
 const GenerateRows: React.FC<any> = ({ column, row, action, cells }) => {
-  const borderColor = useColorModeValue("gray.100", "gray.700");
+  const borderColor = useColorModeValue("gray.300", "gray.600");
   const textColor = useColorModeValue("gray.800", "gray.100");
 
   const baseCellProps = {
-    py: 3,
+    py: 2,
     px: 5,
     fontSize: "sm",
     color: textColor,
-    borderBottom: `1px solid ${borderColor}`,
+    borderBottomWidth: "1px",
+    borderBottomColor: borderColor,
     transition: "background 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-    _hover: { bg: useColorModeValue("blue.50", "gray.800") },
     whiteSpace: "nowrap" as const,
   };
 
@@ -240,10 +243,14 @@ const CustomTable: React.FC<CustomTableProps> = ({
   const isMobile = useBreakpointValue({ base: true, md: false });
 
   const cardBg = useColorModeValue("white", "gray.900");
-  const headerBg = useColorModeValue("gray.50", "gray.800");
+  const headerBg = useColorModeValue("blue.50", "gray.800");
   const accent = useColorModeValue("blue.600", "blue.400");
-  const borderColor = useColorModeValue("gray.100", "gray.700");
+  const borderColor = useColorModeValue("gray.300", "gray.600");
   const rowHover = useColorModeValue("blue.50", "gray.800");
+  const shadow = useColorModeValue(
+    "0 20px 40px -15px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.02)",
+    "0 20px 40px -15px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)"
+  );
 
   return (
     <Box
@@ -254,7 +261,6 @@ const CustomTable: React.FC<CustomTableProps> = ({
       borderColor={borderColor}
       overflow="hidden"
       transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-      // _hover={{ boxShadow: "0 25px 50px -15px rgba(0, 0, 0, 0.18)" }}
     >
       {/* HEADER */}
       <Flex
@@ -384,11 +390,9 @@ const CustomTable: React.FC<CustomTableProps> = ({
         overflow="auto"
         maxH="64vh"
         className="customScrollBar"
-        px={3}
-        py={1}
         {...tableProps.tableBox}
       >
-        <ScaleFade in={!loading} initialScale={0.98}>
+        <ScaleFade in={true} initialScale={0.98}>
           <Table
             size="sm"
             variant="simple"
@@ -402,7 +406,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
                     fontSize="xs"
                     textTransform="uppercase"
                     letterSpacing="wider"
-                    color="gray.500"
+                    color={useColorModeValue("blue.800", "gray.300")}
                     fontWeight="600"
                     py={4}
                     px={5}
@@ -418,7 +422,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
                     fontSize="xs"
                     textTransform="uppercase"
                     letterSpacing="wider"
-                    color="gray.500"
+                    color={useColorModeValue("blue.800", "gray.300")}
                     fontWeight="600"
                     py={4}
                     px={5}
@@ -442,18 +446,19 @@ const CustomTable: React.FC<CustomTableProps> = ({
                     key={rowIndex}
                     _hover={{
                       bg: rowHover,
-                      transform: "scale(1.008)",
                     }}
-                    transition="all 0.25s cubic-bezier(0.4, 0, 0.2, 1)"
+                    transition="background 0.2s ease"
                     cursor="pointer"
                   >
                     {serial?.show && (
                       <Td
                         fontWeight="600"
                         color="gray.400"
-                        py={3}
+                        py={2}
                         px={5}
                         fontSize="sm"
+                        borderBottomWidth="1px"
+                        borderBottomColor={useColorModeValue("gray.300", "gray.600")}
                       >
                         {rowIndex + 1}
                       </Td>

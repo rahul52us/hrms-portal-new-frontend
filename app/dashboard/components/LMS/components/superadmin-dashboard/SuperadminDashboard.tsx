@@ -22,6 +22,7 @@ import {
 } from "@chakra-ui/react";
 import {
   Activity,
+  AlertCircle,
   BookOpen,
   Building2,
   CheckCircle2,
@@ -70,69 +71,7 @@ function asNumber(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function MetricCard({
-  label,
-  value,
-  suffix,
-  detail,
-  icon,
-  color,
-  isLoading,
-}: {
-  label: string;
-  value: number | null;
-  suffix?: string;
-  detail: string;
-  icon: React.ElementType;
-  color: string;
-  isLoading: boolean;
-}) {
-  const bg = useColorModeValue("white", "gray.800");
-  const borderColor = useColorModeValue("gray.200", "gray.700");
-  const iconBg = useColorModeValue(`${color}.50`, `${color}.900`);
-  const iconColor = useColorModeValue(`${color}.600`, `${color}.200`);
-
-  return (
-    <Box
-      bg={bg}
-      borderWidth="1px"
-      borderColor={borderColor}
-      borderRadius="2xl"
-      p={{ base: 3, md: 4 }}
-      boxShadow="sm"
-      transition="transform 0.18s ease, box-shadow 0.18s ease"
-      _hover={{ transform: "translateY(-2px)", boxShadow: "md" }}
-      minW={0}
-    >
-      <Flex justify="space-between" align="flex-start" gap={3}>
-        <Box minW={0}>
-          <Text fontSize="xs" color="gray.500" fontWeight="semibold">
-            {label}
-          </Text>
-          <Skeleton isLoaded={!isLoading} mt={1} minH="34px">
-            <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="800" lineHeight="1.2">
-              {value === null ? "N/A" : `${value.toLocaleString()}${suffix || ""}`}
-            </Text>
-          </Skeleton>
-          <Text fontSize="xs" color="gray.500" mt={2} noOfLines={1}>
-            {detail}
-          </Text>
-        </Box>
-        <Flex
-          boxSize={{ base: "34px", md: "38px" }}
-          align="center"
-          justify="center"
-          borderRadius="xl"
-          bg={iconBg}
-          color={iconColor}
-          flexShrink={0}
-        >
-          <Icon as={icon} boxSize={4} />
-        </Flex>
-      </Flex>
-    </Box>
-  );
-}
+import StatCard from "../../../../../component/common/StatCard/StatCard";
 
 export function SuperadminDashboard({
   summary,
@@ -140,11 +79,7 @@ export function SuperadminDashboard({
   error,
   onRefresh,
 }: SuperadminDashboardProps) {
-  const pageBg = useColorModeValue("gray.50", "gray.900");
-  const heroBg = useColorModeValue(
-    "linear-gradient(135deg, #312E81 0%, #6D28D9 55%, #0F766E 125%)",
-    "linear-gradient(135deg, #111827 0%, #312E81 60%, #134E4A 125%)"
-  );
+  
   const panelBg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
   const [filters, setFilters] = useState<DashboardFiltersValue>(() => ({
@@ -172,7 +107,7 @@ export function SuperadminDashboard({
 
   if (error && !summary.stats) {
     return (
-      <Box bg={pageBg} minH="100vh" p={{ base: 3, md: 6 }}>
+      <Box  minH="100vh" p={{ base: 3, md: 6 }}>
         <Alert status="error" borderRadius="2xl">
           <AlertIcon />
           <Box>
@@ -193,49 +128,51 @@ export function SuperadminDashboard({
   }
 
   return (
-    <Box bg={pageBg} minH="100vh" p={{ base: 3, md: 5 }}>
-      <Stack spacing={4} maxW="1600px" mx="auto">
-        <Box
-          bgImage={heroBg}
-          color="white"
-          borderRadius={{ base: "2xl", md: "3xl" }}
-          p={{ base: 4, md: 6 }}
-          position="relative"
-          overflow="hidden"
-          boxShadow="lg"
-        >
-          <Box
-            position="absolute"
-            inset="-60% auto auto 55%"
-            boxSize="360px"
-            borderRadius="full"
-            bg="whiteAlpha.100"
-          />
-          <Flex justify="space-between" align="center" gap={4} wrap="wrap" position="relative">
-            <Box>
-              <HStack spacing={2} mb={2}>
-                <Badge colorScheme="purple" bg="whiteAlpha.200" color="white" borderRadius="full" px={3} py={1}>
-                  Superadmin · platform scope
-                </Badge>
-                <Icon as={Sparkles} boxSize={4} color="purple.100" />
-              </HStack>
-              <Heading size={{ base: "md", md: "lg" }}>HRMS intelligence center</Heading>
-              <Text mt={2} color="whiteAlpha.800" fontSize={{ base: "sm", md: "md" }} maxW="720px">
-                Portal health, learning performance, engagement risks, and operational work in one compact view.
-              </Text>
-            </Box>
-            <Button
-              size="sm"
-              variant="outline"
-              color="white"
-              borderColor="whiteAlpha.500"
-              _hover={{ bg: "whiteAlpha.200" }}
-              leftIcon={<RefreshCw size={15} />}
-              isLoading={isLoading}
-              onClick={applyFilters}
-            >
-              Refresh
-            </Button>
+    <Box minH="100vh" p={{ base: 3, md: 0 }} bg="transparent">
+      <Stack spacing={4}>
+        <Box bg={panelBg} borderWidth="1px" borderColor={borderColor} rounded={{ base: "xl", md: "2xl" }} px={{ base: 4, md: 6 }} py={{ base: 4, md: 5 }} shadow="sm">
+          <Flex direction={{ base: "column", md: "row" }} justify="space-between" align={{ base: "flex-start", md: "center" }} gap={4}>
+            <HStack spacing={{ base: 3, md: 4 }} align="flex-start">
+              <Box display={{ base: "none", md: "flex" }} p={{ base: 2.5, md: 3 }} bgGradient="linear(to-br, #6269FF, #8A2BE2)" rounded="full" alignItems="center" justifyContent="center" boxShadow="0 4px 15px rgba(98,105,255,0.4)" border="1px solid" borderColor="rgba(255,255,255,0.2)">
+                <Icon as={Sparkles} boxSize={{ base: 4, md: 5 }} color="white" />
+              </Box>
+              <Box>
+                <Heading size={{ base: "sm", md: "lg" }} fontWeight="900" letterSpacing="tight" lineHeight="1.2" textTransform="uppercase">
+                  <Box as="span" color={useColorModeValue("gray.900", "white")}>
+                    HRMS{" "}
+                  </Box>
+                  <Box as="span" bgGradient={useColorModeValue("linear(to-r, purple.500, purple.700)", "linear(to-r, purple.300, purple.500)")} bgClip="text">
+                    INTELLIGENCE CENTER
+                  </Box>
+                </Heading>
+                <Text mt={1} fontSize={{ base: "2xs", md: "xs" }} fontWeight="700" color={useColorModeValue("gray.500", "gray.400")} letterSpacing="0.1em" textTransform="uppercase" noOfLines={1}>
+                  Portal health, learning performance, engagement risks, and operational work.
+                </Text>
+              </Box>
+            </HStack>
+            
+            <HStack spacing={4} w={{ base: "100%", md: "auto" }} justify={{ base: "space-between", md: "flex-end" }}>
+              <Badge bg={useColorModeValue("blue.50", "rgba(98,105,255,0.15)")} color="#6269FF" borderRadius="full" px={4} py={2} fontSize="xs" fontWeight="800">
+                <Flex align="center" gap={1.5}>
+                  <Icon as={Sparkles} boxSize={3.5} />
+                  PLATFORM SCOPE
+                </Flex>
+              </Badge>
+              <Button
+                size="sm"
+                variant="outline"
+                color={useColorModeValue("gray.700", "gray.200")}
+                borderColor={useColorModeValue("gray.300", "gray.600")}
+                _hover={{ bg: useColorModeValue("gray.50", "whiteAlpha.100") }}
+                leftIcon={<RefreshCw size={14} />}
+                isLoading={isLoading}
+                onClick={applyFilters}
+                borderRadius="full"
+                px={4}
+              >
+                Refresh
+              </Button>
+            </HStack>
           </Flex>
         </Box>
 
@@ -259,21 +196,20 @@ export function SuperadminDashboard({
           </Alert>
         ) : null}
 
-        <SimpleGrid columns={{ base: 2, md: 3, xl: 6 }} spacing={3}>
+        <SimpleGrid columns={{ base: 2, md: 3, xl: 6 }} spacing={4}>
           {statDefinitions.map((definition) => {
             const value = asNumber(stats[definition.key]);
             const detailValue = asNumber(stats[definition.detailKey]);
             return (
-              <MetricCard
-                key={definition.key}
-                label={definition.label}
-                value={value}
-                suffix={"suffix" in definition ? definition.suffix : undefined}
-                detail={`${detailValue === null ? "N/A" : detailValue.toLocaleString()} ${definition.detail}`}
-                icon={definition.icon}
-                color={definition.color}
-                isLoading={isLoading}
-              />
+              <Skeleton isLoaded={!isLoading} key={definition.key} borderRadius="2xl">
+                <StatCard
+                  label={definition.label}
+                  value={value === null ? "N/A" : `${value.toLocaleString()}${"suffix" in definition ? definition.suffix : ""}`}
+                  helper={`${detailValue === null ? "N/A" : detailValue.toLocaleString()} ${definition.detail}`}
+                  icon={definition.icon}
+                  colorScheme={definition.color}
+                />
+              </Skeleton>
             );
           })}
         </SimpleGrid>
@@ -284,47 +220,58 @@ export function SuperadminDashboard({
             borderWidth="1px"
             borderColor={borderColor}
             borderRadius="2xl"
-            p={{ base: 4, md: 5 }}
+            p={{ base: 4, md: 6 }}
             boxShadow="sm"
+            transition="all 0.2s"
+            _hover={{ boxShadow: "md" }}
           >
-            <Flex justify="space-between" align="center" mb={4}>
-              <Box>
-                <Heading size="sm">Learner progress</Heading>
-                <Text fontSize="xs" color="gray.500" mt={1}>
-                  Measured from enrollment and course progress records
-                </Text>
-              </Box>
-              <Icon as={Activity} color="teal.500" />
+            <Flex justify="space-between" align="center" mb={6}>
+              <HStack spacing={3}>
+                <Flex p={2.5} bg={useColorModeValue("teal.50", "teal.900")} color={useColorModeValue("teal.600", "teal.300")} borderRadius="xl">
+                  <Icon as={Activity} boxSize={5} />
+                </Flex>
+                <Box>
+                  <Heading size="sm" fontWeight="900" letterSpacing="tight" textTransform="uppercase">
+                    <Box as="span" color={useColorModeValue("gray.900", "white")}>LEARNER </Box>
+                    <Box as="span" bgGradient={useColorModeValue("linear(to-r, purple.500, purple.700)", "linear(to-r, purple.300, purple.500)")} bgClip="text">
+                      PROGRESS
+                    </Box>
+                  </Heading>
+                  <Text fontSize="10px" fontWeight="700" color="gray.500" mt={0.5} letterSpacing="wider" textTransform="uppercase">
+                    Measured from enrollment and course progress records
+                  </Text>
+                </Box>
+              </HStack>
             </Flex>
             <Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={4}>
-              <Box>
-                <Text fontSize="xs" color="gray.500">Average progress</Text>
-                <Text fontSize="2xl" fontWeight="800">
+              <Box p={4} bg={useColorModeValue("gray.50", "whiteAlpha.50")} borderRadius="xl" borderWidth="1px" borderColor={useColorModeValue("gray.100", "whiteAlpha.100")}>
+                <Text fontSize="xs" fontWeight="700" color="gray.500" textTransform="uppercase" letterSpacing="wider">Average progress</Text>
+                <Text fontSize="3xl" fontWeight="900" mt={1}>
                   {asNumber(stats.averageProgress) === null ? "N/A" : `${stats.averageProgress}%`}
                 </Text>
                 <Progress
                   value={asNumber(stats.averageProgress) || 0}
                   colorScheme="teal"
-                  size="sm"
+                  size="xs"
                   borderRadius="full"
-                  mt={2}
+                  mt={3}
                 />
               </Box>
-              <Box>
-                <Text fontSize="xs" color="gray.500">Enrollment completion</Text>
-                <Text fontSize="2xl" fontWeight="800">
+              <Box p={4} bg={useColorModeValue("gray.50", "whiteAlpha.50")} borderRadius="xl" borderWidth="1px" borderColor={useColorModeValue("gray.100", "whiteAlpha.100")}>
+                <Text fontSize="xs" fontWeight="700" color="gray.500" textTransform="uppercase" letterSpacing="wider">Enrollment completion</Text>
+                <Text fontSize="3xl" fontWeight="900" mt={1}>
                   {asNumber(stats.completionRate) === null ? "N/A" : `${stats.completionRate}%`}
                 </Text>
-                <Text fontSize="xs" color="gray.500" mt={2}>
+                <Text fontSize="xs" fontWeight="600" color="gray.500" mt={2}>
                   {asNumber(stats.completedEnrollments) || 0} of {asNumber(stats.totalEnrollments) || 0} completed
                 </Text>
               </Box>
-              <Box>
-                <Text fontSize="xs" color="gray.500">Low engagement</Text>
-                <Text fontSize="2xl" fontWeight="800" color="orange.500">
+              <Box p={4} bg={useColorModeValue("orange.50", "rgba(221, 107, 32, 0.1)")} borderRadius="xl" borderWidth="1px" borderColor={useColorModeValue("orange.100", "rgba(221, 107, 32, 0.2)")}>
+                <Text fontSize="xs" fontWeight="700" color={useColorModeValue("orange.600", "orange.300")} textTransform="uppercase" letterSpacing="wider">Low engagement</Text>
+                <Text fontSize="3xl" fontWeight="900" color={useColorModeValue("orange.500", "orange.400")} mt={1}>
                   {asNumber(stats.lowEngagementUsers) || 0}
                 </Text>
-                <Text fontSize="xs" color="gray.500" mt={2}>
+                <Text fontSize="xs" fontWeight="600" color={useColorModeValue("orange.600", "orange.300")} mt={2} lineHeight="1.4">
                   Enrolled learners without progress activity in 30 days
                 </Text>
               </Box>
@@ -336,29 +283,45 @@ export function SuperadminDashboard({
             borderWidth="1px"
             borderColor={borderColor}
             borderRadius="2xl"
-            p={{ base: 4, md: 5 }}
+            p={{ base: 4, md: 6 }}
             boxShadow="sm"
+            transition="all 0.2s"
+            _hover={{ boxShadow: "md" }}
           >
-            <Heading size="sm">Operational attention</Heading>
-            <Text fontSize="xs" color="gray.500" mt={1} mb={4}>
-              Items that may need Superadmin follow-up
-            </Text>
+            <Flex justify="space-between" align="center" mb={6}>
+              <HStack spacing={3}>
+                <Flex p={2.5} bg={useColorModeValue("orange.50", "orange.900")} color={useColorModeValue("orange.500", "orange.300")} borderRadius="xl">
+                  <Icon as={AlertCircle} boxSize={5} />
+                </Flex>
+                <Box>
+                  <Heading size="sm" fontWeight="900" letterSpacing="tight" textTransform="uppercase">
+                    <Box as="span" color={useColorModeValue("gray.900", "white")}>OPERATIONAL </Box>
+                    <Box as="span" bgGradient={useColorModeValue("linear(to-r, purple.500, purple.700)", "linear(to-r, purple.300, purple.500)")} bgClip="text">
+                      ATTENTION
+                    </Box>
+                  </Heading>
+                  <Text fontSize="10px" fontWeight="700" color="gray.500" mt={0.5} letterSpacing="wider" textTransform="uppercase">
+                    Items that may need Superadmin follow-up
+                  </Text>
+                </Box>
+              </HStack>
+            </Flex>
             <Stack spacing={3}>
-              <Flex justify="space-between" p={3} bg={pageBg} borderRadius="xl">
-                <Text fontSize="sm">Pending assessment reviews</Text>
-                <Badge colorScheme={stats.pendingReviews ? "orange" : "green"}>
+              <Flex justify="space-between" align="center" p={3} px={4} bg={useColorModeValue("gray.50", "whiteAlpha.50")} borderRadius="xl" borderWidth="1px" borderColor={useColorModeValue("gray.100", "whiteAlpha.100")}>
+                <Text fontSize="sm" fontWeight="700" color={useColorModeValue("gray.700", "gray.200")}>Pending assessment reviews</Text>
+                <Badge variant="subtle" colorScheme={stats.pendingReviews ? "orange" : "gray"} borderRadius="md" px={2} py={1}>
                   {asNumber(stats.pendingReviews) ?? "N/A"}
                 </Badge>
               </Flex>
-              <Flex justify="space-between" p={3} bg={pageBg} borderRadius="xl">
-                <Text fontSize="sm">Expiring within 30 days</Text>
-                <Badge colorScheme={stats.expiringItems ? "yellow" : "green"}>
+              <Flex justify="space-between" align="center" p={3} px={4} bg={useColorModeValue("gray.50", "whiteAlpha.50")} borderRadius="xl" borderWidth="1px" borderColor={useColorModeValue("gray.100", "whiteAlpha.100")}>
+                <Text fontSize="sm" fontWeight="700" color={useColorModeValue("gray.700", "gray.200")}>Expiring within 30 days</Text>
+                <Badge variant="subtle" colorScheme={stats.expiringItems ? "yellow" : "gray"} borderRadius="md" px={2} py={1}>
                   {asNumber(stats.expiringItems) || 0}
                 </Badge>
               </Flex>
-              <Flex justify="space-between" p={3} bg={pageBg} borderRadius="xl">
-                <Text fontSize="sm">Inactive companies</Text>
-                <Badge colorScheme={stats.inactiveCompanies ? "gray" : "green"}>
+              <Flex justify="space-between" align="center" p={3} px={4} bg={useColorModeValue("gray.50", "whiteAlpha.50")} borderRadius="xl" borderWidth="1px" borderColor={useColorModeValue("gray.100", "whiteAlpha.100")}>
+                <Text fontSize="sm" fontWeight="700" color={useColorModeValue("gray.700", "gray.200")}>Inactive companies</Text>
+                <Badge variant="subtle" colorScheme={stats.inactiveCompanies ? "purple" : "gray"} borderRadius="md" px={2} py={1}>
                   {asNumber(stats.inactiveCompanies) || 0}
                 </Badge>
               </Flex>

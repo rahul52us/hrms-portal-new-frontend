@@ -6,12 +6,14 @@ type StatCardProps = {
   label: string;
   value: string | number;
   icon: IconType;
-  colorScheme: "blue" | "green" | "orange" | "purple";
+  helper?: string;
+  colorScheme: "blue" | "green" | "orange" | "purple" | "teal" | "pink";
 };
 
 export default function StatCard({
   label,
   value,
+  helper,
   icon,
   colorScheme,
 }: StatCardProps) {
@@ -44,6 +46,20 @@ export default function StatCard({
       iconHoverBg: "purple.200",
       iconColor: "purple.600",
     },
+    teal: {
+      lightBg: "teal.50",
+      hoverBg: "teal.100",
+      iconBg: "teal.100",
+      iconHoverBg: "teal.200",
+      iconColor: "teal.600",
+    },
+    pink: {
+      lightBg: "pink.50",
+      hoverBg: "pink.100",
+      iconBg: "pink.100",
+      iconHoverBg: "pink.200",
+      iconColor: "pink.600",
+    },
   };
 
   const styles = colorMap[colorScheme];
@@ -75,6 +91,12 @@ export default function StatCard({
           <Text fontSize="sm" fontWeight="semibold" noOfLines={1}>
             {value}
           </Text>
+
+          {helper && (
+            <Text fontSize="xs" color="gray.500" mt={1}>
+              {helper}
+            </Text>
+          )}
         </Box>
       </HStack>
     </Box>
