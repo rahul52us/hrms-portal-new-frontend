@@ -3,7 +3,7 @@ import { expandRoleAliases } from "@/app/config/utils/roleAccess";
 import { PERMISSION_KEYS, hasPermission } from "@/app/config/utils/permissions";
 import { LucideBriefcaseBusiness, Network } from "lucide-react";
 import { BiCategory } from "react-icons/bi";
-import { FiBell, FiCalendar, FiCamera, FiClock, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers, FiPieChart } from "react-icons/fi";
+import { FiBell, FiCalendar, FiCamera, FiClock, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers, FiPieChart, FiDatabase } from "react-icons/fi";
 
 interface SidebarItem {
   id: number;
@@ -78,6 +78,14 @@ const sidebarDatas: SidebarItem[] = [
     url: "/dashboard/workforce-policies",
     role: ["admin", "superadmin", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_WORKFORCE_POLICIES,
+  },
+  {
+    id: 35,
+    name: "Master Settings",
+    icon: <FiDatabase />,
+    url: "/dashboard/master-settings",
+    role: ["superadmin", "admin", "hradmin"],
+    permissionKey: PERMISSION_KEYS.COMPANY_SETTINGS,
   },
   {
     id: 12,

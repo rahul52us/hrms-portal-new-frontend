@@ -142,7 +142,7 @@ const ConfirmationModal = ({
           </HStack>
         </AlertDialogHeader>
 
-        <AlertDialogBody px={4} pt={4} pb={0}>
+        <AlertDialogBody px={6} pt={4} pb={6}>
           {note ? (
             <Box
               borderRadius="2xl"
@@ -159,13 +159,35 @@ const ConfirmationModal = ({
           ) : null}
         </AlertDialogBody>
 
-        <AlertDialogFooter px={6} py={6}>
-          <Button ref={cancelRef} variant="ghost" onClick={onClose}>
+        <AlertDialogFooter 
+          px={6} 
+          py={5} 
+          bg={useColorModeValue("gray.50", "gray.900")} 
+          borderTop="1px solid" 
+          borderColor={borderColor}
+        >
+          <Button 
+            ref={cancelRef} 
+            variant="solid" 
+            bg={useColorModeValue("gray.100", "gray.700")}
+            color={useColorModeValue("gray.700", "gray.200")}
+            _hover={{ bg: useColorModeValue("gray.200", "gray.600") }}
+            onClick={onClose} 
+            borderRadius="full"
+            px={6}
+          >
             {cancelText}
           </Button>
           <Button
             ml={3}
-            colorScheme={resolvedTone.colorScheme}
+            color="white"
+            bgGradient={resolvedTone.gradient}
+            _hover={{
+              bgGradient: resolvedTone.gradient,
+              transform: "translateY(-1px)",
+              boxShadow: "md"
+            }}
+            _active={{ transform: "translateY(0)" }}
             onClick={onConfirm}
             isLoading={isLoading}
             borderRadius="full"

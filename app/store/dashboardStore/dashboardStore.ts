@@ -219,7 +219,7 @@ class DashboardStore {
     this.masterData.loading = true;
     try {
       const { data } = await axios.post(`/masters`,{company : authStore.company});
-      this.masterData.data = data?.data?.masters || [];
+      this.masterData.data = data?.data || {};
       return data.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err);

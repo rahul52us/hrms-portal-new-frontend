@@ -229,6 +229,32 @@ class CompanyStores {
     }
   };
 
+  getMasterData = async (payload: { company: string }) => {
+    this.isLoading = true;
+    try {
+      const response = await axios.post("/masters", payload);
+      return response;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    } finally {
+      this.isLoading = false;
+    }
+  };
+
+  updateMasterCategory = async (payload: { category: string; items: any[]; company: string }) => {
+    this.isLoading = true;
+    try {
+      const response = await axios.put(`/masters/${payload.category}`, {
+        items: payload.items,
+        company: payload.company
+      });
+      return response;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    } finally {
+      this.isLoading = false;
+    }
+  };
 }
 
 export const CompanyStore = new CompanyStores();

@@ -76,6 +76,18 @@ type UserFormState = {
   };
   reportingManager: any | null;
   changeReason: string;
+  statutoryDetails: {
+    aadharNumber?: string;
+    panNumber?: string;
+    nationality?: string;
+  };
+  skills: {
+    coreDomainArea?: string;
+    additionalDomainAreas?: string[];
+    totalYearsOfExperience?: number;
+  };
+  familyContacts: any[];
+  employeeDocuments: any[];
 };
 
 type BulkFormState = {
@@ -215,6 +227,18 @@ const initialForm = (): UserFormState => ({
   },
   reportingManager: null,
   changeReason: "",
+  statutoryDetails: {
+    aadharNumber: "",
+    panNumber: "",
+    nationality: "",
+  },
+  skills: {
+    coreDomainArea: "",
+    additionalDomainAreas: [],
+    totalYearsOfExperience: 0,
+  },
+  familyContacts: [],
+  employeeDocuments: [],
 });
 
 const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = false }: UsersViewProps) => {
@@ -512,6 +536,10 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
         companyManagerLevels: isSuperadmin ? 3 : currentCompanyManagerLevels,
         reportingManager: null,
         changeReason: "",
+        statutoryDetails: { aadharNumber: "", panNumber: "", nationality: "" },
+        skills: { coreDomainArea: "", additionalDomainAreas: [], totalYearsOfExperience: 0 },
+        familyContacts: [],
+        employeeDocuments: [],
       }),
     [
       auth.company,
@@ -697,6 +725,10 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       },
       reportingManager,
       changeReason: "",
+      statutoryDetails: user.profileDetails?.statutoryDetails || { aadharNumber: "", panNumber: "", nationality: "" },
+      skills: user.profileDetails?.skills || { coreDomainArea: "", additionalDomainAreas: [], totalYearsOfExperience: 0 },
+      familyContacts: user.profileDetails?.familyContacts || [],
+      employeeDocuments: user.profileDetails?.employeeDocuments || [],
     });
     setIsUserDrawerOpen(true);
   };
