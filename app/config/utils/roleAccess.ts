@@ -34,23 +34,5 @@ export function expandRoleAliases(roles: string[] = []) {
 }
 
 export function getDefaultAuthenticatedRoute(user: any) {
-  const role = normalizeRole(user?.role || user?.userType);
-
-  if (role === "superadmin") {
-    return "/dashboard/companies";
-  }
-
-  if (role === "hradmin" || role === "hr") {
-    return "/dashboard/hr";
-  }
-
-  if (role === "admin" || role === "departmenthead") {
-    return "/dashboard/users";
-  }
-
-  if (isEmployeeRole(role)) {
-    return "/employee";
-  }
-
-  return "/";
+  return "/dashboard";
 }

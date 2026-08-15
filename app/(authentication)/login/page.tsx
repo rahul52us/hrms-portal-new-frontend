@@ -59,42 +59,32 @@ const LoginPage = observer(() => {
 
   return (
     <AuthLayout title="Sign In">
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Email Login
-          </p>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
-            Email and Password
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Enter your email and password to access your HRMS workspace.
-          </p>
-        </div>
-
+      <div className="w-full">
         {errorText && (
-          <div className="mt-5 flex gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="mb-6 flex gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
             <span>{errorText}</span>
           </div>
         )}
 
         {successText && (
-          <div className="mt-5 flex gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-700">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="mb-6 flex gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
             <span>{successText}</span>
           </div>
         )}
 
-        <form className="mt-6 space-y-4" onSubmit={handleLogin}>
+        <form className="space-y-6" onSubmit={handleLogin}>
           <label className="block">
-            <span className="text-sm font-semibold text-slate-700">Email</span>
-            <div className="mt-2 flex items-center rounded-md border border-slate-200 bg-white px-3 focus-within:border-slate-400">
-              <Mail className="h-4 w-4 text-slate-400" />
+            <span className="text-sm font-bold text-slate-800 mb-2 block">Email</span>
+            <div className="flex h-12 rounded bg-[#e8f0fe] overflow-hidden">
+              <div className="flex w-12 shrink-0 items-center justify-center bg-[#f79e5e]">
+                <Mail className="h-5 w-5 text-white" />
+              </div>
               <input
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                className="w-full border-0 bg-transparent px-3 py-3 text-sm text-slate-950 outline-none placeholder:text-slate-400"
+                className="w-full bg-transparent px-4 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-500"
                 placeholder="admin@company.com"
                 autoComplete="email"
                 type="email"
@@ -103,38 +93,48 @@ const LoginPage = observer(() => {
           </label>
 
           <label className="block">
-            <span className="text-sm font-semibold text-slate-700">Password</span>
-            <div className="mt-2 flex items-center rounded-md border border-slate-200 bg-white px-3 focus-within:border-slate-400">
-              <Lock className="h-4 w-4 text-slate-400" />
+            <span className="text-sm font-bold text-slate-800 mb-2 block">Password</span>
+            <div className="flex h-12 rounded bg-[#e8f0fe] overflow-hidden relative">
+              <div className="flex w-12 shrink-0 items-center justify-center bg-[#334155]">
+                <Lock className="h-5 w-5 text-white" />
+              </div>
               <input
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="w-full border-0 bg-transparent px-3 py-3 text-sm text-slate-950 outline-none placeholder:text-slate-400"
-                placeholder="Enter password"
+                className="w-full bg-transparent px-4 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-500 pr-12"
+                placeholder="••••••••"
                 type="password"
                 autoComplete="current-password"
               />
+              <button 
+                type="button" 
+                className="absolute right-0 top-0 h-full px-4 flex items-center justify-center text-slate-400 hover:text-slate-600"
+                tabIndex={-1}
+              >
+                {/* Basic Eye-off icon placeholder */}
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+              </button>
             </div>
           </label>
 
-          <div className="flex justify-end">
-            <Link href="/forgot-password" className="text-sm font-semibold text-slate-600 hover:text-slate-950">
-              Forgot password?
+          <div className="flex justify-start">
+            <Link href="/forgot-password" className="text-sm font-bold text-slate-800 hover:text-slate-900 hover:underline">
+              Forgot Your Password?
             </Link>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded bg-[#2e3b4e] px-4 py-3.5 text-sm font-bold text-white transition hover:bg-[#1e293b] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Sign In
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+            <span>Login</span>
           </button>
         </form>
 
-        <p className="mt-6 text-center text-xs leading-5 text-slate-500">
-          Need access? Ask your superadmin or company admin to invite you.
+        <p className="mt-6 text-center text-[13px] font-medium text-slate-800">
+          Having Problems? <a href="#" className="text-indigo-600 hover:underline">Visit Our Support Site</a>
         </p>
       </div>
     </AuthLayout>

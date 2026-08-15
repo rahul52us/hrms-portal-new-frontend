@@ -37,41 +37,37 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <AuthLayout title="Forgot Password" hideBrand>
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-          Password Reset
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
-          Reset your HRMS password
-        </h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          Enter your account email. We will send a secure reset link if the account exists.
-        </p>
-
+    <AuthLayout 
+      title="Forgot Password" 
+      subtitle="Enter your account email. We will send a secure reset link if the account exists."
+      hideBrand
+    >
+      <div className="w-full">
         {errorText && (
-          <div className="mt-5 flex gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="mb-6 flex gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
             <span>{errorText}</span>
           </div>
         )}
 
         {successText && (
-          <div className="mt-5 flex gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-700">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="mb-6 flex gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
             <span>{successText}</span>
           </div>
         )}
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-6" onSubmit={handleSubmit}>
           <label className="block">
-            <span className="text-sm font-semibold text-slate-700">Email</span>
-            <div className="mt-2 flex items-center rounded-md border border-slate-200 bg-white px-3 focus-within:border-slate-400">
-              <Mail className="h-4 w-4 text-slate-400" />
+            <span className="text-sm font-bold text-slate-800 mb-2 block">Email</span>
+            <div className="flex h-12 rounded bg-[#e8f0fe] overflow-hidden">
+              <div className="flex w-12 shrink-0 items-center justify-center bg-[#f79e5e]">
+                <Mail className="h-5 w-5 text-white" />
+              </div>
               <input
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                className="w-full border-0 bg-transparent px-3 py-3 text-sm text-slate-950 outline-none placeholder:text-slate-400"
+                className="w-full bg-transparent px-4 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-500"
                 placeholder="admin@company.com"
                 autoComplete="email"
                 type="email"
@@ -82,16 +78,16 @@ export default function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded bg-[#2e3b4e] px-4 py-3.5 text-sm font-bold text-white transition hover:bg-[#1e293b] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Send Reset Link
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+            <span>Send Reset Link</span>
           </button>
         </form>
 
-        <Link href="/login" className="mt-6 block text-center text-sm font-semibold text-slate-600 hover:text-slate-950">
-          Back to login
-        </Link>
+        <p className="mt-6 text-center text-[13px] font-medium text-slate-800">
+          Remembered your password? <Link href="/login" className="text-indigo-600 font-bold hover:underline">Back to login</Link>
+        </p>
       </div>
     </AuthLayout>
   );
