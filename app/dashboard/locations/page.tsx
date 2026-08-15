@@ -18,6 +18,7 @@ import { observer } from "mobx-react-lite";
 import { useEffect } from "react";
 import { FiBriefcase, FiMapPin } from "react-icons/fi";
 import LocationTable from "./LocationTable";
+import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
 
 const LocationsPage = observer(() => {
   const { auth, companyStore, locationStore } = stores;
@@ -52,37 +53,6 @@ const LocationsPage = observer(() => {
       ? locationStore.pagination?.total || 0
       : 0;
 
-  const StatCard = ({
-    icon,
-    label,
-    value,
-    colorScheme,
-  }: {
-    icon: any;
-    label: string;
-    value: string | number;
-    colorScheme: "blue" | "purple";
-  }) => {
-    const iconBg = useColorModeValue(`${colorScheme}.50`, `${colorScheme}.900`);
-    const iconColor = useColorModeValue(`${colorScheme}.500`, `${colorScheme}.300`);
-
-    return (
-      <Flex align="center" gap={4} bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="2xl" p={4} shadow="sm">
-        <Center w={11} h={11} bg={iconBg} color={iconColor} borderRadius="xl" flexShrink={0}>
-          <Icon as={icon} boxSize={5} />
-        </Center>
-        <Box minW={0}>
-          <Text fontSize="xs" fontWeight="800" color={muted} textTransform="uppercase" noOfLines={1}>
-            {label}
-          </Text>
-          <Text mt={0.5} fontSize="xl" fontWeight="800" color={headingColor} noOfLines={1}>
-            {value}
-          </Text>
-        </Box>
-      </Flex>
-    );
-  };
-
   return (
     <PermissionGate
       allowed={canViewLocations}
@@ -90,29 +60,18 @@ const LocationsPage = observer(() => {
       description="This account does not currently have access to office locations."
       fallbackHref="/dashboard/profile"
     >
-      <Box minH="100dvh" bg={pageBg} px={{ base: 3, md: 6 }} py={{ base: 3, md: 6 }}>
-        <Stack spacing={{ base: 4, md: 6 }}>
-          <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="2xl" p={{ base: 4, md: 6 }} shadow="sm" overflow="hidden" position="relative">
-            <Box position="absolute" insetX={0} top={0} h="1" bgGradient="linear(to-r, blue.400, purple.500, pink.400)" />
-            <Flex direction={{ base: "column", lg: "row" }} justify="space-between" align={{ base: "stretch", lg: "center" }} gap={5}>
-              <Box minW={0}>
-                <Heading size={{ base: "md", md: "lg" }} color={headingColor}>
-                  Office Locations
-                </Heading>
-                <Text mt={1} fontSize="sm" color={muted} noOfLines={{ base: 2, md: 1 }}>
-                  Office master data for{" "}
-                  <Text as="span" fontWeight="700" color={headingColor}>
-                    {activeCompany?.company_name || "selected company"}
-                  </Text>
-                </Text>
-              </Box>
-
-              <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={4} minW={{ base: "100%", lg: "420px" }}>
-                <StatCard icon={FiMapPin} label="Total locations" value={totalLocations} colorScheme="blue" />
-                <StatCard icon={FiBriefcase} label="Company" value={activeCompany?.company_name || "ABC"} colorScheme="purple" />
-              </SimpleGrid>
-            </Flex>
-          </Box>
+      <Box minH="100dvh">
+        <Stack>
+          <PageBanner
+            titlePrefix="OFFICE"
+            titleHighlight="LOCATIONS"
+            subtitle={`OFFICE MASTER DATA FOR ${activeCompany?.company_name || "YOUR COMPANY"}`}
+            icon={FiMapPin}
+            statLabel={`${totalLocations} LOCATIONS`}
+            statIcon={FiMapPin}
+            showBackButton={true}
+            colorScheme="blue"
+          />
 
           <LocationTable
             key={companyId || "no-company"}

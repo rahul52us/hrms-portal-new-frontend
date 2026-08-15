@@ -8,6 +8,7 @@ import {
   Box,
   Button,
   Flex,
+  Heading,
   HStack,
   Icon,
   IconButton,
@@ -143,27 +144,24 @@ const LocationTable = ({ companyId, companyName }: LocationTableProps) => {
           mb={5}
         >
           <HStack spacing={3} align="flex-start">
-            <Box
-              p={2.5}
-              borderRadius="xl"
-              bgGradient="linear(to-br, blue.500, purple.600)"
-              color="white"
-            >
+            <Flex p={2.5} bg={useColorModeValue("blue.50", "blue.900")} color={useColorModeValue("blue.600", "blue.300")} borderRadius="xl" flexShrink={0}>
               <Icon as={FiMapPin} boxSize={5} />
-            </Box>
+            </Flex>
             <Box minW={0}>
-              <Text fontSize={{ base: "lg", md: "2xl" }} fontWeight="800">
-                Office Locations
-              </Text>
-              <Text color={muted} fontSize="sm" noOfLines={2}>
+              <Heading size="sm" fontWeight="900" letterSpacing="tight" textTransform="uppercase">
+                <Box as="span" color={useColorModeValue("gray.900", "white")}>OFFICE </Box>
+                <Box as="span" bgGradient={useColorModeValue("linear(to-r, blue.500, blue.700)", "linear(to-r, blue.300, blue.500)")} bgClip="text">
+                  DIRECTORY
+                </Box>
+              </Heading>
+              <Text fontSize="10px" fontWeight="700" color="gray.500" mt={0.5} letterSpacing="wider" textTransform="uppercase" noOfLines={2}>
                 {companyName
                   ? `${canManageLocations ? "Manage" : "View"} locations for ${companyName}`
                   : "Select a company to view its locations"}
               </Text>
             </Box>
           </HStack>
-
-          <HStack spacing={3} align={{ base: "stretch", md: "center" }} flexWrap="wrap">
+          <Flex gap={3} align={{ base: "stretch", md: "center" }} direction={{ base: "column", sm: "row" }}>
             <InputGroup maxW={{ base: "100%", md: "260px" }}>
               <InputLeftElement pointerEvents="none">
                 <Icon as={FiSearch} color={muted} />
@@ -200,7 +198,7 @@ const LocationTable = ({ companyId, companyName }: LocationTableProps) => {
                 Add Location
               </Button>
             </Tooltip>
-          </HStack>
+          </Flex>
         </Flex>
 
         {locationStore.isLoading ? (

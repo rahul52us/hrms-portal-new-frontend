@@ -42,6 +42,7 @@ import { SuperadminDashboard } from "./components/superadmin-dashboard/Superadmi
 import { SuperadminDashboardSummary } from "./components/superadmin-dashboard/types";
 import { DashboardCharts } from "./components/scoped-dashboard/DashboardCharts";
 import { DashboardFilters } from "./components/scoped-dashboard/DashboardFilters";
+import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
 import {
   EMPTY_SCOPED_FILTERS,
   ScopedDashboardFilters,
@@ -66,36 +67,34 @@ function StatCard({ label, value, helper, icon, colorScheme }: StatCardProps) {
       borderWidth="1px"
       borderColor={borderColor}
       borderRadius="xl"
-      p={{ base: 3.5, md: 4 }}
+      p={{ base: 4, md: 5 }}
       boxShadow="sm"
+      position="relative"
       transition="transform .18s ease, box-shadow .18s ease"
       _hover={{ transform: "translateY(-2px)", boxShadow: "md" }}
       minW={0}
     >
-      <Flex justify="space-between" gap={3}>
-        <Stat minW={0}>
-          <StatLabel color="gray.500" fontSize="xs" noOfLines={1}>
-            {label}
-          </StatLabel>
-          <StatNumber mt={1} fontSize={{ base: "xl", md: "2xl" }} lineHeight="1.15">
-            {typeof value === "number" ? value.toLocaleString() : value}
-          </StatNumber>
-          <Text mt={1.5} fontSize="xs" color="gray.500" noOfLines={1}>
-            {helper}
-          </Text>
-        </Stat>
+      <Flex align="center" gap={4}>
         <Flex
           align="center"
           justify="center"
-          w="36px"
-          h="36px"
+          w="40px"
+          h="40px"
           flexShrink={0}
           borderRadius="lg"
           bg={`${colorScheme}.50`}
-          color={`${colorScheme}.600`}
+          color={`${colorScheme}.500`}
         >
-          <Icon as={icon} boxSize={4.5} />
+          <Icon as={icon} boxSize={5} />
         </Flex>
+        <Box minW={0}>
+          <Text color="gray.500" fontSize="xs" fontWeight="700" textTransform="uppercase" letterSpacing="wider" noOfLines={1}>
+            {label}
+          </Text>
+          <Text mt={1} fontSize={{ base: "xl", md: "2xl" }} fontWeight="800" color={useColorModeValue("gray.800", "white")} lineHeight="1">
+            {typeof value === "number" ? value.toLocaleString() : value}
+          </Text>
+        </Box>
       </Flex>
     </Box>
   );
@@ -313,62 +312,18 @@ const ScopedDashboard = observer(() => {
   return (
     <Box minH="100vh" bg={pageBg} p={{ base: 3, md: 5 }}>
       <Stack spacing={4} maxW="1600px" mx="auto">
-        <Box
-          bg={heroBg}
-          borderWidth="1px"
-          borderColor={heroBorder}
-          borderRadius="2xl"
-          p={{ base: 4, md: 5 }}
-          boxShadow="sm"
-          overflow="hidden"
-          position="relative"
-        >
-          <Box
-            position="absolute"
-            insetY={0}
-            right={0}
-            w={{ base: "35%", md: "28%" }}
-            bgGradient={isAdmin ? "linear(to-l, purple.100, transparent)" : "linear(to-l, teal.100, transparent)"}
-            opacity={useColorModeValue(0.8, 0.08)}
-            pointerEvents="none"
+          <PageBanner
+            titlePrefix={isAdmin ? "COMPANY" : "DEPARTMENT"}
+            titleHighlight="DASHBOARD"
+            subtitle={isAdmin
+              ? `LEARNING HEALTH FOR ${scope.companyName || "YOUR COMPANY"}`
+              : `LEARNING PROGRESS FOR ${scope.departmentName || "YOUR DEPARTMENT"}`}
+            icon={isAdmin ? FiBriefcase : FiLayers}
+            colorScheme={isAdmin ? "purple" : "teal"}
+            showBackButton={false}
+            statLabel={`${stats.totalUsers || 0} USERS`}
+            statIcon={FiUsers}
           />
-          <Flex justify="space-between" align="flex-start" gap={4} position="relative">
-            <Box minW={0}>
-              <HStack spacing={2} mb={2}>
-                <Badge
-                  colorScheme={isAdmin ? "purple" : "teal"}
-                  borderRadius="full"
-                  px={2.5}
-                  py={0.5}
-                  fontSize="0.65rem"
-                >
-                  {isAdmin ? "Company scope" : "Department scope"}
-                </Badge>
-                {scopedSummaryLoading ? (
-                  <Badge variant="subtle" borderRadius="full">
-                    Refreshing
-                  </Badge>
-                ) : null}
-              </HStack>
-              <Heading size={{ base: "md", md: "lg" }} noOfLines={1}>
-                {isAdmin
-                  ? scope.companyName || "Company dashboard"
-                  : scope.departmentName || "Department dashboard"}
-              </Heading>
-              <Text mt={1.5} color="gray.500" fontSize={{ base: "sm", md: "md" }}>
-                {isAdmin
-                  ? "Company learning health, people activity, and course performance."
-                  : `Learning progress and engagement inside ${scope.companyName || "your company"}.`}
-              </Text>
-            </Box>
-            <HStack display={{ base: "none", md: "flex" }} color={isAdmin ? "purple.500" : "teal.500"}>
-              <Icon as={isAdmin ? FiBriefcase : FiLayers} boxSize={5} />
-              <Text fontSize="sm" fontWeight="semibold">
-                Live scoped analytics
-              </Text>
-            </HStack>
-          </Flex>
-        </Box>
 
         <Flex justify="flex-end" w={'100%'}>
           <DashboardFilters
@@ -398,10 +353,23 @@ const ScopedDashboard = observer(() => {
           ))}
         </SimpleGrid>
 
-        <DashboardCharts
-          role={role as "admin" | "departmenthead"}
-          charts={scoped.charts}
-        />
+        <Box
+          bg={heroBg}
+          borderWidth="1px"
+          borderColor={heroBorder}
+          borderRadius="xl"
+          p={{ base: 5, md: 6 }}
+          boxShadow="sm"
+          position="relative"
+          overflow="hidden"
+        >
+          <Box position="absolute" top={0} left={0} right={0} h="4px" bgGradient="linear(to-r, blue.400, purple.500, pink.500)" />
+
+          <DashboardCharts
+            role={role as "admin" | "departmenthead"}
+            charts={scoped.charts}
+          />
+        </Box>
       </Stack>
     </Box>
   );

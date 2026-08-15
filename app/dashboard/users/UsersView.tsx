@@ -1375,7 +1375,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       description="This account does not currently have access to the employees workspace."
       fallbackHref="/dashboard/profile"
     >
-    <Box minH={embedded ? "auto" : "100vh"} p={embedded ? 0 : { base: 4, md: 6 }}>
+    <Box minH={embedded ? "auto" : "100vh"}>
       <VStack align="stretch" spacing={6}>
 
         {isManagementBlocked ? (
@@ -1477,7 +1477,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   setLocationFilter={setLocationFilter}
   onResetFilters={clearIssueFilter}
 />
-      
+
       </VStack>
 
 <UserDrawer

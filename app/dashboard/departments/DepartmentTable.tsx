@@ -20,6 +20,7 @@ import {
   FormControl,
   FormLabel,
   HStack,
+  Heading,
   Icon,
   IconButton,
   Input,
@@ -964,32 +965,17 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
             mb={{ base: 4, md: 6 }}
           >
             <HStack spacing={3} align="flex-start">
-              <Box
-                p={{ base: 2, md: 2.5 }}
-                rounded="xl"
-                bgGradient="linear(to-br, blue.500, purple.600)"
-                color="white"
-                flexShrink={0}
-              >
-                <Icon as={FiHash} boxSize={{ base: 4, md: 5 }} />
-              </Box>
-
+              <Flex p={2.5} bg={useColorModeValue("purple.50", "purple.900")} color={useColorModeValue("purple.600", "purple.300")} borderRadius="xl" flexShrink={0}>
+                <Icon as={FiHash} boxSize={5} />
+              </Flex>
               <Box minW={0}>
-                <Text
-                  fontSize={{ base: "lg", md: "2xl" }}
-                  fontWeight="800"
-                  color={headingColor}
-                  lineHeight="1.2"
-                >
-                  Departments
-                </Text>
-
-                <Text
-                  fontSize={{ base: "xs", md: "sm" }}
-                  color={mutedTextColor}
-                  mt={1}
-                  noOfLines={{ base: 2, md: 1 }}
-                >
+                <Heading size="sm" fontWeight="900" letterSpacing="tight" textTransform="uppercase">
+                  <Box as="span" color={useColorModeValue("gray.900", "white")}>ORGANIZATION </Box>
+                  <Box as="span" bgGradient={useColorModeValue("linear(to-r, purple.500, purple.700)", "linear(to-r, purple.300, purple.500)")} bgClip="text">
+                    STRUCTURE
+                  </Box>
+                </Heading>
+                <Text fontSize="10px" fontWeight="700" color="gray.500" mt={0.5} letterSpacing="wider" textTransform="uppercase" noOfLines={2}>
                   {companyName
                     ? `${canManageDepartments ? "Manage" : "View"} departments for ${companyName}`
                     : `Select a company to ${
