@@ -33,6 +33,13 @@ const sidebarDatas: SidebarItem[] = [
     permissionKey: PERMISSION_KEYS.VIEW_DASHBOARD,
   },
   {
+    id: 3,
+    name: "Me",
+    icon: <FiUser />,
+    url: "/dashboard/user-profile",
+    role: ["admin", "superadmin", "departmenthead", "hradmin", "hr", "employee"],
+  },
+  {
     id: 100,
     name: "Employees",
     icon: <FaUsers />,

@@ -252,7 +252,7 @@ const EmployeePage = observer(() => {
                 Employee Self Service
               </Text>
             </Box>
-            <Button as={Link} href="/user-profile" size="sm" borderRadius="8px" colorScheme="blue" leftIcon={<FiUser />}>
+            <Button as={Link} href="/dashboard/user-profile" size="sm" borderRadius="8px" colorScheme="blue" leftIcon={<FiUser />}>
               View Profile
             </Button>
           </Flex>
@@ -404,7 +404,7 @@ const EmployeePage = observer(() => {
                   Quick Links
                 </Text>
                 <SimpleGrid columns={{ base: 2, md: 3 }} spacing={6}>
-                  <QuickLinkTile icon={FiCalendar} label="Monthly Att." href="/user-profile" />
+                  <QuickLinkTile icon={FiCalendar} label="Monthly Att." href="/dashboard/user-profile" />
                   <QuickLinkTile icon={FiClock} label="Leave Request" href="/dashboard/request/leave" />
                   <QuickLinkTile icon={FiShield} label="Holiday List" href="/dashboard/company/policy/holidays" />
                   <QuickLinkTile icon={FiCreditCard} label="Expense Claim" href="/dashboard/request" />

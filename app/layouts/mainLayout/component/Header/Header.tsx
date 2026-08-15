@@ -78,7 +78,7 @@ const Header: React.FC = observer(() => {
     if (isEmployee) {
       return [
         { href: '/employee', label: 'My HRMS' },
-        { href: '/user-profile', label: 'Profile' },
+        { href: '/dashboard/user-profile', label: 'Profile' },
       ];
     }
 
@@ -96,7 +96,7 @@ const Header: React.FC = observer(() => {
     () => isEmployee
       ? [
         { href: '/employee', label: 'HRMS', icon: FiGrid },
-        { href: '/user-profile', label: 'Profile', icon: FiUser },
+        { href: '/dashboard/user-profile', label: 'Profile', icon: FiUser },
       ]
       : [
         { href: '/', label: 'Home', icon: FiHome },
@@ -270,7 +270,7 @@ const Header: React.FC = observer(() => {
                         <Text fontWeight="bold" noOfLines={1}>{displayName}</Text>
                         <Text fontSize="sm" color="gray.500" noOfLines={1}>{user?.username || ''}</Text>
                       </Box>
-                      <MenuItem borderRadius="xl" onClick={() => router.push('/user-profile')}>
+                      <MenuItem borderRadius="xl" onClick={() => router.push('/dashboard/user-profile')}>
                         View profile
                       </MenuItem>
                       <MenuItem borderRadius="xl" as={NextLink} href={appHref}>
