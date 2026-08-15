@@ -181,7 +181,7 @@ const HeaderContainer = styled.div<{
 `;
 
 const ContentContainer = styled.div<{ $isMobile: boolean }>`
-  padding: ${({ $isMobile }) => ($isMobile ? '0' : `${contentLargeBodyPadding}`)};
+  padding: ${({ $isMobile }) => ($isMobile ? '14px' : `${contentLargeBodyPadding}`)};
   padding-bottom: ${({ $isMobile }) =>
     $isMobile ? 'max(env(safe-area-inset-bottom, 0px), 48px)' : `${contentLargeBodyPadding}`};
   width: 100%;

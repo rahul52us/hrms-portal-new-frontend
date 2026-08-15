@@ -514,7 +514,7 @@ const HrDashboardPage = observer(() => {
 
                     <Section title="Scope" helper={scope.mode === "scoped" ? "This HR user is limited to the scope below." : "This account can work across the company."}>
                       <Stack spacing={4}>
-                        <SimpleGrid columns={3} spacing={3}>
+                        <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={3}>
                           <Box bg={useColorModeValue("purple.50", "color-mix(in srgb, var(--chakra-colors-purple-400) 15%, transparent)")} p={3} borderRadius="xl" borderWidth="1px" borderColor={useColorModeValue("purple.200", "color-mix(in srgb, var(--chakra-colors-purple-400) 30%, transparent)")}>
                             <Text fontSize="xs" fontWeight="800" color={useColorModeValue("purple.600", "purple.300")} textTransform="uppercase">Depts</Text>
                             <Text fontSize="xl" fontWeight="900" mt={1} color={useColorModeValue("purple.900", "purple.100")}>{numberValue(stats.departments)}</Text>
