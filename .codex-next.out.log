@@ -1,0 +1,27 @@
+
+> hrms-frontend@0.1.0 dev
+> next dev -p 3000
+
+   ▲ Next.js 16.0.8 (Turbopack)
+   - Local:         http://localhost:3000
+   - Network:       http://192.168.1.33:3000
+   - Environments: .env
+
+ ✓ Starting...
+Creating turbopack project { dir: 'E:\\HRMS\\frontend', testMode: true }
+ ✓ Ready in 9.7s
+ ○ Compiling /dashboard/workforce-policies ...
+ GET /dashboard/workforce-policies 200 in 19.1s (compile: 18.5s, render: 635ms)
+ GET /login 200 in 2.2s (compile: 2.1s, render: 69ms)
+ ○ Compiling /dashboard/companies ...
+ GET /dashboard/companies 200 in 4.8s (compile: 4.7s, render: 27ms)
+ GET /dashboard/workforce-policies 200 in 57ms (compile: 4ms, render: 53ms)
+ GET /dashboard/users 200 in 2.2s (compile: 1828ms, render: 390ms)
+ ✓ Compiled in 170ms
+ GET /dashboard/workforce-policies 200 in 56ms (compile: 3ms, render: 53ms)
+ GET /dashboard/workforce-policies 200 in 55ms (compile: 3ms, render: 52ms)
+ ✓ Compiled in 175ms
+ ✓ Compiled in 366ms
+ GET /dashboard/workforce-policies 200 in 2.8s (compile: 631ms, render: 2.1s)
+ ✓ Compiled in 155ms
+ GET /dashboard/workforce-policies 200 in 3.3s (compile: 783ms, render: 2.5s)

@@ -29,7 +29,7 @@ interface EditUserModalProps {
 const EditUserModal = ({ isOpen, onClose, user, onSuccess }: EditUserModalProps) => {
   const [formData, setFormData] = useState({
     name: user.name || "",
-    code: user.code || "",
+    employeeNumber: user.employeeNumber || user.code || "",
     bio: user.bio || "",
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -42,7 +42,7 @@ const EditUserModal = ({ isOpen, onClose, user, onSuccess }: EditUserModalProps)
       await userStore.updateUser({
         _id: user._id,
         name: formData.name,
-        code: formData.code,
+        employeeNumber: formData.employeeNumber,
         bio: formData.bio,
       });
       toast({
@@ -85,12 +85,17 @@ const EditUserModal = ({ isOpen, onClose, user, onSuccess }: EditUserModalProps)
                 onChange={(e: any) => setFormData({ ...formData, name: e.target.value })}
               />
               <CustomInput
-                label="Employee Code"
-                name="edit-code"
+                label="Employee Number"
+                name="edit-employee-number"
                 type="text"
                 placeholder="E01"
-                value={formData.code}
-                onChange={(e: any) => setFormData({ ...formData, code: e.target.value })}
+                value={formData.employeeNumber}
+                onChange={(e: any) =>
+                  setFormData({
+                    ...formData,
+                    employeeNumber: e.target.value.toUpperCase(),
+                  })
+                }
               />
             </HStack>
 

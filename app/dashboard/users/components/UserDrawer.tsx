@@ -13,8 +13,13 @@ import {
   DrawerHeader,
   DrawerOverlay,
   Flex,
+  FormControl,
+  FormErrorMessage,
+  FormLabel,
   Icon,
   Input,
+  InputGroup,
+  InputLeftAddon,
   SimpleGrid,
   Text,
   Textarea,
@@ -101,7 +106,7 @@ const buildUserFormErrors = ({
   isDepartmentRequired: boolean;
 }) => {
   const errors: Record<string, string> = {};
-  const trimmedCode = String(userForm.code || "").trim();
+  const trimmedEmployeeNumber = String(userForm.employeeNumber || "").trim();
   const trimmedName = String(userForm.name || "").trim();
   const trimmedEmail = String(userForm.email || "").trim().toLowerCase();
   const trimmedMobile = String(userForm.mobileNumber || "").trim();
@@ -116,8 +121,15 @@ const buildUserFormErrors = ({
   const trimmedConfirmPassword = String(userForm.confirmPassword || "");
   const requiresEmployeeCode = !isCompanyAdminRole;
 
-  if (requiresEmployeeCode && !trimmedCode) {
-    errors.code = "Employee code is required.";
+  if (requiresEmployeeCode && !trimmedEmployeeNumber) {
+    errors.employeeNumber = "Employee number is required.";
+  } else if (
+    requiresEmployeeCode &&
+    (!/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/i.test(trimmedEmployeeNumber) ||
+      trimmedEmployeeNumber.length > 40)
+  ) {
+    errors.employeeNumber =
+      "Use up to 40 letters, numbers, or single hyphens.";
   }
 
   if (!trimmedName) {
@@ -218,6 +230,7 @@ const UserDrawer = ({
   onSubmit,
   loading,
   canAssignManagers = true,
+  companyCode = "",
 }: any) => {
   const [preview, setPreview] = useState<string | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -433,17 +446,44 @@ const UserDrawer = ({
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                 {!isCompanyAdminRole && (
                   <>
-                    <CustomInput
-                      label="Employee Code"
-                      name="code"
-                      placeholder="Enter employee code"
-                      value={userForm.code}
-                      error={validationErrors.code}
-                      showError={submitAttempted}
-                      onChange={(e: any) =>
-                        setUserForm((p: any) => ({ ...p, code: e.target.value }))
-                      }
-                    />
+                    <FormControl
+                      isInvalid={Boolean(
+                        submitAttempted && validationErrors.employeeNumber
+                      )}
+                    >
+                      <FormLabel fontSize="sm" fontWeight="600">
+                        Employee Number
+                      </FormLabel>
+                      <InputGroup>
+                        <InputLeftAddon fontWeight="700">
+                          {`${companyCode || "COMPANY"}-`}
+                        </InputLeftAddon>
+                        <Input
+                          name="employeeNumber"
+                          placeholder="461"
+                          value={userForm.employeeNumber}
+                          maxLength={40}
+                          textTransform="uppercase"
+                          onChange={(event) => {
+                            const rawValue = event.target.value.toUpperCase();
+                            const prefix = companyCode
+                              ? `${companyCode.toUpperCase()}-`
+                              : "";
+                            const employeeNumber =
+                              prefix && rawValue.startsWith(prefix)
+                                ? rawValue.slice(prefix.length)
+                                : rawValue;
+                            setUserForm((previous: any) => ({
+                              ...previous,
+                              employeeNumber,
+                            }));
+                          }}
+                        />
+                      </InputGroup>
+                      <FormErrorMessage>
+                        {validationErrors.employeeNumber}
+                      </FormErrorMessage>
+                    </FormControl>
                     <CustomInput
                       label="Profile ID"
                       name="profileId"
