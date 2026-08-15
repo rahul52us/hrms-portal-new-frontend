@@ -38,6 +38,7 @@ import {
   FiClock,
   FiSearch
 } from "react-icons/fi";
+import { StatCard } from "../../../component/common/StatCard/StatCard";
 import CustomTable from "../../../component/config/component/CustomTable/CustomTable";
 
 type Props = {
@@ -390,117 +391,34 @@ const UsersTable = ({
     <VStack spacing={{ base: 4, md: 6 }} align="stretch">
       {/* Modern Compact Stat Cards */}
       <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={4}>
-        <Box
-          bg={cardBg}
-          border="1px solid"
-          borderColor={borderColorLight}
-          borderRadius="2xl"
-          p={{ base: 4, md: 5 }}
-          shadow="sm"
-          position="relative"
-          overflow="hidden"
-          _hover={{ shadow: "md", transform: "translateY(-2px)", borderColor: "blue.300" }}
-          transition="all 0.2s"
-        >
-          <HStack justify="space-between" align="center" mb={1}>
-            <Text fontSize="xs" fontWeight="700" color={muted} textTransform="uppercase" letterSpacing="wider">
-              Total Employees
-            </Text>
-            <Flex bg="blue.50" color="blue.500" p={2} borderRadius="lg">
-              <Icon as={FiUsers} boxSize={4} />
-            </Flex>
-          </HStack>
-          <Text fontSize="2xl" fontWeight="900" color={statNumberColor}>
-            {stats.total}
-          </Text>
-          <Text fontSize="xs" color={muted} mt={1} fontWeight="500">
-            Across all roles
-          </Text>
-        </Box>
-
-        <Box
-          bg={cardBg}
-          border="1px solid"
-          borderColor={borderColorLight}
-          borderRadius="2xl"
-          p={{ base: 4, md: 5 }}
-          shadow="sm"
-          position="relative"
-          overflow="hidden"
-          _hover={{ shadow: "md", transform: "translateY(-2px)", borderColor: "green.300" }}
-          transition="all 0.2s"
-        >
-          <HStack justify="space-between" align="center" mb={1}>
-            <Text fontSize="xs" fontWeight="700" color={muted} textTransform="uppercase" letterSpacing="wider">
-              Active Employees
-            </Text>
-            <Flex bg="green.50" color="green.500" p={2} borderRadius="lg">
-              <Icon as={FiCheckCircle} boxSize={4} />
-            </Flex>
-          </HStack>
-          <Text fontSize="2xl" fontWeight="900" color={activeNumberColor}>
-            {stats.active}
-          </Text>
-          <Text fontSize="xs" color={muted} mt={1} fontWeight="500">
-            {stats.total > 0 ? ((stats.active / stats.total) * 100).toFixed(1) : "0"}% active rate
-          </Text>
-        </Box>
-
-        <Box
-          bg={cardBg}
-          border="1px solid"
-          borderColor={borderColorLight}
-          borderRadius="2xl"
-          p={{ base: 4, md: 5 }}
-          shadow="sm"
-          position="relative"
-          overflow="hidden"
-          _hover={{ shadow: "md", transform: "translateY(-2px)", borderColor: "orange.300" }}
-          transition="all 0.2s"
-        >
-          <HStack justify="space-between" align="center" mb={1}>
-            <Text fontSize="xs" fontWeight="700" color={muted} textTransform="uppercase" letterSpacing="wider">
-              Pending / Inactive
-            </Text>
-            <Flex bg="orange.50" color="orange.500" p={2} borderRadius="lg">
-              <Icon as={FiClock} boxSize={4} />
-            </Flex>
-          </HStack>
-          <Text fontSize="2xl" fontWeight="900" color={pendingNumberColor}>
-            {stats.pending + stats.inactive}
-          </Text>
-          <Text fontSize="xs" color={muted} mt={1} fontWeight="500">
-            {stats.inactive > 0 ? `${stats.inactive} deactivated, ${stats.pending} pending` : "Awaiting activation"}
-          </Text>
-        </Box>
-
-        <Box
-          bg={cardBg}
-          border="1px solid"
-          borderColor={borderColorLight}
-          borderRadius="2xl"
-          p={{ base: 4, md: 5 }}
-          shadow="sm"
-          position="relative"
-          overflow="hidden"
-          _hover={{ shadow: "md", transform: "translateY(-2px)", borderColor: "purple.300" }}
-          transition="all 0.2s"
-        >
-          <HStack justify="space-between" align="center" mb={1}>
-            <Text fontSize="xs" fontWeight="700" color={muted} textTransform="uppercase" letterSpacing="wider">
-              Password Ready
-            </Text>
-            <Flex bg="purple.50" color="purple.500" p={2} borderRadius="lg">
-              <Icon as={FiShield} boxSize={4} />
-            </Flex>
-          </HStack>
-          <Text fontSize="2xl" fontWeight="900" color={secureNumberColor}>
-            {stats.passwordReady}
-          </Text>
-          <Text fontSize="xs" color={muted} mt={1} fontWeight="500">
-            {stats.total > 0 ? ((stats.passwordReady / stats.total) * 100).toFixed(1) : "0"}% ready
-          </Text>
-        </Box>
+        <StatCard
+          label="Total Employees"
+          value={stats.total}
+          helper="Across all roles"
+          icon={FiUsers}
+          color="blue"
+        />
+        <StatCard
+          label="Active Employees"
+          value={stats.active}
+          helper={`${stats.total > 0 ? ((stats.active / stats.total) * 100).toFixed(1) : "0"}% active rate`}
+          icon={FiCheckCircle}
+          color="green"
+        />
+        <StatCard
+          label="Pending / Inactive"
+          value={stats.pending + stats.inactive}
+          helper={stats.inactive > 0 ? `${stats.inactive} deactivated, ${stats.pending} pending` : "Awaiting activation"}
+          icon={FiClock}
+          color="orange"
+        />
+        <StatCard
+          label="Password Ready"
+          value={stats.passwordReady}
+          helper={`${stats.total > 0 ? ((stats.passwordReady / stats.total) * 100).toFixed(1) : "0"}% ready`}
+          icon={FiShield}
+          color="purple"
+        />
       </SimpleGrid>
 
       {/* Tabs & Filters Section */}

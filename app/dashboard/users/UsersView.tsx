@@ -1450,25 +1450,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   canOpenCreate={canOpenCreate}
 />
 
-<Box mb={6}>
-  <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={4}>
-    <StatCard
-      label="Total Count"
-      value={userStore.pagination?.total || 0}
-      helper="In current view"
-      icon={FiUsers}
-      color="blue"
-    />
-    <StatCard
-      label="Current Role"
-      value={listTabs.find((t) => t.value === listTab)?.label || "Employees"}
-      helper="Active filter"
-      icon={FiFilter}
-      color="purple"
-    />
-  </SimpleGrid>
-</Box>
-
 <UsersTable
   users={userStore.users}
   loading={userStore.loading}
