@@ -503,130 +503,133 @@ const UsersTable = ({
         </Box>
       </SimpleGrid>
 
-      {/* Tabs Section */}
-      <Box>
+      {/* Tabs & Filters Section */}
+      <Box mb={6}>
         <Flex
           justify="space-between"
-          align="center"
-          mb={{ base: 4, md: 6 }}
-          flexWrap="wrap"
+          align={{ base: "start", lg: "center" }}
+          direction={{ base: "column", lg: "row" }}
           gap={4}
         >
-          <Tabs
-            variant="soft-rounded"
-            colorScheme="blue"
-            size="sm"
-            index={activeTabIndex}
-            onChange={(index) => {
-              setListTab(listTabs[index]?.value || "user");
-              setPage(1);
-            }}
-          >
-            <TabList gap={2} flexWrap="nowrap" overflowX="auto" bg={tabListBg} p={1} borderRadius="full">
-              {listTabs.map((tab) => (
-                <Tab
-                  key={tab.value}
-                  _selected={{
-                    bgGradient: "linear(to-r, blue.500, purple.600)",
-                    color: "white",
-                    boxShadow: "md",
-                  }}
-                  borderRadius="full"
-                  px={{ base: 4, md: 6 }}
-                  fontSize="sm"
-                  fontWeight="medium"
-                  transition="all 0.2s"
-                  color={tabTextColor}
-                  whiteSpace="nowrap"
-                >
-                  {tab.label}
-                </Tab>
-              ))}
-            </TabList>
-          </Tabs>
-
-          <Box
-            bg={statsBg}
-            px={4}
-            py={2}
-            borderRadius="full"
-          >
-            <Text fontSize="sm" fontWeight="semibold" color={statsTextColor}>
-              {pagination.total} total {activeTabLabel.toLowerCase()}
-              {pagination.total !== 1 ? "s" : ""}
-            </Text>
-          </Box>
-        </Flex>
-
-        {/* Employee source filter for admin-created vs externally linked accounts. */}
-        {showUserSourceTabs && (
-          <Box mb={4}>
-            <HStack spacing={2} flexWrap="wrap">
-              <Text fontSize="xs" color={muted} fontWeight="medium" mr={1}>
-                Show:
-              </Text>
-              {([
-                { value: "all", label: "All Employees" },
-                { value: "manual", label: "Manually Created" },
-                { value: "public_enrolled", label: "Externally Linked" },
-              ] as const).map((opt) => (
-                <Button
-                  key={opt.value}
-                  size="xs"
-                  borderRadius="full"
-                  variant={userSourceTab === opt.value ? "solid" : "outline"}
-                  colorScheme={opt.value === "public_enrolled" ? "purple" : "blue"}
-                  onClick={() => {
-                    setUserSourceTab?.(opt.value);
-                    setPage(1);
-                  }}
-                >
-                  {opt.label}
-                </Button>
-              ))}
-            </HStack>
-            {userSourceTab === "public_enrolled" && (
-              <Box
-                mt={2}
-                px={3}
-                py={2}
-                bg={externalNoticeBg}
-                borderRadius="xl"
-                borderLeft="3px solid"
-                borderColor="purple.400"
-              >
-                <Text fontSize="xs" color={externalNoticeTextColor}>
-                  ⚠️ These employees self-enrolled via public course access. You can view their profiles but cannot edit or delete them.
-                </Text>
-              </Box>
-            )}
-          </Box>
-        )}
-
-        <Flex justify="flex-end" mb={4}>
-          <Box minW={{ base: "100%", md: "260px" }}>
-            <Text fontSize="xs" color={muted} fontWeight="700" mb={1}>
-              Office Location
-            </Text>
-            <Select
+          <Box flex={1} w="100%" maxW="100%" overflowX="auto" css={{ "&::-webkit-scrollbar": { display: "none" } }}>
+            <Tabs
+              variant="soft-rounded"
+              colorScheme="blue"
               size="sm"
-              value={locationFilter}
-              onChange={(event) => {
-                setLocationFilter?.(event.target.value);
+              index={activeTabIndex}
+              onChange={(index) => {
+                setListTab(listTabs[index]?.value || "user");
                 setPage(1);
               }}
-              borderRadius="full"
-              isDisabled={officeLocationOptions.length === 0}
             >
-              <option value="">All locations</option>
-              {officeLocationOptions.map((location) => (
-                <option key={location.value} value={location.value} disabled={location.isDisabled}>
-                  {location.label}
-                </option>
-              ))}
-            </Select>
+              <TabList gap={2} flexWrap="nowrap" w="max-content" bg={tabListBg} p={1} borderRadius="full">
+                {listTabs.map((tab) => (
+                  <Tab
+                    key={tab.value}
+                    _selected={{
+                      bgGradient: "linear(to-r, blue.500, purple.600)",
+                      color: "white",
+                      boxShadow: "md",
+                    }}
+                    borderRadius="full"
+                    px={{ base: 4, md: 6 }}
+                    fontSize="sm"
+                    fontWeight="medium"
+                    transition="all 0.2s"
+                    color={tabTextColor}
+                    whiteSpace="nowrap"
+                  >
+                    {tab.label}
+                  </Tab>
+                ))}
+              </TabList>
+            </Tabs>
           </Box>
+
+          <Flex 
+            align="center" 
+            gap={3} 
+            wrap="wrap"
+            w={{ base: "100%", lg: "auto" }}
+            maxW="100%"
+          >
+            {showUserSourceTabs && (
+              <Box w="100%" overflowX="auto" css={{ "&::-webkit-scrollbar": { display: "none" } }}>
+                <HStack spacing={2} w="max-content" pb={1}>
+                  {([
+                    { value: "all", label: "All" },
+                    { value: "manual", label: "Manual" },
+                    { value: "public_enrolled", label: "Linked" },
+                  ] as const).map((opt) => (
+                  <Button
+                    key={opt.value}
+                    size="sm"
+                    borderRadius="full"
+                    variant={userSourceTab === opt.value ? "solid" : "outline"}
+                    colorScheme={opt.value === "public_enrolled" ? "purple" : "blue"}
+                    onClick={() => {
+                      setUserSourceTab?.(opt.value);
+                      setPage(1);
+                    }}
+                    px={4}
+                    flexShrink={0}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </HStack>
+            </Box>
+            )}
+
+            <Flex gap={3} w={{ base: "100%", sm: "auto" }} align="center">
+              <Select
+                size="sm"
+                value={locationFilter}
+                onChange={(event) => {
+                  setLocationFilter?.(event.target.value);
+                  setPage(1);
+                }}
+                borderRadius="full"
+                isDisabled={officeLocationOptions.length === 0}
+                minW="140px"
+                flex={1}
+                bg={cardBg}
+                borderColor={borderColorLight}
+              >
+                <option value="">All Locations</option>
+                {officeLocationOptions.map((location) => (
+                  <option key={location.value} value={location.value} disabled={location.isDisabled}>
+                    {location.label}
+                  </option>
+                ))}
+              </Select>
+
+              <Box
+                bg={statsBg}
+                px={4}
+                py={1.5}
+                borderRadius="full"
+                whiteSpace="nowrap"
+                textAlign="center"
+                flexShrink={0}
+              >
+                <Text fontSize="sm" fontWeight="semibold" color={statsTextColor}>
+                  {pagination.total} {activeTabLabel.toLowerCase()}
+                  {pagination.total !== 1 && !activeTabLabel.toLowerCase().endsWith('s') ? "s" : ""}
+                </Text>
+              </Box>
+            </Flex>
+          </Flex>
         </Flex>
+
+        {showUserSourceTabs && userSourceTab === "public_enrolled" && (
+          <Box mt={3} px={4} py={2.5} bg={externalNoticeBg} borderRadius="xl" borderLeft="3px solid" borderColor="purple.400">
+            <Text fontSize="xs" color={externalNoticeTextColor} fontWeight="500">
+              ⚠️ These employees self-enrolled via public course access. You can view their profiles but cannot edit or delete them.
+            </Text>
+          </Box>
+        )}
+      </Box>
 
         {!isCompact ? (
           <CustomTable
@@ -691,25 +694,6 @@ const UsersTable = ({
           />
         ) : (
           <Stack spacing={3}>
-            <Select
-              size="sm"
-              value={locationFilter}
-              onChange={(event) => {
-                setLocationFilter?.(event.target.value);
-                setPage(1);
-              }}
-              borderRadius="xl"
-              bg={cardBg}
-              borderColor={borderColorLight}
-              isDisabled={officeLocationOptions.length === 0}
-            >
-              <option value="">All locations</option>
-              {officeLocationOptions.map((location) => (
-                <option key={location.value} value={location.value} disabled={location.isDisabled}>
-                  {location.label}
-                </option>
-              ))}
-            </Select>
             <InputGroup>
               <InputLeftElement pointerEvents="none">
                 <Icon as={FiSearch} color={muted} />
@@ -832,7 +816,6 @@ const UsersTable = ({
             </HStack>
           </Stack>
         )}
-      </Box>
     </VStack>
   );
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { PageBanner } from "../../../component/common/PageBanner/PageBanner";
-import { Button, HStack, Icon, useColorModeValue } from "@chakra-ui/react";
+import { Button, Flex, Icon, useColorModeValue } from "@chakra-ui/react";
 import { FiUpload, FiUserPlus, FiUsers } from "react-icons/fi";
 
 type Props = {
@@ -37,9 +37,12 @@ const UsersHeader = ({
       showBackButton={false}
       colorScheme="purple"
     >
-      <HStack
-        spacing={3}
-        flexWrap="wrap"
+      <Flex
+        gap={3}
+        wrap="wrap"
+        w={{ base: "100%", sm: "auto" }}
+        justify={{ base: "flex-start", sm: "flex-end" }}
+        direction={{ base: "column", sm: "row" }}
       >
         {canOpenBulk && (
           <Button
@@ -83,7 +86,7 @@ const UsersHeader = ({
             Add Employee
           </Button>
         )}
-      </HStack>
+      </Flex>
     </PageBanner>
   );
 };

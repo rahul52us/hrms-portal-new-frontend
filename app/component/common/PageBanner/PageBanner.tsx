@@ -128,7 +128,13 @@ export const PageBanner = ({
         </HStack>
 
         {(statLabel || children) && (
-          <HStack spacing={4} w={{ base: "100%", md: "auto" }} justify={{ base: "space-between", md: "flex-end" }} flexWrap="wrap">
+          <Flex
+            gap={4}
+            w={{ base: "100%", md: "auto" }}
+            justify={{ base: "flex-start", md: "flex-end" }}
+            align={{ base: "stretch", sm: "center" }}
+            direction={{ base: "column", sm: "row" }}
+          >
             {statLabel && (
               <Box
                 bg={useColorModeValue(`${colorScheme}.50`, `rgba(98,105,255,0.15)`)}
@@ -138,8 +144,9 @@ export const PageBanner = ({
                 py={2}
                 fontSize="xs"
                 fontWeight="800"
+                textAlign="center"
               >
-                <Flex align="center" gap={1.5}>
+                <Flex align="center" justify="center" gap={1.5}>
                   {statIcon && <Icon as={statIcon} boxSize={3.5} />}
                   {statLabel}
                 </Flex>
@@ -147,11 +154,11 @@ export const PageBanner = ({
             )}
             
             {children && (
-              <Box flexShrink={0}>
+              <Box w={{ base: "100%", sm: "auto" }}>
                 {children}
               </Box>
             )}
-          </HStack>
+          </Flex>
         )}
       </Flex>
     </Box>
