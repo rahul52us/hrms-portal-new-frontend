@@ -9,7 +9,6 @@ import { dashboardStore } from "./dashboardStore/dashboardStore";
 import { departmentStore } from "./departmentStore/departmentStore";
 import { layoutStore } from './layoutStore/LayoutStore';
 import { locationStore } from "./locationStore/locationStore";
-import { managerStore } from "./managerStore/managerStore";
 import { organizationStore } from "./organizationStore/organizationStore";
 import { testimonialStore } from "./testimonialStore/testimonialStore";
 import { themeStore } from "./themeStore/themeStore";
@@ -25,7 +24,6 @@ const stores = {
   themeStore : themeStore,
   layout : layoutStore,
   locationStore : locationStore,
-  managerStore: managerStore,
   organizationStore: organizationStore,
   contactStore : contactStore,
   companyStore : CompanyStore,

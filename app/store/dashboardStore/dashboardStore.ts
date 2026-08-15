@@ -2,10 +2,6 @@ import { makeAutoObservable } from "mobx";
 import axios from "axios";
 import { authStore } from "../authStore/authStore";
 import { ScopedDashboardSummary } from "@/app/dashboard/components/LMS/components/scoped-dashboard/types";
-import {
-  LearnerResultDetail,
-  LearnerResultsResponse,
-} from "@/app/dashboard/components/LMS/components/learner-results/types";
 
 class DashboardStore {
   scopedSummary: ScopedDashboardSummary | any = null;
@@ -14,10 +10,8 @@ class DashboardStore {
   hrSummary: any = null;
   hrSummaryLoading = false;
   hrSummaryError: string | null = null;
-  learnerResults: LearnerResultsResponse | null = null;
   learnerResultsLoading = false;
   learnerResultsError: string | null = null;
-  learnerResultDetail: LearnerResultDetail | null = null;
   learnerResultDetailLoading = false;
 
   count : any = {
@@ -110,40 +104,6 @@ class DashboardStore {
     }
   };
 
-  fetchLearnerResults = async (params: Record<string, string> = {}) => {
-    this.learnerResultsLoading = true;
-    this.learnerResultsError = null;
-    try {
-      const { data } = await axios.get("/dashboard/learner-results", { params });
-      this.learnerResults = data?.data || null;
-      return this.learnerResults;
-    } catch (err: any) {
-      this.learnerResultsError =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        "Failed to load learner results";
-      return Promise.reject(err?.response?.data || err);
-    } finally {
-      this.learnerResultsLoading = false;
-    }
-  };
-
-  fetchLearnerResultDetail = async (enrollmentId: string) => {
-    this.learnerResultDetailLoading = true;
-    try {
-      const { data } = await axios.get(`/dashboard/learner-results/${enrollmentId}`);
-      this.learnerResultDetail = data?.data || null;
-      return this.learnerResultDetail;
-    } catch (err: any) {
-      return Promise.reject(err?.response?.data || err);
-    } finally {
-      this.learnerResultDetailLoading = false;
-    }
-  };
-
-  clearLearnerResultDetail = () => {
-    this.learnerResultDetail = null;
-  };
 
   getNotifications = async (type?: string | boolean, page: number = 1, limit: number = 10) => {
     this.notification.loading = true;
