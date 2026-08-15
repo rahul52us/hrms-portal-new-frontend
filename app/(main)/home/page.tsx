@@ -1,13 +1,12 @@
 "use client";
 
-import { Box } from "@chakra-ui/react";
+import { Box, Text } from "@chakra-ui/react";
 import { observer } from "mobx-react-lite";
-import HeroSection from "../../component/common/HeroSection/HeroSection";
 
 const Home = observer(() => {
   return (
     <Box>
-      <HeroSection />
+       <Text>Home</Text>
     </Box>
   );
 });
