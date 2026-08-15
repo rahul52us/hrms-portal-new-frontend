@@ -27,9 +27,9 @@ const RootLayout = observer(({ children }: { children: React.ReactNode }) => {
   } = stores;
   const pathname = usePathname();
   const [metadata, setMetadata] = useState<PageMetadata>({
-    title: "CRAFT",
+    title: "HRMS Portal",
     description:
-      "LMS",
+      "HRMS Portal",
   });
 
   useEffect(() => {

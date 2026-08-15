@@ -219,7 +219,7 @@ export function SuperadminDashboard({
                 </Badge>
                 <Icon as={Sparkles} boxSize={4} color="purple.100" />
               </HStack>
-              <Heading size={{ base: "md", md: "lg" }}>LMS intelligence center</Heading>
+              <Heading size={{ base: "md", md: "lg" }}>HRMS intelligence center</Heading>
               <Text mt={2} color="whiteAlpha.800" fontSize={{ base: "sm", md: "md" }} maxW="720px">
                 Portal health, learning performance, engagement risks, and operational work in one compact view.
               </Text>

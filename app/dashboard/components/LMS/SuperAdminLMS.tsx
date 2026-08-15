@@ -709,7 +709,7 @@ const SuperAdminLMS = observer(() => {
               </Box>
               <Box>
                 <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="800" bgGradient="linear(to-r, purple.600, pink.600)" bgClip="text">
-                  LMS Analytics
+                  HRMS Analytics
                 </Text>
                 <Text fontSize="sm" color={textSecondary} display={{ base: "none", sm: "block" }}>
                   Real-time insights & performance metrics

@@ -69,7 +69,7 @@ export const Footer: React.FC = () => {
                 <ChakraLink _hover={{ textDecoration: "none" }} display="flex" alignItems="center" gap={3}>
                   <Image
                     src="https://www.lmscert.com/Logo%20LMS%20-1-.svg"
-                    alt="CRAFT LMS Logo"
+                    alt="HRMS Portal Logo"
                     h={{ base: "34px", md: "40px" }}
                     objectFit="contain"
                   />
@@ -79,7 +79,7 @@ export const Footer: React.FC = () => {
                     bgGradient="linear(to-tr, brand.600, brand.400)"
                     bgClip="text"
                   >
-                    CRAFT
+                    HRMS
                   </Text>
                 </ChakraLink>
               </NextLink>
@@ -167,7 +167,7 @@ export const Footer: React.FC = () => {
           gap={{ base: 3, md: 4 }}
         >
           <Text fontSize="xs" color={textColor}>
-            (c) {currentYear} <Box as="span" fontWeight="bold">CRAFT LMS</Box>. All rights reserved.
+            (c) {currentYear} <Box as="span" fontWeight="bold">HRMS Portal</Box>. All rights reserved.
           </Text>
 
           <HStack spacing={{ base: 3, md: 6 }} flexWrap="wrap" justify="center">

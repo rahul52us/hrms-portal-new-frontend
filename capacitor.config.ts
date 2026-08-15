@@ -5,8 +5,8 @@ const serverUrl =
   (process.env.CAPACITOR_DEV_SERVER === 'true' ? 'http://10.0.2.2:3000' : undefined);
 
 const config: CapacitorConfig = {
-  appId: 'com.lms.frontend',
-  appName: 'LMS',
+  appId: 'com.hrms.frontend',
+  appName: 'HRMS Portal',
   webDir: 'out',
   ...(serverUrl
     ? {

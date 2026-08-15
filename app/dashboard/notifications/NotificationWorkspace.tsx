@@ -227,7 +227,7 @@ const NotificationWorkspace = observer(({
   );
   const [selectedCompanyId, setSelectedCompanyId] = useState(initialCompany?._id || "");
   const selectedCompany = companyOptions.find((entry: any) => entry?._id === selectedCompanyId) || initialCompany;
-  const platformBrandName = currentUser?.companyDetails?.company_name || currentUser?.company?.company_name || "LMS Team";
+  const platformBrandName = currentUser?.companyDetails?.company_name || currentUser?.company?.company_name || "HRMS Team";
 
   const [users, setUsers] = useState<NotificationUser[]>([]);
   const [filterOptions, setFilterOptions] = useState<any>({ roles: [], departments: [], managers: [] });
