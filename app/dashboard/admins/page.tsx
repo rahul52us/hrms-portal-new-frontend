@@ -49,6 +49,7 @@ import { getApiErrorMessage } from "../../config/utils/apiError";
 import stores from "../../store/stores";
 import CompanyAdminWorkspace from "./component/CompanyAdminWorkspace";
 import CompanyForm from "./component/CompanyForm";
+import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
 import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
 
 const getMonogram = (name?: string) => {
@@ -569,33 +570,56 @@ const DirectoryPage = observer(() => {
         </VStack>
       </Stack>
 
-      <Drawer
-        size="xl"
+      <DashboardDrawer
         isOpen={isCompanyDrawerOpen}
-        placement="right"
         onClose={() => setIsCompanyDrawerOpen(false)}
-      >
-        <DrawerOverlay backdropFilter="blur(8px)" bg="blackAlpha.300" />
-        <DrawerContent borderLeftRadius={{ base: "none", md: "3xl" }} shadow="2xl">
-          <DrawerCloseButton top={4} right={4} size="lg" />
-          <DrawerHeader borderBottomWidth="1px" borderColor={borderColor} py={6} px={8}>
-            <Text fontSize="2xl" fontWeight="800" bgGradient="linear(to-r, blue.500, teal.500)" bgClip="text">
-              Create Company
-            </Text>
-            <Text fontSize="sm" color={mutedText} mt={1}>
-              Add the company profile, tenant slug, and primary contact details.
-            </Text>
-          </DrawerHeader>
-          <DrawerBody pb={8} pt={6} px={8}>
-            <CompanyForm
-              onSubmit={handleCreateCompany}
-              onClose={() => setIsCompanyDrawerOpen(false)}
+        titlePrefix="ADD"
+        titleSuffix="COMPANY"
+        subtitle="CREATE A NEW WORKSPACE"
+        badgeLabel="COMPANY"
+        footerContent={
+          <Flex gap={4} w="100%" justify="flex-end">
+            <Button 
+              size="lg" 
+              onClick={() => setIsCompanyDrawerOpen(false)} 
+              borderRadius="xl"
+              fontWeight="bold"
+              w={{ base: "50%", sm: "220px" }}
+              bg="red.500"
+              color="white"
+              _hover={{ bg: "red.600", transform: "translateY(-1px)", boxShadow: "md" }}
+              transition="all 0.2s"
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit"
+              form="company-form"
+              size="lg" 
+              bg="#2B79C2" 
+              color="white" 
+              _hover={{ bg: "#2365a3", transform: "translateY(-1px)", boxShadow: "lg" }} 
               isLoading={loading}
-              simpleCreate
-            />
-          </DrawerBody>
-        </DrawerContent>
-      </Drawer>
+              borderRadius="xl"
+              textTransform="uppercase"
+              fontWeight="900"
+              letterSpacing="wider"
+              boxShadow="sm"
+              transition="all 0.2s"
+              w={{ base: "50%", sm: "220px" }}
+            >
+              Create Company
+            </Button>
+          </Flex>
+        }
+      >
+        <CompanyForm
+          onSubmit={handleCreateCompany}
+          onClose={() => setIsCompanyDrawerOpen(false)}
+          isLoading={loading}
+          simpleCreate
+        />
+      </DashboardDrawer>
 
       {/* Add subtle animation keyframes */}
       <style jsx global>{`

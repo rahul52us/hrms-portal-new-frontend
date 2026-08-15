@@ -34,38 +34,18 @@ import { getApiErrorMessage } from "../../../config/utils/apiError";
 import { SITE_URL } from "../../../config/utils/variables";
 import { DEFAULT_LEARNER_PRIMARY_COLOR, normalizeHexColor } from "../../../theme/theme";
 
-/* ================= SECTION CARD ================= */
-const SectionCard = ({ title, icon, children, color }: any) => {
-  const bg = useColorModeValue("white", "gray.800");
-
-  const colorMap: any = {
-    blue: { icon: "blue.500", text: "blue.600", bg: "blue.50" },
-    green: { icon: "green.500", text: "green.600", bg: "green.50" },
-    purple: { icon: "purple.500", text: "purple.600", bg: "purple.50" },
-    orange: { icon: "orange.500", text: "orange.600", bg: "orange.50" },
-    pink: { icon: "pink.500", text: "pink.600", bg: "pink.50" },
-  };
-
-  const theme = colorMap[color] || colorMap.blue;
-
+const SectionCard = ({ title, icon, children }: any) => {
   return (
-    <Box
-      p={5}
-      borderRadius="xl"
-      bg={bg}
-      boxShadow="md"
-      border="1px solid"
-      borderColor="gray.200"
-    >
-      <Flex align="center" mb={4} gap={2}>
-        <Box p={2} borderRadius="md" bg={theme.bg}>
-          <Icon as={icon} color={theme.icon} />
-        </Box>
-        <Text fontSize="lg" fontWeight="bold" color={theme.text}>
+    <Box mb={4}>
+      <Flex align="center" mb={6} gap={2}>
+        <Icon as={icon} color="gray.500" boxSize={4} />
+        <Text fontSize="xs" fontWeight="800" color="gray.500" textTransform="uppercase" letterSpacing="widest">
           {title}
         </Text>
       </Flex>
-      {children}
+      <Box>
+        {children}
+      </Box>
     </Box>
   );
 };
@@ -387,7 +367,7 @@ const CompanyForm = ({
         };
 
         return (
-          <FormikForm onSubmit={handleValidatedSubmit}>
+          <FormikForm id="company-form" onSubmit={handleValidatedSubmit}>
             <Flex direction="column" gap={6}>
 
               {/* TENANT */}
@@ -692,10 +672,9 @@ const CompanyForm = ({
                 </SectionCard>
               )}
 
-              {/* ADDRESS */}
-              <SectionCard title={simpleCreate ? "Address (Optional)" : "Address"} icon={MapPin} color="orange">
-                <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={4}>
-                  <GridItem colSpan={2}>
+              <SectionCard title="Headquarters" icon={MapPin} color="purple">
+                <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
+                  <GridItem colSpan={{ base: 1, md: 2 }}>
                     <CustomInput
                       label="Street"
                       name="addressInfo[0].address"
@@ -753,17 +732,6 @@ const CompanyForm = ({
 
               {children}
 
-              <Divider />
-
-              {/* ACTIONS */}
-              <Flex justify="flex-end" gap={4}>
-                <Button type="button" variant="ghost" onClick={onClose}>
-                  Cancel
-                </Button>
-                <Button type="submit" colorScheme="brand" isLoading={isLoading}>
-                  {submitLabel}
-                </Button>
-              </Flex>
             </Flex>
           </FormikForm>
         );

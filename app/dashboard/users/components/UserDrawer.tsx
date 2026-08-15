@@ -1,17 +1,9 @@
 "use client";
 
 import {
-  Badge,
   Box,
   Button,
   Checkbox,
-  Drawer,
-  DrawerBody,
-  DrawerCloseButton,
-  DrawerContent,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerOverlay,
   Flex,
   FormControl,
   FormErrorMessage,
@@ -20,49 +12,32 @@ import {
   Input,
   InputGroup,
   InputLeftAddon,
+  InputRightElement,
+  IconButton,
   SimpleGrid,
   Text,
   Textarea,
-  VStack,
-  useColorModeValue,
+  VStack
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Image as ImageIcon, Layers, Lock, User } from "lucide-react";
+import { Building2, Image as ImageIcon, Layers, Lock, User, Eye, EyeOff } from "lucide-react";
+import DashboardDrawer from "../../../component/common/Drawer/DashboardDrawer";
 import CustomInput from "../../../component/config/component/customInput/CustomInput";
 import { genderOptions } from "../../../config/constant";
 import ManagerHierarchy from "./ManagerHierarchy";
 
-/* ================= SECTION CARD ================= */
-const SectionCard = ({ title, icon, children, color }: any) => {
-  const bg = useColorModeValue("white", "gray.800");
-
-  const colorMap: any = {
-    blue: { icon: "blue.500", text: "blue.600", bg: "blue.50" },
-    green: { icon: "green.500", text: "green.600", bg: "green.50" },
-    purple: { icon: "purple.500", text: "purple.600", bg: "purple.50" },
-    orange: { icon: "orange.500", text: "orange.600", bg: "orange.50" },
-  };
-
-  const theme = colorMap[color] || colorMap.blue;
-
+const SectionCard = ({ title, icon, children }: any) => {
   return (
-    <Box
-      p={5}
-      borderRadius="xl"
-      bg={bg}
-      boxShadow="base"
-      border="1px solid"
-      borderColor="gray.200"
-    >
-      <Flex align="center" mb={4} gap={2}>
-        <Box p={2} borderRadius="md" bg={theme.bg}>
-          <Icon as={icon} color={theme.icon} />
-        </Box>
-        <Text fontSize="lg" fontWeight="bold" color={theme.text}>
+    <Box mb={4}>
+      <Flex align="center" mb={6} gap={2}>
+        <Icon as={icon} color="gray.500" boxSize={4} />
+        <Text fontSize="xs" fontWeight="800" color="gray.500" textTransform="uppercase" letterSpacing="widest">
           {title}
         </Text>
       </Flex>
-      {children}
+      <Box>
+        {children}
+      </Box>
     </Box>
   );
 };
@@ -234,6 +209,7 @@ const UserDrawer = ({
 }: any) => {
   const [preview, setPreview] = useState<string | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const activeDepartmentRecords = Array.isArray(departmentRecords) ? departmentRecords : [];
   const departmentNamesFromRecords = activeDepartmentRecords
     .map((department: any) => department?.departmentName)
@@ -325,12 +301,12 @@ const UserDrawer = ({
       : isScopedHrRole
         ? "HR"
         : "Employee";
-  const drawerTitle = userForm.id
-    ? `Edit ${roleTitle}`
-    : `Add ${roleTitle}`;
+  const drawerTitlePrefix = userForm.id ? "EDIT" : "ADD";
+  const drawerTitleSuffix = roleTitle.toUpperCase();
+  const subtitle = userForm.id ? `UPDATE THE ${roleTitle.toUpperCase()} DETAILS` : `CREATE A NEW ${roleTitle.toUpperCase()}`;
   const submitLabel = userForm.id
-    ? `Update ${roleTitle}`
-    : `Create ${roleTitle}`;
+    ? `UPDATE ${roleTitle.toUpperCase()}`
+    : `CREATE ${roleTitle.toUpperCase()}`;
   const roleLabel =
     roleOptions.find((roleOption: any) => roleOption.value === userForm.role)?.label ||
     userForm.role;
@@ -351,29 +327,53 @@ const UserDrawer = ({
     await onSubmit();
   };
 
+  const footerContent = (
+    <Flex gap={4} w="100%" justify="flex-end">
+      <Button
+        size="lg"
+        onClick={onClose}
+        borderRadius="xl"
+        fontWeight="bold"
+        w={{ base: "50%", sm: "220px" }}
+        bg="red.500"
+        color="white"
+        _hover={{ bg: "red.600", transform: "translateY(-1px)", boxShadow: "md" }}
+        transition="all 0.2s"
+      >
+        Cancel
+      </Button>
+      <Button
+        size="lg"
+        bg="#2B79C2"
+        color="white"
+        _hover={{ bg: "#2365a3", transform: "translateY(-1px)", boxShadow: "lg" }}
+        onClick={handleValidatedSubmit}
+        isLoading={loading}
+        borderRadius="xl"
+        textTransform="uppercase"
+        fontWeight="900"
+        letterSpacing="wider"
+        boxShadow="sm"
+        transition="all 0.2s"
+        w={{ base: "50%", sm: "220px" }}
+      >
+        {submitLabel}
+      </Button>
+    </Flex>
+  );
+
   return (
-    <Drawer isOpen={isOpen} placement="right" size="xl" onClose={onClose}>
-      <DrawerOverlay />
-      <DrawerContent bg={useColorModeValue("gray.50", "gray.900")}>
-        <DrawerCloseButton />
-
-        {/* HEADER */}
-        <DrawerHeader borderBottom="1px solid" borderColor="gray.200">
-          <Flex align="center" justify="space-between">
-            <Text fontWeight="bold">
-              {drawerTitle}
-            </Text>
-
-            <Badge colorScheme="blue" px={3} py={1} borderRadius="full">
-              {roleLabel}
-            </Badge>
-          </Flex>
-        </DrawerHeader>
-
-        {/* BODY */}
-        <DrawerBody>
-          <VStack align="stretch" spacing={6}>
-            {!isCompanyAdminRole && (
+    <DashboardDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      titlePrefix={drawerTitlePrefix}
+      titleSuffix={drawerTitleSuffix}
+      subtitle={subtitle}
+      badgeLabel={roleLabel}
+      footerContent={footerContent}
+    >
+      <VStack align="stretch" spacing={10}>
+        {!isCompanyAdminRole && (
               <SectionCard title="Profile Image" icon={ImageIcon} color="purple">
                 {preview ? (
                   <Flex direction="column" gap={4}>
@@ -726,14 +726,25 @@ const UserDrawer = ({
                       <Text mb={2} fontSize="sm" fontWeight="600">
                         Initial Password
                       </Text>
-                      <Input
-                        type="password"
-                        value={userForm.password || ""}
-                        placeholder="Optional"
-                        onChange={(event) =>
-                          setUserForm((p: any) => ({ ...p, password: event.target.value }))
-                        }
-                      />
+                      <InputGroup>
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          value={userForm.password || ""}
+                          placeholder="Optional"
+                          onChange={(event) =>
+                            setUserForm((p: any) => ({ ...p, password: event.target.value }))
+                          }
+                        />
+                        <InputRightElement>
+                          <IconButton
+                            aria-label="Toggle password visibility"
+                            icon={<Icon as={showPassword ? EyeOff : Eye} color="gray.500" />}
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowPassword(!showPassword)}
+                          />
+                        </InputRightElement>
+                      </InputGroup>
                       {submitAttempted && validationErrors.password ? (
                         <Text mt={1} fontSize="xs" color="red.500">
                           {validationErrors.password}
@@ -744,17 +755,28 @@ const UserDrawer = ({
                       <Text mb={2} fontSize="sm" fontWeight="600">
                         Confirm Password
                       </Text>
-                      <Input
-                        type="password"
-                        value={userForm.confirmPassword || ""}
-                        placeholder="Confirm optional password"
-                        onChange={(event) =>
-                          setUserForm((p: any) => ({
-                            ...p,
-                            confirmPassword: event.target.value,
-                          }))
-                        }
-                      />
+                      <InputGroup>
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          value={userForm.confirmPassword || ""}
+                          placeholder="Confirm optional password"
+                          onChange={(event) =>
+                            setUserForm((p: any) => ({
+                              ...p,
+                              confirmPassword: event.target.value,
+                            }))
+                          }
+                        />
+                        <InputRightElement>
+                          <IconButton
+                            aria-label="Toggle confirm password visibility"
+                            icon={<Icon as={showPassword ? EyeOff : Eye} color="gray.500" />}
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowPassword(!showPassword)}
+                          />
+                        </InputRightElement>
+                      </InputGroup>
                       {submitAttempted && validationErrors.confirmPassword ? (
                         <Text mt={1} fontSize="xs" color="red.500">
                           {validationErrors.confirmPassword}
@@ -925,20 +947,8 @@ const UserDrawer = ({
               </SectionCard>
             )}
 
-          </VStack>
-        </DrawerBody>
-
-        {/* FOOTER */}
-        <DrawerFooter borderTop="1px solid" borderColor="gray.200">
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button colorScheme="blue" onClick={handleValidatedSubmit} isLoading={loading}>
-            {submitLabel}
-          </Button>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+      </VStack>
+    </DashboardDrawer>
   );
 };
 
