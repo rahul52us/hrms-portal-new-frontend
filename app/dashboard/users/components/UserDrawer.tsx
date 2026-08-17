@@ -83,7 +83,7 @@ const buildUserFormErrors = ({
   const errors: Record<string, string> = {};
   const trimmedEmployeeNumber = String(userForm.employeeNumber || "").trim();
   const trimmedName = String(userForm.name || "").trim();
-  const trimmedEmail = String(userForm.email || "").trim().toLowerCase();
+  const trimmedEmail = String(userForm.username || "").trim().toLowerCase();
   const trimmedMobile = String(userForm.mobileNumber || "").trim();
   const trimmedDepartment = String(userForm.department || "").trim();
   const trimmedTeam = String(userForm.team || "").trim();
@@ -112,9 +112,9 @@ const buildUserFormErrors = ({
   }
 
   if (!trimmedEmail) {
-    errors.email = "Email is required for account access.";
+    errors.username = "Email is required for account access.";
   } else if (trimmedEmail && !EMAIL_PATTERN.test(trimmedEmail)) {
-    errors.email = "Enter a valid email address.";
+    errors.username = "Enter a valid email address.";
   }
 
   if (trimmedMobile && !PHONE_PATTERN.test(trimmedMobile)) {
@@ -484,14 +484,6 @@ const UserDrawer = ({
                         {validationErrors.employeeNumber}
                       </FormErrorMessage>
                     </FormControl>
-                    <CustomInput
-                      label="Profile ID"
-                      name="profileId"
-                      placeholder="Generated automatically after creation"
-                      value={userForm.profileId || ""}
-                      disabled
-                      readOnly
-                    />
                   </>
                 )}
                 <CustomInput
@@ -507,13 +499,13 @@ const UserDrawer = ({
                 />
                 <CustomInput
                   label="Email"
-                  name="email"
+                  name="username"
                   placeholder="Enter email address"
-                  value={userForm.email}
-                  error={validationErrors.email}
+                  value={userForm.username}
+                  error={validationErrors.username}
                   showError={submitAttempted}
                   onChange={(e: any) =>
-                    setUserForm((p: any) => ({ ...p, email: e.target.value }))
+                    setUserForm((p: any) => ({ ...p, username: e.target.value }))
                   }
                 />
                 {!isCompanyAdminRole && (

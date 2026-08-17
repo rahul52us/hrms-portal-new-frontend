@@ -57,7 +57,6 @@ const UserProfileDrawer = observer(({ isOpen, onClose }: UserProfileDrawerProps)
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
-    title: "",
     city: "",
     state: "",
     bio: "",
@@ -72,12 +71,11 @@ const UserProfileDrawer = observer(({ isOpen, onClose }: UserProfileDrawerProps)
     setForm({
       firstName: nameParts.firstName,
       lastName: nameParts.lastName,
-      title: user?.title || personalInfo?.title || "",
       city: user?.city || personalInfo?.city || "",
       state: user?.state || personalInfo?.state || "",
       bio: user?.bio || personalInfo?.bio || "",
     });
-  }, [isOpen, personalInfo?.bio, personalInfo?.city, personalInfo?.name, personalInfo?.state, personalInfo?.title, user]);
+  }, [isOpen, personalInfo?.bio, personalInfo?.city, personalInfo?.name, personalInfo?.state, user]);
 
   const avatarName = useMemo(() => {
     const fullName = `${form.firstName} ${form.lastName}`.trim();
@@ -98,7 +96,6 @@ const UserProfileDrawer = observer(({ isOpen, onClose }: UserProfileDrawerProps)
       ...personalInfo,
       _id: user._id,
       name: fullName || user?.name || "",
-      title: form.title,
       city: form.city,
       state: form.state,
       bio: form.bio,
@@ -167,11 +164,6 @@ const UserProfileDrawer = observer(({ isOpen, onClose }: UserProfileDrawerProps)
               <FormControl>
                 <FormLabel>Last name</FormLabel>
                 <Input value={form.lastName} onChange={(event) => handleChange("lastName", event.target.value)} />
-              </FormControl>
-
-              <FormControl>
-                <FormLabel>Title</FormLabel>
-                <Input value={form.title} onChange={(event) => handleChange("title", event.target.value)} />
               </FormControl>
 
               <FormControl>

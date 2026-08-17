@@ -364,7 +364,7 @@ const DepartmentClosureDrawer = ({
                             <Td minW="220px">
                               <Text fontWeight="700">{employee.name}</Text>
                               <Text color={muted} fontSize="xs">
-                                {employee.email}
+                                {employee.username}
                               </Text>
                             </Td>
                             <Td>{employee.team || "--"}</Td>

@@ -55,7 +55,6 @@ import {
   FiInfo,
   FiLock,
   FiMail,
-  FiMapPin,
   FiPlus,
   FiShield,
   FiUnlock,
@@ -73,9 +72,8 @@ import DashboardDrawer from "../../../component/common/Drawer/DashboardDrawer";
 
 const createMemberForm = (companyId: string, role = "admin") => ({
   code: "",
-  profileId: "",
   name: "",
-  email: "",
+  username: "",
   password: "",
   confirmPassword: "",
   pic: { file: null, isAdd: 0, isDeleted: 0, url: "" },
@@ -319,7 +317,7 @@ const CompanyAdminWorkspace = ({
       if (setup?.emailSent === false && setup?.setupUrl) {
         setSetupNotice({
           name: formData.name,
-          email: formData.email,
+          username: formData.username,
           setupUrl: setup.setupUrl,
           emailError: setup.emailError,
           copied: setupLinkCopied,
@@ -499,11 +497,9 @@ const CompanyAdminWorkspace = ({
         tenantSlug: values.tenantSlug || values.company_name,
         customDomain: values.customDomain,
         companyEmail: values.companyEmail,
-        managerLevels: Number(values.managerLevels) || 0,
         mobileNo: values.mobileNo,
         bio: values.bio,
         primaryThemeColor: values.primaryThemeColor,
-        addressInfo: values.addressInfo || [],
         deletedFiles: removedExistingLogo && existingLogoUrl ? [existingLogoUrl] : [],
         isLogoEdit: shouldReplaceLogo,
       };
@@ -597,18 +593,6 @@ const CompanyAdminWorkspace = ({
     }
   };
 
-  const addressText = company?.addressInfo?.[0]
-    ? [
-        company.addressInfo[0].address,
-        company.addressInfo[0].city,
-        company.addressInfo[0].state,
-        company.addressInfo[0].country,
-        company.addressInfo[0].pinCode,
-      ]
-        .filter(Boolean)
-        .join(", ")
-    : "—";
-
   return (
     <Box minH="100vh" bg={pageBg}>
       <Container maxW="1400px" px={{ base: 4, md: 6 }} py={{ base: 4, md: 6 }}>
@@ -631,7 +615,7 @@ const CompanyAdminWorkspace = ({
                 <AlertDescription>
                   <VStack align="stretch" spacing={3} mt={1}>
                     <Text>
-                      Share this setup link with {setupNotice.name || setupNotice.email || "the company admin"} so they can set their password.
+                      Share this setup link with {setupNotice.name || setupNotice.username || "the company admin"} so they can set their password.
                       {setupNotice.emailError ? ` ${setupNotice.emailError}` : ""}
                     </Text>
                     <Box
@@ -833,9 +817,8 @@ const CompanyAdminWorkspace = ({
                                 ...createMemberForm(company._id, "admin"),
                                 id: entry._id,
                                 code: entry.code || "",
-                                profileId: entry.profileId || "",
                                 name: entry.name || "",
-                                email: entry.email || entry.username || "",
+                                username: entry.username || "",
                                 pic: entry.pic ? { ...entry.pic, file: null, isAdd: 0, isDeleted: 0, url: entry.pic.url || "" } : { file: null, isAdd: 0, isDeleted: 0, url: "" },
                                 mobileNumber: entry.mobileNumber || "",
                                 department: entry.department || "",
@@ -880,7 +863,6 @@ const CompanyAdminWorkspace = ({
                 <InfoRow label="Primary Contact" value={company?.companyEmail || company?.mobileNo || "—"} icon={FiMail} />
                 <InfoRow label="Website" value={company?.webLink || "—"} icon={FiGlobe} />
                 <InfoRow label="Tenant Slug" value={company?.tenantSlug || "—"} icon={FiShield} />
-                <InfoRow label="Address" value={addressText} icon={FiMapPin} />
                 <InfoRow
                   label="User Activity"
                   value={`${company?.activeUserCount || 0} / ${company?.userCount || 0} active`}

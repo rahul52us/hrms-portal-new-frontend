@@ -18,7 +18,7 @@ import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
 const DepartmentsPage = observer(() => {
   const { auth, companyStore } = stores;
 
-  const role = String(auth.userType || auth.user?.role || "").toLowerCase();
+  const role = String(auth.role || auth.user?.role || "").toLowerCase();
   const isSuperadmin = role === "superadmin";
   const canViewDepartments = hasPermission(
     auth.user,

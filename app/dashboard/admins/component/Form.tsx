@@ -291,7 +291,6 @@ const Form = ({
                     onChange={(opt: any) => {
                        const role = opt?.value || "";
                        setFieldValue("role", role);
-                       setFieldValue("userType", role === "user" ? "user" : "admin");
                        if (role !== "departmenthead") {
                           setFieldValue("department", "");
                        }

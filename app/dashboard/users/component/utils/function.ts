@@ -1,4 +1,4 @@
-import { initialValues, titles } from "./constant";
+import { initialValues } from "./constant";
 
 export const generateIntialValues = (initialData: any) => {
   return {
@@ -11,7 +11,5 @@ export const generateIntialValues = (initialData: any) => {
     conditions: initialData.conditions || initialValues.conditions,
     stats: initialData.stats || initialValues.stats,
     availability: initialData.availability || [],
-    title:
-      titles.find((it: any) => it.label === initialData.title) || titles[0],
   };
 };

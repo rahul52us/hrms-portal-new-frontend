@@ -87,7 +87,7 @@ const PolicyAuditPanel = observer(({
       ) : (
         <Stack spacing={0} borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">
           {workforcePolicyStore.auditLogs.map((log, index) => {
-            const actor = log.actor?.name || log.actor?.email || "System";
+            const actor = log.actor?.name || log.actor?.username || "System";
             const detailText = [
               log.details?.scopeType ? `Scope: ${log.details.scopeType}` : "",
               log.details?.versionNumber ? `Version: ${log.details.versionNumber}` : "",

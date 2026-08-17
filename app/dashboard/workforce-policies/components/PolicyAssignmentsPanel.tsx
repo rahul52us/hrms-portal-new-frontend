@@ -132,10 +132,10 @@ const PolicyAssignmentsPanel = observer(({
         <Stack spacing={0} borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">
           {workforcePolicyStore.assignments.map((assignment, index) => {
             const createdBy = typeof assignment.createdBy === "object"
-              ? assignment.createdBy?.name || assignment.createdBy?.email
+              ? assignment.createdBy?.name || assignment.createdBy?.username
               : "";
             const endedBy = typeof assignment.endedBy === "object"
-              ? assignment.endedBy?.name || assignment.endedBy?.email
+              ? assignment.endedBy?.name || assignment.endedBy?.username
               : "";
             return (
               <Flex

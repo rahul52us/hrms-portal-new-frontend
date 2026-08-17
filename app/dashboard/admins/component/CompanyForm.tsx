@@ -7,8 +7,6 @@ import {
   Checkbox,
   Divider,
   Flex,
-  Grid,
-  GridItem,
   HStack,
   Icon,
   SimpleGrid,
@@ -22,7 +20,6 @@ import {
   Building2,
   Globe,
   UserPlus,
-  MapPin,
   Palette,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -94,7 +91,6 @@ export const companyInitialValues = {
   tenantSlug: "",
   customDomain: "",
   companyEmail: "",
-  managerLevels: 0,
   mobileNo: "",
   workNo: "",
   webLink: "",
@@ -102,19 +98,10 @@ export const companyInitialValues = {
   primaryThemeColor: DEFAULT_LEARNER_PRIMARY_COLOR,
   verified_email_allowed: false,
   logo: { file: null },
-  addressInfo: [
-    {
-      address: "",
-      city: "",
-      state: "",
-      country: "",
-      pinCode: "",
-    },
-  ],
   companyAdmin: {
     create: false,
     name: "",
-    email: "",
+    username: "",
     password: "",
     confirmPassword: "",
     sendInvite: true,
@@ -131,7 +118,6 @@ const createCompanyFormValues = (company?: any) => ({
   tenantSlug: company?.tenantSlug || "",
   customDomain: company?.customDomain || "",
   companyEmail: company?.companyEmail || "",
-  managerLevels: company?.managerLevels ?? 0,
   mobileNo: company?.mobileNo || "",
   workNo: company?.workNo || "",
   webLink: company?.webLink || "",
@@ -144,16 +130,6 @@ const createCompanyFormValues = (company?: any) => ({
   logo: company?.logo
     ? { ...company.logo, file: null }
     : { file: null },
-  addressInfo:
-    company?.addressInfo?.length
-      ? company.addressInfo.map((address: any) => ({
-          address: address?.address || "",
-          city: address?.city || "",
-          state: address?.state || "",
-          country: address?.country || "",
-          pinCode: address?.pinCode || "",
-        }))
-      : companyInitialValues.addressInfo,
   companyAdmin: {
     ...companyInitialValues.companyAdmin,
     ...(company?.companyAdmin || {}),
@@ -215,14 +191,6 @@ const CompanyForm = ({
       .trim()
       .email("Enter a valid company email address")
       .required("Company email is required"),
-    managerLevels: simpleCreate
-      ? Yup.number().optional()
-      : Yup.number()
-          .typeError("Manager levels must be a number")
-          .integer("Manager levels must be a whole number")
-          .min(0, "Manager levels cannot be negative")
-          .max(20, "Manager levels must be 20 or less")
-          .required("Manager levels are required"),
     mobileNo: Yup.string()
       .trim()
       .matches(/^[0-9+()\-\s]{7,20}$/, "Enter a valid primary phone number")
@@ -250,7 +218,7 @@ const CompanyForm = ({
         then: (schema) => schema.trim().required("Company admin name is required"),
         otherwise: (schema) => schema.trim().optional(),
       }),
-      email: Yup.string().when("create", {
+      username: Yup.string().when("create", {
         is: true,
         then: (schema) =>
           schema.trim().email("Enter a valid company admin email").required("Company admin email is required"),
@@ -297,7 +265,6 @@ const CompanyForm = ({
             ? {
                 ...values,
                 customDomain: "",
-                managerLevels: Number(values.managerLevels) || 3,
                 webLink: "",
                 bio: String(values.bio || "").trim() || `${values.company_name} HRMS workspace`,
                 primaryThemeColor: normalizeHexColor(values.primaryThemeColor, DEFAULT_LEARNER_PRIMARY_COLOR),
@@ -306,7 +273,7 @@ const CompanyForm = ({
                   ? {
                       create: true,
                       name: String(values.companyAdmin?.name || "").trim(),
-                      email: String(values.companyAdmin?.email || "").trim().toLowerCase(),
+                      username: String(values.companyAdmin?.username || "").trim().toLowerCase(),
                       password: String(values.companyAdmin?.password || ""),
                       sendInvite: values.companyAdmin?.password
                         ? false
@@ -348,7 +315,6 @@ const CompanyForm = ({
           return cleanup;
         }, [values?.logo?.file, values?.logo?.url]);
 
-        const address = values.addressInfo?.[0] || {};
         const slug = slugifyTenant(values.tenantSlug || values.company_name || "");
         const previewUrl = buildTenantPreview(slug, values.customDomain);
         const resolvedThemeColor = normalizeHexColor(
@@ -603,15 +569,15 @@ const CompanyForm = ({
                           />
                           <CustomInput
                             label="Admin Email"
-                            name="companyAdmin.email"
+                            name="companyAdmin.username"
                             placeholder="admin@company.com"
-                            value={values.companyAdmin?.email || ""}
+                            value={values.companyAdmin?.username || ""}
                             onBlur={handleBlur}
                             onChange={(event: any) =>
-                              setFieldValue("companyAdmin.email", event.target.value)
+                              setFieldValue("companyAdmin.username", event.target.value)
                             }
-                            error={fieldError("companyAdmin.email")}
-                            showError={showFieldError("companyAdmin.email")}
+                            error={fieldError("companyAdmin.username")}
+                            showError={showFieldError("companyAdmin.username")}
                           />
                           <CustomInput
                             label="Initial Password (Optional)"
@@ -668,64 +634,6 @@ const CompanyForm = ({
                   </VStack>
                 </SectionCard>
               )}
-
-              <SectionCard title="Headquarters" icon={MapPin} color="purple">
-                <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
-                  <GridItem colSpan={{ base: 1, md: 2 }}>
-                    <CustomInput
-                      label="Street"
-                      name="addressInfo[0].address"
-                      placeholder="Enter street address"
-                      value={address.address}
-                      onBlur={handleBlur}
-                      onChange={(e: any) =>
-                        setFieldValue("addressInfo[0].address", e.target.value)
-                      }
-                    />
-                  </GridItem>
-
-                  <CustomInput
-                    label="City"
-                    name="addressInfo[0].city"
-                    placeholder="Enter city"
-                    value={address.city}
-                    onBlur={handleBlur}
-                    onChange={(e: any) =>
-                      setFieldValue("addressInfo[0].city", e.target.value)
-                    }
-                  />
-                  <CustomInput
-                    label="State"
-                    name="addressInfo[0].state"
-                    placeholder="Enter state"
-                    value={address.state}
-                    onBlur={handleBlur}
-                    onChange={(e: any) =>
-                      setFieldValue("addressInfo[0].state", e.target.value)
-                    }
-                  />
-                  <CustomInput
-                    label="Country"
-                    name="addressInfo[0].country"
-                    placeholder="Enter country"
-                    value={address.country}
-                    onBlur={handleBlur}
-                    onChange={(e: any) =>
-                      setFieldValue("addressInfo[0].country", e.target.value)
-                    }
-                  />
-                  <CustomInput
-                    label="Pin Code"
-                    name="addressInfo[0].pinCode"
-                    placeholder="Enter pin code"
-                    value={address.pinCode}
-                    onBlur={handleBlur}
-                    onChange={(e: any) =>
-                      setFieldValue("addressInfo[0].pinCode", e.target.value)
-                    }
-                  />
-                </Grid>
-              </SectionCard>
 
               {children}
 

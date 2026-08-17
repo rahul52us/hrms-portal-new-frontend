@@ -198,11 +198,11 @@ const PersonList = ({ items = [], emptyText }: any) => {
   return (
     <Stack spacing={0} borderTopWidth="1px" borderColor={borderColor}>
       {items.slice(0, 8).map((user: any) => (
-        <Flex key={user._id || `${user.email}-${user.name}`} py={3} borderBottomWidth="1px" borderColor={borderColor} gap={3} align="center">
+        <Flex key={user._id || `${user.username}-${user.name}`} py={3} borderBottomWidth="1px" borderColor={borderColor} gap={3} align="center">
           <Avatar
             size="sm"
             borderRadius="lg"
-            name={user.name || user.email || "Employee"}
+            name={user.name || user.username || "Employee"}
             src={user?.pic?.url || (typeof user?.pic === 'string' ? user.pic : undefined)}
             bgGradient="linear(to-br, blue.400, purple.500)"
             color="white"
@@ -233,7 +233,6 @@ const HrDashboardPage = observer(() => {
   const cardBg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
   const muted = useColorModeValue("gray.500", "gray.400");
-  const role = String(auth.userType || auth.user?.role || "").toLowerCase();
   const canViewDashboard = hasPermission(auth.user, PERMISSION_KEYS.VIEW_DASHBOARD);
   const summary = dashboardStore.hrSummary || {};
   const stats = summary.summary || {};

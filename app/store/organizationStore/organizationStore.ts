@@ -4,7 +4,7 @@ import { makeAutoObservable, runInAction } from "mobx";
 export interface OrganizationPersonReference {
   _id: string;
   name: string;
-  email?: string;
+  username?: string;
   role: string;
   designation?: string;
   department?: string;
@@ -22,9 +22,8 @@ export interface OrganizationLocation {
 export interface OrganizationNode {
   _id: string;
   code: string;
-  profileId: string;
   name: string;
-  email: string;
+  username: string;
   role: string;
   designation: string;
   department: string;

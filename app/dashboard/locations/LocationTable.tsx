@@ -46,7 +46,7 @@ type LocationTableProps = {
 };
 
 const LocationTable = ({ companyId, companyName }: LocationTableProps) => {
-  const role = String(stores.auth.userType || stores.auth.user?.role || "").toLowerCase();
+  const role = String(stores.auth.role || stores.auth.user?.role || "").toLowerCase();
   const canManageLocations = role === "superadmin" || role === "admin";
 
   const { isOpen, onOpen, onClose } = useDisclosure();

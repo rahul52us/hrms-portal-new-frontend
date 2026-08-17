@@ -71,8 +71,8 @@ export interface WorkforcePolicyAssignment {
   effectiveTo?: string | null;
   changeReason: string;
   state: "active" | "scheduled" | "ended";
-  createdBy?: { _id: string; name?: string; email?: string } | string | null;
-  endedBy?: { _id: string; name?: string; email?: string } | string | null;
+  createdBy?: { _id: string; name?: string; username?: string } | string | null;
+  endedBy?: { _id: string; name?: string; username?: string } | string | null;
   endReason?: string;
   createdAt?: string;
 }
@@ -83,7 +83,7 @@ export interface ResolvedPolicyResource {
 }
 
 export interface EmployeePolicyResolution {
-  employee: { _id: string; name?: string; email?: string; code?: string };
+  employee: { _id: string; name?: string; username?: string; code?: string };
   at: string;
   organizationAssignment?: any;
   attendancePolicy: ResolvedPolicyResource | null;
@@ -102,7 +102,7 @@ export interface PolicyAuditLog {
   entityType: string;
   entityId: string;
   action: string;
-  actor?: { _id: string; name?: string; email?: string; role?: string } | null;
+  actor?: { _id: string; name?: string; username?: string; role?: string } | null;
   details?: Record<string, any>;
   createdAt?: string;
 }

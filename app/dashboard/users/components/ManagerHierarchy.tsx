@@ -24,9 +24,7 @@ const ManagerHierarchy = ({
   onChange,
   isDisabled = false,
 }: Props) => {
-  const email = String(
-    selectedManager?.email || selectedManager?.username || ""
-  ).trim();
+  const email = String(selectedManager?.username || "").trim();
   const isAssigned = Boolean(selectedManager);
 
   return (

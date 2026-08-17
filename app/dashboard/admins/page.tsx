@@ -37,7 +37,6 @@ import {
   FiGlobe,
   FiLayers,
   FiMail,
-  FiMapPin,
   FiPlus,
   FiSearch,
   FiShield,
@@ -66,7 +65,7 @@ const DirectoryPage = observer(() => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
-  const role = String(stores.auth.userType || stores.auth.user?.role || "").toLowerCase();
+  const role = String(stores.auth.role || stores.auth.user?.role || "").toLowerCase();
   const selectedCompanyId = searchParams.get("company") || "";
 
   // Modern Color Palette Definitions
@@ -121,7 +120,6 @@ const DirectoryPage = observer(() => {
         company.companyType,
         company.tenantSlug,
         company.companyEmail,
-        company.addressInfo?.[0]?.city,
       ]
         .filter(Boolean)
         .some((value: string) => String(value).toLowerCase().includes(query))
@@ -384,12 +382,6 @@ const DirectoryPage = observer(() => {
           ) : filteredCompanies.length ? (
             <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)", xl: "repeat(3, 1fr)" }} gap={8}>
               {filteredCompanies.map((company: any) => {
-                const locationStr = company.addressInfo?.[0]
-                  ? [company.addressInfo[0].city, company.addressInfo[0].country]
-                      .filter(Boolean)
-                      .join(", ")
-                  : "Location not set";
-
                 return (
                   <Box
                     key={company._id}
@@ -475,13 +467,6 @@ const DirectoryPage = observer(() => {
                       <Divider my={4} borderColor={borderColor} />
 
                       <VStack spacing={3} align="start" mb={6} flex="1">
-                        <HStack spacing={3} color={mutedText} w="full">
-                          <Icon as={FiMapPin} color="gray.400" boxSize="14px" />
-                          <Text fontSize="sm" fontWeight="500" noOfLines={1} textTransform="capitalize">
-                            {locationStr}
-                          </Text>
-                        </HStack>
-
                         <HStack spacing={3} color={mutedText} w="full">
                           <Icon as={FiGlobe} color="gray.400" boxSize="14px" />
                           <Text fontSize="sm" fontWeight="500" noOfLines={1}>

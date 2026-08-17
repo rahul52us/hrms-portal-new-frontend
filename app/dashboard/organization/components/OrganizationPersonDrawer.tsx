@@ -65,7 +65,7 @@ function managerOption(node: OrganizationNode | null) {
     label: `${manager.name}${manager.designation ? ` - ${manager.designation}` : ""}${manager.department ? ` - ${manager.department}` : ""}`,
     value: manager._id,
     name: manager.name,
-    email: manager.email || "",
+    username: manager.username || "",
     role: manager.role,
   };
 }
@@ -163,9 +163,9 @@ const OrganizationPersonDrawer = ({
                   <Text color={muted}>
                     {node.designation || "No designation"}
                   </Text>
-                  {node.email ? (
+                  {node.username ? (
                     <Text mt={1} fontSize="sm" color={muted}>
-                      {node.email}
+                      {node.username}
                     </Text>
                   ) : null}
                 </Box>

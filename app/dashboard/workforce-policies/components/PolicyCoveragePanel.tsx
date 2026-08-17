@@ -141,7 +141,7 @@ const EmployeeCoverageRow = ({
   muted: string;
 }) => {
   const missingCount = item.missing.length;
-  const employeeMeta = [item.employee.code, item.employee.email].filter(Boolean).join(" | ");
+  const employeeMeta = [item.employee.code, item.employee.username].filter(Boolean).join(" | ");
 
   return (
     <Grid
@@ -154,7 +154,7 @@ const EmployeeCoverageRow = ({
     >
       <Flex p={4} minW={0} align="start" justify="space-between" gap={3}>
         <Box minW={0}>
-          <Text fontWeight="800" noOfLines={1}>{item.employee.name || item.employee.email}</Text>
+          <Text fontWeight="800" noOfLines={1}>{item.employee.name || item.employee.username}</Text>
           <Text mt={0.5} fontSize="xs" color={muted} noOfLines={1}>{employeeMeta || "No employee code"}</Text>
         </Box>
         <Badge

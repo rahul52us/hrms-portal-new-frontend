@@ -113,7 +113,7 @@ const OrganizationTable = ({
                       ) : null}
                     </HStack>
                     <Text fontSize="xs" color={muted} noOfLines={1}>
-                      {node.email || node.designation || roleLabel(node.role)}
+                      {node.username || node.designation || roleLabel(node.role)}
                     </Text>
                   </Box>
                 </HStack>

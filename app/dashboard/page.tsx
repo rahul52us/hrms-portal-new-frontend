@@ -12,7 +12,7 @@ import { PERMISSION_KEYS, hasPermission } from "../config/utils/permissions";
 const Page = observer(() => {
   const { auth } = stores;
   const router = useRouter();
-  const role = String(auth.userType || auth.user?.role || "").toLowerCase();
+  const role = String(auth.role || auth.user?.role || "").toLowerCase();
   const canViewDashboard = hasPermission(auth.user, PERMISSION_KEYS.VIEW_DASHBOARD);
   const isLoading = auth.isLoading || !auth.sessionReady;
 

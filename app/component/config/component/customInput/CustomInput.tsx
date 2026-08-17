@@ -190,7 +190,7 @@ const CustomInput: React.FC<CustomInputProps> = ({
           const matchingUsers = (Array.isArray(response) ? response : []).filter((it: any) => {
             const user = it?.user || {};
             const userId = String(user._id || "");
-            const userRole = String(user.role || user.userType || "").toLowerCase();
+            const userRole = String(user.role || "").toLowerCase();
             const isDisabled = user.is_enabled === false;
             return (
               !excludedValues.has(userId) &&
@@ -202,13 +202,12 @@ const CustomInput: React.FC<CustomInputProps> = ({
           if (requestId === searchRequestId.current) {
             setUserOptions(
               matchingUsers.map((it: any) => ({
-                label: `${it.user.name || it.user.email || it.user.username}${it.user.designation ? ` - ${it.user.designation}` : ""}${it.user.department ? ` - ${it.user.department}` : ""} (${it.user.email || it.user.username})`,
+                label: `${it.user.name || it.user.username}${it.user.designation ? ` - ${it.user.designation}` : ""}${it.user.department ? ` - ${it.user.department}` : ""} (${it.user.username})`,
                 value: it.user._id,
                 name: it.user.name,
-                email: it.user.email || it.user.username,
                 username: it.user.username,
                 code: it.user.code,
-                role: it.user.role || it.user.userType,
+                role: it.user.role,
                 designation: it.user.designation,
                 department: it.user.department,
                 team: it.user.team,

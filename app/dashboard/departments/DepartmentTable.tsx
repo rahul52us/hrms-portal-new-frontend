@@ -76,7 +76,7 @@ type DepartmentTableProps = {
 
 const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
   const role = String(
-    stores.auth.userType || stores.auth.user?.role || ""
+    stores.auth.role || stores.auth.user?.role || ""
   ).toLowerCase();
 
   const canManageDepartments = role === "superadmin" || role === "admin";
@@ -206,7 +206,7 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
   };
 
   const getHeadName = (dept: any) => dept?.departmentHead?.name || "No head assigned";
-  const getHeadEmail = (dept: any) => dept?.departmentHead?.email || dept?.departmentHead?.username || "";
+  const getHeadEmail = (dept: any) => dept?.departmentHead?.username || "";
 
   const totalPages = Math.max(
     1,
@@ -313,7 +313,7 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
       const users = data?.data?.users || [];
       setHeadCandidates(
         users.filter(
-          (user: any) => !["admin", "superadmin"].includes(normalizeRole(user.role || user.userType))
+          (user: any) => !["admin", "superadmin"].includes(normalizeRole(user.role))
         )
       );
     } catch {
@@ -1137,7 +1137,7 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
                   <option value="">No department head</option>
                   {headCandidates.map((user: any) => (
                     <option key={user._id} value={user._id}>
-                      {user.name || user.email || user.username} - {user.email || user.username} ({formatRoleLabel(user.role || user.userType)})
+                      {user.name || user.username} - {user.username} ({formatRoleLabel(user.role)})
                     </option>
                   ))}
                 </Select>
@@ -1375,11 +1375,11 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
                           <VStack align="start" spacing={0.5}>
                             <Text fontWeight="700">{user.name || "--"}</Text>
                             <Text fontSize="xs" color={mutedTextColor}>
-                              {user.email || user.username || "--"}
+                              {user.username || "--"}
                             </Text>
                           </VStack>
                         </Td>
-                        <Td>{formatRoleLabel(user.role || user.userType)}</Td>
+                        <Td>{formatRoleLabel(user.role)}</Td>
                         <Td>{user.team || "--"}</Td>
                         <Td>
                           {user.officeLocationName ||

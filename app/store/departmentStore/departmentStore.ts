@@ -17,7 +17,6 @@ export interface DepartmentItem {
   departmentHead?: {
     _id: string;
     name?: string;
-    email?: string;
     username?: string;
     role?: string;
     department?: string;
@@ -70,7 +69,7 @@ export interface DepartmentTransferPreview {
   employees: {
     _id: string;
     name: string;
-    email: string;
+    username: string;
     code: string;
     role: string;
     team: string;

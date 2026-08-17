@@ -8,7 +8,7 @@ import NotificationWorkspace from "./NotificationWorkspace";
 
 const NotificationsPage = observer(() => {
   const { auth } = stores;
-  const role = String(auth.userType || auth.user?.role || "").toLowerCase();
+  const role = String(auth.role || auth.user?.role || "").toLowerCase();
   const pageBg = useColorModeValue("gray.50", "gray.900");
 
   return (

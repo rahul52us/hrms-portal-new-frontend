@@ -23,7 +23,7 @@ import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
 const LocationsPage = observer(() => {
   const { auth, companyStore, locationStore } = stores;
 
-  const role = String(auth.userType || auth.user?.role || "").toLowerCase();
+  const role = String(auth.role || auth.user?.role || "").toLowerCase();
   const isSuperadmin = role === "superadmin";
   const canViewLocations = hasPermission(auth.user, PERMISSION_KEYS.VIEW_LOCATIONS);
 

@@ -80,7 +80,7 @@ const OrganizationWorkspace = observer(() => {
   const [isLoadingMoreDirectReports, setIsLoadingMoreDirectReports] = useState(false);
   const personRequestRef = useRef(0);
   const drawer = useDisclosure();
-  const role = String(auth.userType || auth.user?.role || "").toLowerCase();
+  const role = String(auth.role || auth.user?.role || "").toLowerCase();
   const isSuperadmin = role === "superadmin";
   const canViewOrganization = hasPermission(auth.user, PERMISSION_KEYS.VIEW_USERS);
   const canAssignManagers = hasPermission(auth.user, PERMISSION_KEYS.ASSIGN_MANAGERS);

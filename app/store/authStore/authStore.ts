@@ -16,13 +16,13 @@ interface Notification {
 }
 
 export interface PasswordLoginPayload {
-  email: string;
+  username: string;
   password: string;
 }
 
 class AuthStore {
   user: any = null;
-  userType : any = null
+  role: any = null;
   token: string | null = null;
   isLoading: boolean = false;
   error: string | null = null;
@@ -183,7 +183,7 @@ class AuthStore {
     this.error = null;
     try {
       const response = await axios.post("/auth/login/password", {
-        email: payload.email,
+        username: payload.username,
         password: payload.password,
       });
       this.token =
@@ -248,25 +248,28 @@ class AuthStore {
       const memberships = Array.isArray(responseData?.memberships) ? responseData.memberships : [];
       const activeMembership = responseData?.activeMembership || null;
       const activeCompany = responseData?.activeCompany || activeMembership?.company || null;
-      const resolvedUserType =
+      const resolvedRole =
         responseData?.effectiveRole ||
         activeMembership?.role ||
-        responseData?.userType ||
         responseData?.role ||
         "user";
 
-      const { memberships: _m, activeMembership: _am, activeCompany: _ac, effectiveRole: _er, ...identity } = responseData;
+      const identity = { ...responseData };
+      delete identity.memberships;
+      delete identity.activeMembership;
+      delete identity.activeCompany;
+      delete identity.effectiveRole;
 
       this.user = {
         ...identity,
         company: activeCompany?._id || activeMembership?.companyId || identity?.company,
         companyDetails: activeCompany || identity?.companyDetails,
-        userType: resolvedUserType,
+        role: resolvedRole,
       };
       this.memberships = memberships;
       this.activeMembership = activeMembership;
       this.company = this.user.company;
-      this.userType = resolvedUserType
+      this.role = resolvedRole;
       this.saveUserToSessionStorage(this.user);
 
       // If there's a company field
@@ -308,7 +311,7 @@ class AuthStore {
   logout = () => {
     this.token = null;
     this.user = null;
-    this.userType = null;
+    this.role = null;
     this.company = undefined;
     this.memberships = [];
     this.activeMembership = null;

@@ -70,12 +70,12 @@ type RecipientMode = "selected" | "all";
 type NotificationUser = {
   _id: string;
   name: string;
-  email: string;
+  username: string;
   role: string;
   department?: string;
   designation?: string;
   status: "active" | "inactive" | "pending" | string;
-  reportingManager?: { _id?: string; email?: string; name?: string } | null;
+  reportingManager?: { _id?: string; username?: string; name?: string } | null;
   notificationSignals?: {
     assignedCourses?: number;
     pendingCourses?: number;
@@ -244,7 +244,7 @@ const NotificationWorkspace = observer(({
   const [ctaUrl, setCtaUrl] = useState("");
   const [priority, setPriority] = useState("Normal");
 
-  const isSuperAdmin = normalize(currentUser?.role || currentUser?.userType) === "superadmin";
+  const isSuperAdmin = normalize(currentUser?.role) === "superadmin";
 
   useEffect(() => {
     if (isSuperAdmin && managedCompanies.length === 0) {
@@ -305,7 +305,7 @@ const NotificationWorkspace = observer(({
       const matchesSearch =
         !searchText ||
         normalize(user.name).includes(searchText) ||
-        normalize(user.email).includes(searchText) ||
+        normalize(user.username).includes(searchText) ||
         normalize(user.role).includes(searchText) ||
         normalize(user.department).includes(searchText);
 
@@ -317,7 +317,7 @@ const NotificationWorkspace = observer(({
       if (filters.quizStatus && normalize(signals.quizStatus) !== normalize(filters.quizStatus)) return false;
       if (filters.manager) {
         const managerMatch =
-          normalize(user.reportingManager?.email) === normalize(filters.manager) ||
+          normalize(user.reportingManager?.username) === normalize(filters.manager) ||
           normalize(user.reportingManager?.name) === normalize(filters.manager);
         if (!managerMatch) return false;
       }
@@ -799,7 +799,7 @@ const NotificationWorkspace = observer(({
                             <Flex justify="space-between" gap={3} align="start">
                               <Box minW={0}>
                                 <Text fontWeight="800" noOfLines={1}>{user.name}</Text>
-                                <Text fontSize="sm" color={mutedText} noOfLines={1}>{user.email}</Text>
+                                <Text fontSize="sm" color={mutedText} noOfLines={1}>{user.username}</Text>
                                 {(user.designation || user.department) ? (
                                   <Text fontSize="xs" color={mutedText} mt={1} noOfLines={1}>
                                     {[user.designation, user.department].filter(Boolean).join(" • ")}

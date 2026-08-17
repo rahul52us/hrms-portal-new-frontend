@@ -1,4 +1,4 @@
-import { FaChartPie, FaCog, FaUsers } from "react-icons/fa";
+import { FaCog } from "react-icons/fa";
 import { expandRoleAliases } from "@/app/config/utils/roleAccess";
 import { PERMISSION_KEYS, hasPermission } from "@/app/config/utils/permissions";
 import { LucideBriefcaseBusiness, Network } from "lucide-react";
@@ -37,14 +37,14 @@ const sidebarDatas: SidebarItem[] = [
     name: "Me",
     icon: <FiUser />,
     url: "/dashboard/user-profile",
-    role: ["admin", "superadmin", "departmenthead", "hradmin", "hr", "employee"],
+    role: ["admin", "departmenthead", "hradmin", "hr", "employee"],
   },
   {
     id: 100,
     name: "Employees",
     icon: <FiUsers />,
     url: "/dashboard/users",
-    role: ["admin", "superadmin", "departmenthead", "hradmin", "hr"],
+    role: ["admin", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_USERS,
   },
   {
@@ -52,7 +52,7 @@ const sidebarDatas: SidebarItem[] = [
     name: "Organization",
     icon: <Network />,
     url: "/dashboard/organization",
-    role: ["admin", "superadmin", "departmenthead", "hradmin", "hr"],
+    role: ["admin", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_USERS,
   },
   {
@@ -60,7 +60,7 @@ const sidebarDatas: SidebarItem[] = [
     name: "Departments",
     icon: <BiCategory />,
     url: "/dashboard/departments",
-    role: ["admin", "superadmin", "departmenthead", "hradmin", "hr"],
+    role: ["admin", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_DEPARTMENTS,
   },
   {
@@ -68,7 +68,7 @@ const sidebarDatas: SidebarItem[] = [
     name: "Locations",
     icon: <FiMapPin />,
     url: "/dashboard/locations",
-    role: ["admin", "superadmin", "departmenthead", "hradmin", "hr"],
+    role: ["admin", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_LOCATIONS,
   },
   {
@@ -76,7 +76,7 @@ const sidebarDatas: SidebarItem[] = [
     name: "Workforce Policies",
     icon: <FiClock />,
     url: "/dashboard/workforce-policies",
-    role: ["admin", "superadmin", "departmenthead", "hradmin", "hr"],
+    role: ["admin", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_WORKFORCE_POLICIES,
   },
   {
@@ -84,7 +84,7 @@ const sidebarDatas: SidebarItem[] = [
     name: "Master Settings",
     icon: <FiDatabase />,
     url: "/dashboard/master-settings",
-    role: ["superadmin", "admin", "hradmin"],
+    role: ["admin", "hradmin"],
     permissionKey: PERMISSION_KEYS.COMPANY_SETTINGS,
   },
   {

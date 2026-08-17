@@ -46,7 +46,7 @@ const LoginPage = observer(() => {
 
     try {
       const response: any = await stores.auth.loginWithPassword({
-        email: normalizedEmail,
+        username: normalizedEmail,
         password,
       });
       setSuccessText("Signed in successfully.");

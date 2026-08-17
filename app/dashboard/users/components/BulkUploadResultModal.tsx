@@ -103,7 +103,7 @@ const BulkUploadResultModal = ({
                       <Tr key={index}>
                         <Td>{item.rowNumber}</Td>
                         <Td fontWeight="medium">{item.mobileNumber || "--"}</Td>
-                        <Td>{item.email || "--"}</Td>
+                        <Td>{item.username || "--"}</Td>
                         <Td>
                           <Badge
                             colorScheme={item.success ? "green" : "red"}

@@ -498,10 +498,10 @@ const SidebarLayout: React.FC<SidebarProps> = observer(
     }, []);
 
     useEffect(() => {
-      if (user?.userType || user?.role) {
+      if (user?.role) {
         const roles = Array.from(
           new Set(
-            [user.userType, user.role]
+            [user.role]
               .filter(Boolean)
               .flatMap((item: string) => [item, String(item).toLowerCase()])
           )

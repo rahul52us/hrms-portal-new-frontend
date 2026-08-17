@@ -89,7 +89,7 @@ function formatDate(value?: string | null) {
 
 const WorkforcePoliciesWorkspace = observer(() => {
   const { auth, companyStore } = stores;
-  const role = String(auth.userType || auth.user?.role || "").toLowerCase();
+  const role = String(auth.role || auth.user?.role || "").toLowerCase();
   const isSuperadmin = role === "superadmin";
   const canView = hasPermission(auth.user, PERMISSION_KEYS.VIEW_WORKFORCE_POLICIES);
   const canManage =
@@ -168,7 +168,7 @@ const WorkforcePoliciesWorkspace = observer(() => {
             )
             .map((user: any) => ({
               id: user._id,
-              label: `${user.name || user.email} (${user.email || user.role})`,
+              label: `${user.name || user.username} (${user.username || user.role})`,
               type: "employee" as const,
             }))
         );

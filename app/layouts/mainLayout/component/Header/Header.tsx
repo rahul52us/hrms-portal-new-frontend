@@ -44,7 +44,7 @@ const Header: React.FC = observer(() => {
   const router = useRouter();
   const { colorMode, toggleColorMode } = useColorMode();
   const user = stores.auth.user;
-  const role = String(stores.auth.userType || user?.role || '').toLowerCase();
+  const role = String(stores.auth.role || user?.role || '').toLowerCase();
   const isLoggedIn = Boolean(user);
   const isEmployee = isLoggedIn && isEmployeeRole(role);
   const isLearner = isLoggedIn && !isEmployee && isLearnerRole(role);

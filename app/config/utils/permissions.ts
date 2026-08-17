@@ -71,7 +71,7 @@ function normalizePermissionRecord(value: any) {
 }
 
 export function getPermissionRecord(user: any) {
-  const role = String(user?.role || user?.userType || "").toLowerCase();
+  const role = String(user?.role || "").toLowerCase();
   if (role === "superadmin") {
     return ALL_PERMISSION_KEYS.reduce<Record<string, boolean>>((acc, key) => {
       acc[key] = true;

@@ -86,7 +86,7 @@ const PermissionsPage = observer(() => {
   const toast = useToast();
   const { auth, companyStore, userStore } = stores;
 
-  const role = String(auth.userType || auth.user?.role || "").toLowerCase();
+  const role = String(auth.role || auth.user?.role || "").toLowerCase();
   const canManagePermissions = role === "superadmin";
   const companyId = companyStore.getActiveCompanyId();
 
@@ -758,7 +758,7 @@ const PermissionsPage = observer(() => {
                   >
                     {configurableUsers.map((user: any) => (
                       <option key={user._id} value={user._id}>
-                        {user.name} ({user.email}) — {user.role}
+                        {user.name} ({user.username}) - {user.role}
                       </option>
                     ))}
                   </Select>

@@ -301,7 +301,7 @@ const BulkUploadModal = ({
                             <Td>{row.rowNumber}</Td>
                             <Td fontWeight="medium">{row.name}</Td>
                             <Td>{row.mobileNumber || "--"}</Td>
-                            <Td>{row.email}</Td>
+                            <Td>{row.username}</Td>
                             <Td>{row.department || "--"}</Td>
                             <Td>{row.team || "--"}</Td>
                             <Td>{row.city || "--"}</Td>
@@ -323,7 +323,7 @@ const BulkUploadModal = ({
                             </Td>
 
                             <Td>
-                              {row.reportingManager?.name || row.reportingManager?.email || "--"}
+                              {row.reportingManager?.name || row.reportingManager?.username || "--"}
                             </Td>
 
                             <Td>

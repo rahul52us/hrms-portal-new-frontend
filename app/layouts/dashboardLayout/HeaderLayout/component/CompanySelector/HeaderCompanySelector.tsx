@@ -218,7 +218,7 @@ const CompanyRow = ({
 const HeaderCompanySelector = observer(() => {
   const { auth, companyStore } = stores;
   const theme = useTheme();
-  const role = String(auth.userType || auth.user?.role || "").toLowerCase();
+  const role = String(auth.role || auth.user?.role || "").toLowerCase();
   const isSuperadmin = role === "superadmin";
   const brandScale = (theme.colors?.brand || {}) as Record<number, string>;
 

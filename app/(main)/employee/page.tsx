@@ -178,7 +178,7 @@ function QuickLinkTile({
 const EmployeePage = observer(() => {
   const router = useRouter();
   const { user, sessionReady } = stores.auth;
-  const role = String(stores.auth.userType || user?.role || "");
+  const role = String(stores.auth.role || user?.role || "");
   const isEmployee = Boolean(user) && isEmployeeRole(role);
   const accountStatus = String(user?.status || "PENDING").toUpperCase();
 
@@ -205,7 +205,7 @@ const EmployeePage = observer(() => {
   const company = user?.companyDetails || {};
   const companyName = text(company?.company_name || company?.name) || "Company not added";
   const designation = getProfileValue(user, personalInfo, "designation") || getProfileValue(user, personalInfo, "title");
-  const email = text(user?.email || user?.username || personalInfo?.email || personalInfo?.username);
+  const email = text(user?.username || personalInfo?.username);
   const phone = getProfileValue(user, personalInfo, "mobileNumber");
   const location = [
     getProfileValue(user, personalInfo, "city"),
@@ -442,7 +442,7 @@ const EmployeePage = observer(() => {
                   <InfoItem
                     icon={FiUsers}
                     label="Reporting Manager"
-                    value={reportingManager?.name || reportingManager?.email || "Not assigned"}
+                    value={reportingManager?.name || reportingManager?.username || "Not assigned"}
                   />
                 </SimpleGrid>
 
@@ -469,7 +469,7 @@ const EmployeePage = observer(() => {
                           {text(reportingManager.name) || "Reporting Manager"}
                         </Text>
                         <Text fontSize="13px" color={mutedText}>
-                          {text(reportingManager.email || reportingManager.username) || "--"}
+                          {text(reportingManager.username) || "--"}
                         </Text>
                       </Box>
                       <Badge colorScheme="green" borderRadius="6px">Assigned</Badge>

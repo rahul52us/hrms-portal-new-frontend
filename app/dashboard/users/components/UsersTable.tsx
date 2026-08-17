@@ -201,7 +201,7 @@ const UsersTable = ({
               <HStack spacing={1}>
                 <Icon as={FiMail} boxSize={3} color={muted} />
                 <Text fontSize="xs" color={muted}>
-                  {user.email || "No email"}
+                  {user.username || "No email"}
                 </Text>
               </HStack>
             </VStack>
@@ -294,10 +294,10 @@ const UsersTable = ({
           return (
             <Box minW={0}>
               <Text fontSize="sm" fontWeight="semibold" noOfLines={1}>
-                {manager.name || manager.email || "Manager"}
+                {manager.name || manager.username || "Manager"}
               </Text>
               <Text fontSize="xs" color={muted} noOfLines={1}>
-                {manager.email || manager.username || ""}
+                {manager.username || ""}
               </Text>
             </Box>
           );
@@ -715,7 +715,7 @@ const UsersTable = ({
                       />
                       <Box flex="1" minW={0}>
                         <Text fontWeight="semibold" fontSize="sm" noOfLines={1}>{user.name || "--"}</Text>
-                        <Text fontSize="xs" color={muted} noOfLines={1}>{user.email || "No email"}</Text>
+                        <Text fontSize="xs" color={muted} noOfLines={1}>{user.username || "No email"}</Text>
                       </Box>
                       <Badge colorScheme={statusMeta.colorScheme} variant="subtle" borderRadius="full">
                         {statusMeta.label}
@@ -754,7 +754,7 @@ const UsersTable = ({
                     </SimpleGrid>
 
                     <Text fontSize="xs" color={muted} mb={3} noOfLines={1}>
-                      Reporting manager: {reportingManager?.name || reportingManager?.email || "Not assigned"}
+                      Reporting manager: {reportingManager?.name || reportingManager?.username || "Not assigned"}
                     </Text>
 
                     <HStack spacing={2} flexWrap="wrap">

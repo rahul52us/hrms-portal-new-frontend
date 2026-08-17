@@ -209,7 +209,7 @@ const ProfileDetailsModal = observer(({ isOpen, onClose, user }: any) => {
                       />
                       <DetailItem
                         label="User Type"
-                        value={user.userType}
+                        value={user.role}
                         icon={InfoIcon}
                       />
                       <DetailItem

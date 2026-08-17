@@ -1,4 +1,4 @@
-import { AddIcon, DeleteIcon } from "@chakra-ui/icons";
+import { DeleteIcon } from "@chakra-ui/icons";
 import {
   Box,
   Button,
@@ -19,12 +19,10 @@ import * as Yup from "yup";
 import ShowFileUploadFile from "../../../component/common/ShowFileUploadFile/ShowFileUploadFile";
 import CustomInput from "../../../component/config/component/customInput/CustomInput";
 import { removeDataByIndex } from "../../../config/utils/utils";
-import { titles } from "./utils/constant";
 import { generateIntialValues } from "./utils/function";
 
 const Form = ({ initialData, onSubmit, isOpen, onClose, isEdit }: any) => {
   const [formData, setFormData] = useState<any>(initialData);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const bgBox = useColorModeValue("white", "darkBrand.100");
   const borderColor = useColorModeValue("brand.200", "darkBrand.200");
@@ -37,12 +35,7 @@ const Form = ({ initialData, onSubmit, isOpen, onClose, isEdit }: any) => {
     }
   }, [initialData]);
 
-  const handleCloseDrawer = async () => {
-    setIsDrawerOpen(false);
-  };
-
   const validationSchema = Yup.object({
-    title: Yup.mixed().required("Title is required"),
     backgroundVideo: Yup.mixed(),
     link: Yup.mixed().required("Link is required"),
     pic: Yup.mixed(),
@@ -201,25 +194,6 @@ const Form = ({ initialData, onSubmit, isOpen, onClose, isEdit }: any) => {
                         borderColor={borderColor}
                         mt={3}
                       >
-                        <Flex align={'end'} gap={2}>
-                          <CustomInput
-                            label="Titlessss"
-                            name="title"
-                            type="select"
-                            options={titles}
-                            value={values.title}
-                            onChange={(e: any) => setFieldValue("title", e)}
-                            error={errors.title && touched.title}
-                            showError={errors.title && touched.title}
-                          />
-                          <IconButton
-                            aria-label="add"
-                            variant={"ghost"}
-                            icon={<AddIcon />}
-                            colorScheme="blue"
-                            onClick={() => setIsDrawerOpen(true)}
-                          />
-                        </Flex>
                         <CustomInput
                           label="Name"
                           name="name"

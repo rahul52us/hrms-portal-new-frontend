@@ -47,9 +47,8 @@ type UsersViewProps = {
 type UserFormState = {
   id?: string;
   employeeNumber: string;
-  profileId: string;
   name: string;
-  email: string;
+  username: string;
   password: string;
   confirmPassword: string;
   sendInvite: boolean;
@@ -67,7 +66,6 @@ type UserFormState = {
   role: string;
   companyId: string;
   companyName: string;
-  companyManagerLevels: number;
   createCompany: boolean;
   resendSetupEmail: boolean;
   hrScope: {
@@ -94,7 +92,6 @@ type UserFormState = {
 type BulkFormState = {
   companyId: string;
   companyName: string;
-  companyManagerLevels: number;
   createCompany: boolean;
   uploadRole: string;
 };
@@ -110,8 +107,6 @@ const normalizeRole = (value: unknown) =>
     .replace(/^l\s*\d+\s*[-\s]?manager$/i, "user")
     .replace(/\s+/g, "-");
 const normalizeEmail = (value: unknown) => String(value || "").trim().toLowerCase();
-
-const getCompanyManagerLevels = (company: any) => Math.max(1, Number(company?.managerLevels) || 3);
 
 const formatRoleLabel = (role: string) => {
   if (!role) {
@@ -165,8 +160,8 @@ const EMPLOYEE_ISSUE_FILTERS: Record<string, string> = {
 };
 
 const optionFromManager = (manager: any) => {
-  const email = manager?.email || manager?.username || manager?.managerEmail || "";
-  if (!email && !manager?._id && !manager?.managerId) {
+  const username = manager?.username || manager?.managerUsername || "";
+  if (!username && !manager?._id && !manager?.managerId) {
     return null;
   }
 
@@ -177,11 +172,10 @@ const optionFromManager = (manager: any) => {
   const status = manager?.status || (managerId ? "ASSIGNED" : "PENDING");
 
   return {
-    label: `${manager?.name || email} (${email})`,
-    value: managerId || `pending:${email}`,
-    email,
-    username: manager?.username || email,
-    name: manager?.name || email,
+    label: `${manager?.name || username} (${username})`,
+    value: managerId || `pending:${username}`,
+    username,
+    name: manager?.name || username,
     role: manager?.role,
     status,
   };
@@ -198,9 +192,8 @@ const getUserOfficeLocationId = (user: any) => {
 
 const initialForm = (): UserFormState => ({
   employeeNumber: "",
-  profileId: "",
   name: "",
-  email: "",
+  username: "",
   password: "",
   confirmPassword: "",
   sendInvite: true,
@@ -218,7 +211,6 @@ const initialForm = (): UserFormState => ({
   role: "user",
   companyId: "",
   companyName: "",
-  companyManagerLevels: 3,
   createCompany: false,
   resendSetupEmail: true,
   hrScope: {
@@ -268,7 +260,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const [bulkForm, setBulkForm] = useState<BulkFormState>({
     companyId: "",
     companyName: "",
-    companyManagerLevels: 3,
     createCompany: false,
     uploadRole: "",
   });
@@ -276,7 +267,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const muted = useColorModeValue("gray.600", "gray.400");
   const borderColor = useColorModeValue("gray.200", "gray.700");
   const tableHeadBg = useColorModeValue("gray.50", "gray.900");
-  const role = normalizeRole(auth.userType || auth.user?.role);
+  const role = normalizeRole(auth.role || auth.user?.role);
   const canViewUsers = hasPermission(auth.user, PERMISSION_KEYS.VIEW_USERS);
   const canCreateUsers = hasPermission(auth.user, PERMISSION_KEYS.CREATE_USERS);
   const canCreateHrUsers = hasPermission(auth.user, PERMISSION_KEYS.CREATE_HR_USERS);
@@ -323,10 +314,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const managementBlockedMessage = scopedCompany?.company_name
     ? `${scopedCompany.company_name} is inactive. New user creation, bulk uploads, and other management actions are unavailable until the company is reactivated.`
     : "This company is inactive. New user creation, bulk uploads, and other management actions are unavailable until the company is reactivated.";
-  const currentCompanyManagerLevels = getCompanyManagerLevels(
-    auth.user?.companyDetails ||
-      managedCompanies.find((company: any) => company?._id === auth.company)
-  );
   const currentCompanyDepartments =
     auth.user?.companyDetails?.departments ||
     managedCompanies.find((company: any) => company?._id === auth.company)?.departments ||
@@ -340,15 +327,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   )
     .trim()
     .toUpperCase();
-  const selectedBulkCompany = isSuperadmin
-    ? managedCompanies.find((company: any) => company?._id === bulkForm.companyId)
-    : auth.user?.companyDetails;
-  const selectedUserManagerLevels = userForm.createCompany
-    ? Math.max(1, Number(userForm.companyManagerLevels) || 3)
-    : getCompanyManagerLevels(selectedUserCompany || { managerLevels: currentCompanyManagerLevels });
-  const selectedBulkManagerLevels = bulkForm.createCompany
-    ? Math.max(1, Number(bulkForm.companyManagerLevels) || 3)
-    : getCompanyManagerLevels(selectedBulkCompany || { managerLevels: currentCompanyManagerLevels });
   const userDepartmentCompanyId = isSuperadmin ? userForm.companyId || scopedCompanyId : auth.company;
   const departmentRecords =
     departmentStore.activeCompanyId === (userDepartmentCompanyId || "")
@@ -479,7 +457,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
             uploadRole: "",
           }
     );
-  }, [bulkUploadRoleOptions, selectedBulkManagerLevels]);
+  }, [bulkUploadRoleOptions]);
 
   useEffect(() => {
     if (!isBulkModalOpen) {
@@ -536,7 +514,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
         ...initialForm(),
         role: initialRole,
         companyId: isSuperadmin ? scopedCompanyId : auth.company || "",
-        companyManagerLevels: isSuperadmin ? 3 : currentCompanyManagerLevels,
         reportingManager: null,
         changeReason: "",
         statutoryDetails: { aadharNumber: "", panNumber: "", nationality: "" },
@@ -546,7 +523,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       }),
     [
       auth.company,
-      currentCompanyManagerLevels,
       isSuperadmin,
       scopedCompanyId,
     ]
@@ -558,10 +534,9 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     setBulkForm((prev) => ({
       ...prev,
       companyId: isSuperadmin ? scopedCompanyId || prev.companyId : auth.company || prev.companyId,
-      companyManagerLevels: isSuperadmin ? prev.companyManagerLevels : currentCompanyManagerLevels,
       uploadRole: "",
     }));
-  }, [auth.company, currentCompanyManagerLevels, isSuperadmin, scopedCompanyId, userStore]);
+  }, [auth.company, isSuperadmin, scopedCompanyId, userStore]);
 
   const openBulkUpload = useCallback(() => {
     if (isManagementBlocked) {
@@ -694,9 +669,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     setUserForm({
       id: user._id,
       employeeNumber: user.employeeNumber || user.code || "",
-      profileId: user.profileId || "",
       name: user.name || "",
-      email: user.email || user.username || "",
+      username: user.username || "",
       password: "",
       confirmPassword: "",
       sendInvite: false,
@@ -714,7 +688,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       role: roleValue,
       companyId: user.companyId || user.company?._id || "",
       companyName: user.company?.name || user.company?.company_name || "",
-      companyManagerLevels: user.company?.managerLevels || selectedUserManagerLevels,
       createCompany: false,
       resendSetupEmail: false,
       hrScope: {
@@ -785,7 +758,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const submitUser = async () => {
     const employeeNumber = userForm.employeeNumber.trim();
     const name = userForm.name.trim();
-    const email = normalizeEmail(userForm.email);
+    const username = normalizeEmail(userForm.username);
     const roleValue = normalizeRole(userForm.role);
     const mobileNumber = userForm.mobileNumber.trim();
     const department = userForm.department.trim();
@@ -800,9 +773,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     const selectedReportingManager = userForm.reportingManager;
     const reportingManagerValue = String(selectedReportingManager?.value || "");
     const reportingManagerId = reportingManagerValue;
-    const reportingManagerEmail = normalizeEmail(
-      selectedReportingManager?.email ||
-        selectedReportingManager?.username
+    const reportingManagerUsername = normalizeEmail(
+      selectedReportingManager?.username
     );
 
     const isDepartmentRequired = roleValue === "departmenthead";
@@ -810,7 +782,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     if (
       (roleValue !== "admin" && !employeeNumber) ||
       !name ||
-      !email ||
+      !username ||
       !roleValue ||
       (isDepartmentRequired && !department)
     ) {
@@ -833,7 +805,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username)) {
       showToast({
         title: "Invalid email address",
         description: "Enter a valid email address.",
@@ -894,8 +866,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       }
     }
 
-    const selfManagerIdentifiers = [email, mobileNumber].filter(Boolean);
-    if (reportingManagerEmail && selfManagerIdentifiers.includes(reportingManagerEmail)) {
+    const selfManagerIdentifiers = [username, mobileNumber].filter(Boolean);
+    if (reportingManagerUsername && selfManagerIdentifiers.includes(reportingManagerUsername)) {
       showToast({
         title: "Invalid hierarchy",
         description: "An employee cannot be their own reporting manager.",
@@ -936,7 +908,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       return;
     }
 
-    if ((reportingManagerId || reportingManagerEmail) && !canAssignManagers) {
+    if ((reportingManagerId || reportingManagerUsername) && !canAssignManagers) {
       showToast({
         title: "Permission required",
         description: "Your account cannot assign managers.",
@@ -950,7 +922,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     const payload: any = {
       employeeNumber,
       name,
-      email: email || undefined,
+      username: username || undefined,
       mobileNumber,
       department: isHrRole ? "" : department,
       team: isHrRole ? "" : team,
@@ -963,7 +935,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       gender: gender ? Number(gender) : undefined,
       role: roleValue,
       reportingManagerId,
-      reportingManagerEmail: reportingManagerId ? undefined : reportingManagerEmail || undefined,
+      reportingManagerUsername: reportingManagerId ? undefined : reportingManagerUsername || undefined,
       assignmentChangeReason: userForm.changeReason.trim() || undefined,
     };
 
@@ -1014,7 +986,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
           return;
         }
         payload.companyName = userForm.companyName.trim();
-        payload.companyManagerLevels = userForm.companyManagerLevels;
       } else if (userForm.companyId) {
         payload.companyId = userForm.companyId;
       } else {
@@ -1049,7 +1020,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       if (setup?.emailSent === false && setup?.setupUrl) {
         setSetupNotice({
           name,
-          email,
+          username,
           setupUrl: setup.setupUrl,
           emailError: setup.emailError,
           copied: setupLinkCopied,
@@ -1125,17 +1096,14 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
           ? bulkForm.createCompany
             ? {
                 companyName: bulkForm.companyName.trim(),
-                companyManagerLevels: bulkForm.companyManagerLevels,
                 uploadRole: bulkForm.uploadRole,
               }
             : {
                 companyId: bulkForm.companyId,
-                companyManagerLevels: selectedBulkManagerLevels,
                 uploadRole: bulkForm.uploadRole,
               }
         : {
             companyId: bulkForm.companyId,
-            companyManagerLevels: selectedBulkManagerLevels,
             uploadRole: bulkForm.uploadRole,
           };
 
@@ -1151,12 +1119,10 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     },
     [
       bulkForm.companyId,
-      bulkForm.companyManagerLevels,
       bulkForm.companyName,
       bulkForm.createCompany,
       bulkForm.uploadRole,
       isSuperadmin,
-      selectedBulkManagerLevels,
       toast,
       userStore,
     ]
@@ -1217,17 +1183,14 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
           ? bulkForm.createCompany
             ? {
                 companyName: bulkForm.companyName.trim(),
-                companyManagerLevels: bulkForm.companyManagerLevels,
                 uploadRole: bulkForm.uploadRole,
               }
             : {
                 companyId: bulkForm.companyId,
-                companyManagerLevels: selectedBulkManagerLevels,
                 uploadRole: bulkForm.uploadRole,
               }
           : {
               companyId: bulkForm.companyId,
-              companyManagerLevels: selectedBulkManagerLevels,
               uploadRole: bulkForm.uploadRole,
             };
 
@@ -1252,7 +1215,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       setBulkForm({
         companyId: scopedCompanyId,
         companyName: "",
-        companyManagerLevels: 3,
         createCompany: false,
         uploadRole: "",
       });
@@ -1291,7 +1253,6 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     try {
       await userStore.downloadBulkUploadTemplate({
         companyId: bulkForm.companyId,
-        companyManagerLevels: selectedBulkManagerLevels,
         uploadRole: bulkForm.uploadRole,
       });
     } catch (err: any) {
@@ -1435,7 +1396,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
             <Box flex="1" minW={0}>
               <AlertTitle>Setup email was not sent</AlertTitle>
               <AlertDescription>
-                Share this setup link with {setupNotice.name || setupNotice.email || "the employee"} so they can set their password.
+                Share this setup link with {setupNotice.name || setupNotice.username || "the employee"} so they can set their password.
                 {setupNotice.emailError ? ` ${setupNotice.emailError}` : ""}
               </AlertDescription>
               <Box

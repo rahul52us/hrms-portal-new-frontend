@@ -431,7 +431,7 @@ class UserStore {
       });
       const users = response?.data?.data?.users || [];
       const normalizedEmail = String(email || "").trim().toLowerCase();
-      return users.some((user: any) => String(user?.email || "").trim().toLowerCase() === normalizedEmail);
+      return users.some((user: any) => String(user?.username || "").trim().toLowerCase() === normalizedEmail);
     } catch {
       return false;
     }

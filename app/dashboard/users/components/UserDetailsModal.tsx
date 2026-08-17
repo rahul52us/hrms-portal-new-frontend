@@ -109,7 +109,7 @@ const UserDetailsModal = ({
       isOpen={isOpen}
       onClose={onClose}
       titlePrefix={user?.name || "Employee details"}
-      subtitle={user?.email || "No email available"}
+      subtitle={user?.username || "No email available"}
       badgeContent={
         <HStack spacing={2} flexWrap="wrap">
           <Badge colorScheme="blue" borderRadius="full" px={3} py={1}>
@@ -164,7 +164,7 @@ const UserDetailsModal = ({
                 />
                 <DetailCard
                   label="Created By"
-                  value={user?.createdBy?.name || user?.createdBy?.email || "System"}
+                  value={user?.createdBy?.name || user?.createdBy?.username || "System"}
                 />
                 <DetailCard
                   label="Joining Date"
@@ -199,10 +199,10 @@ const UserDetailsModal = ({
                 <Flex justify="space-between" align={{ base: "start", md: "center" }} gap={3}>
                   <Box>
                     <Text fontWeight="600">
-                      {user.reportingManager.name || user.reportingManager.email || "Manager"}
+                      {user.reportingManager.name || user.reportingManager.username || "Manager"}
                     </Text>
                     <Text fontSize="sm" color={muted}>
-                      {user.reportingManager.email || user.reportingManager.username || "--"}
+                      {user.reportingManager.username || "--"}
                     </Text>
                   </Box>
                   <Badge colorScheme="green" borderRadius="full">Assigned</Badge>
@@ -242,7 +242,6 @@ const UserDetailsModal = ({
                     {userStore.assignmentHistory.map((assignment: any) => {
                       const changedBy =
                         assignment?.changedBy?.name ||
-                        assignment?.changedBy?.email ||
                         assignment?.changedBy?.username ||
                         "System";
 

@@ -40,7 +40,7 @@ class CompanyStores {
   };
 
   getActiveCompanyId = () => {
-    const role = String(authStore.userType || authStore.user?.role || "").toLowerCase();
+    const role = String(authStore.role || authStore.user?.role || "").toLowerCase();
     if (role === "superadmin") {
       return this.selectedCompanyId || this.companies.data?.[0]?._id || "";
     }
@@ -49,7 +49,7 @@ class CompanyStores {
   };
 
   initializeCompanyContext = () => {
-    const role = String(authStore.userType || authStore.user?.role || "").toLowerCase();
+    const role = String(authStore.role || authStore.user?.role || "").toLowerCase();
 
     if (role !== "superadmin") {
       this.setSelectedCompanyId(authStore.company || "");
