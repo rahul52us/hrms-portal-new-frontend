@@ -51,30 +51,30 @@ const DashboardDrawer: React.FC<DashboardDrawerProps> = ({
           borderColor={useColorModeValue("gray.100", "gray.700")}
           bg={useColorModeValue("white", "gray.800")}
         >
-          <Flex align="center" justify="space-between" px={8} py={4}>
-            <Flex gap={4} align="center">
+          <Flex align="center" justify="space-between" px={6} py={3}>
+            <Flex gap={3} align="center">
               <Button
                 onClick={onClose}
                 variant="ghost"
                 borderRadius="full"
-                w={10}
-                h={10}
+                w={8}
+                h={8}
                 p={0}
                 bg={useColorModeValue("gray.50", "gray.700")}
                 color={useColorModeValue("gray.600", "gray.300")}
                 _hover={{ bg: useColorModeValue("gray.200", "gray.600") }}
               >
-                <Icon as={FiArrowRight} boxSize={5} style={{ transform: "rotate(180deg)" }} />
+                <Icon as={FiArrowRight} boxSize={4} style={{ transform: "rotate(180deg)" }} />
               </Button>
               <Box>
                 <Flex align="center" gap={2}>
                   <Text
-                    fontSize="2xl"
-                    fontWeight="900"
+                    fontSize="lg"
+                    fontWeight="800"
                     color={useColorModeValue("gray.900", "white")}
                     lineHeight="1.2"
                   >
-                    {titlePrefix} <Box as="span" color="blue.500">{titleSuffix}</Box>
+                    {titlePrefix} <Box as="span" color={useColorModeValue("blue.600", "blue.300")}>{titleSuffix}</Box>
                   </Text>
                 </Flex>
                 {subtitle && (
@@ -98,8 +98,8 @@ const DashboardDrawer: React.FC<DashboardDrawerProps> = ({
               <Badge
                 bg={useColorModeValue("blue.100", "rgba(66,153,225,0.15)")}
                 color={useColorModeValue("blue.700", "blue.300")}
-                px={4}
-                py={1.5}
+                px={3}
+                py={1}
                 borderRadius="full"
                 textTransform="uppercase"
                 fontSize="xs"
