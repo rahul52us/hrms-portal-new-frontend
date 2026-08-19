@@ -71,6 +71,9 @@ const PolicyAuditPanel = observer(({
         <option value="work_schedule_version">Schedule versions</option>
         <option value="holiday_calendar">Holiday calendars</option>
         <option value="holiday_version">Holiday versions</option>
+        <option value="leave_type">Leave types</option>
+        <option value="leave_policy">Leave policies</option>
+        <option value="leave_version">Leave versions</option>
         <option value="assignment">Assignments</option>
       </Select>
 

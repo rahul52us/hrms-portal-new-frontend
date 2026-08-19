@@ -2,7 +2,11 @@ import axios from "axios";
 import { makeAutoObservable, runInAction } from "mobx";
 
 export type PolicyVersionStatus = "draft" | "published" | "cancelled";
-export type PolicyResourceType = "attendance_policy" | "work_schedule" | "holiday_calendar";
+export type PolicyResourceType =
+  | "attendance_policy"
+  | "work_schedule"
+  | "holiday_calendar"
+  | "leave_policy";
 export type PolicyScopeType = "company" | "location" | "department" | "team" | "employee";
 
 export interface AttendanceRules {
@@ -27,6 +31,49 @@ export interface WorkScheduleRules {
   unpaidBreakMinutes: number;
 }
 
+export interface LeaveTypeItem {
+  _id: string;
+  company: string;
+  name: string;
+  code: string;
+  description?: string;
+  paid: boolean;
+  balanceTracked: boolean;
+  unit: "days" | "hours";
+  allowHalfDay: boolean;
+  color: string;
+  status: "active" | "archived";
+  displayOrder: number;
+}
+
+export interface LeavePolicyRule {
+  _id?: string;
+  leaveType: string;
+  leaveTypeCodeSnapshot?: string;
+  leaveTypeNameSnapshot?: string;
+  paid?: boolean;
+  balanceTracked?: boolean;
+  annualEntitlement: number;
+  accrualFrequency: "upfront" | "monthly" | "quarterly" | "none";
+  accrualAmount: number;
+  prorateOnJoining: boolean;
+  prorateOnExit: boolean;
+  carryForwardEnabled: boolean;
+  maxCarryForward: number;
+  carryForwardExpiryMonths: number;
+  encashmentEnabled: boolean;
+  maxEncashmentPerYear: number;
+  negativeBalanceAllowed: boolean;
+  maxNegativeBalance: number;
+  allowHalfDay: boolean;
+  minimumRequestDays: number;
+  maximumRequestDays?: number | null;
+  minimumNoticeDays: number;
+  documentRequiredAfterDays?: number | null;
+  probationEligibility: "allowed" | "after_confirmation" | "not_allowed";
+  sandwichRuleEnabled: boolean;
+}
+
 export interface PolicyVersion {
   _id: string;
   versionNumber: number;
@@ -34,7 +81,9 @@ export interface PolicyVersion {
   effectiveFrom?: string | null;
   effectiveTo?: string | null;
   changeReason?: string;
-  rules?: AttendanceRules | WorkScheduleRules;
+  rules?: AttendanceRules | WorkScheduleRules | LeavePolicyRule[];
+  leaveYearStartMonth?: number;
+  leaveYearStartDay?: number;
   timezone?: string;
   holidays?: Array<{
     _id?: string;
@@ -89,6 +138,7 @@ export interface EmployeePolicyResolution {
   attendancePolicy: ResolvedPolicyResource | null;
   workSchedule: ResolvedPolicyResource | null;
   holidayCalendar: ResolvedPolicyResource | null;
+  leavePolicy: ResolvedPolicyResource | null;
   warnings: string[];
 }
 
@@ -121,6 +171,8 @@ class WorkforcePolicyStore {
   attendancePolicies: WorkforcePolicyItem[] = [];
   workSchedules: WorkforcePolicyItem[] = [];
   holidayCalendars: WorkforcePolicyItem[] = [];
+  leaveTypes: LeaveTypeItem[] = [];
+  leavePolicies: WorkforcePolicyItem[] = [];
   assignments: WorkforcePolicyAssignment[] = [];
   assignmentsPagination: PaginationState = { ...EMPTY_PAGINATION };
   assignmentsLoading = false;
@@ -137,6 +189,7 @@ class WorkforcePolicyStore {
     policy?: WorkforcePolicyItem;
     schedule?: WorkforcePolicyItem;
     calendar?: WorkforcePolicyItem;
+    leavePolicy?: WorkforcePolicyItem;
     versions: PolicyVersion[];
   } | null = null;
   activeCompanyId = "";
@@ -155,6 +208,8 @@ class WorkforcePolicyStore {
     this.attendancePolicies = [];
     this.workSchedules = [];
     this.holidayCalendars = [];
+    this.leaveTypes = [];
+    this.leavePolicies = [];
     this.assignments = [];
     this.assignmentsPagination = { ...EMPTY_PAGINATION };
     this.auditLogs = [];
@@ -185,21 +240,27 @@ class WorkforcePolicyStore {
       this.attendancePolicies = [];
       this.workSchedules = [];
       this.holidayCalendars = [];
+      this.leaveTypes = [];
+      this.leavePolicies = [];
       this.assignments = [];
       this.assignmentsPagination = { ...EMPTY_PAGINATION };
     }
     this.activeCompanyId = companyId;
     try {
-      const [attendance, schedules, calendars, assignments] = await Promise.all([
+      const [attendance, schedules, calendars, leaveTypes, leavePolicies, assignments] = await Promise.all([
         axios.get("/workforce-policies/attendance", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/work-schedules", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/holiday-calendars", { params: { companyId, limit: 100 } }),
+        axios.get("/workforce-policies/leave-types", { params: { companyId, limit: 100 } }),
+        axios.get("/workforce-policies/leave-policies", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/assignments", { params: { companyId, limit: 100 } }),
       ]);
       runInAction(() => {
         this.attendancePolicies = attendance.data?.data || [];
         this.workSchedules = schedules.data?.data || [];
         this.holidayCalendars = calendars.data?.data || [];
+        this.leaveTypes = leaveTypes.data?.data || [];
+        this.leavePolicies = leavePolicies.data?.data || [];
         this.assignments = assignments.data?.data || [];
         this.assignmentsPagination = assignments.data?.pagination || { ...EMPTY_PAGINATION };
       });
@@ -257,7 +318,13 @@ class WorkforcePolicyStore {
 
   fetchCoverage = async (
     companyId: string,
-    params: { at: string; page?: number; limit?: number; search?: string }
+    params: {
+      at: string;
+      page?: number;
+      limit?: number;
+      search?: string;
+      resourceType?: PolicyResourceType;
+    }
   ) => {
     this.coverageLoading = true;
     this.coverageError = null;
@@ -333,7 +400,9 @@ class WorkforcePolicyStore {
           ? `/workforce-policies/attendance/${resourceId}`
           : resourceType === "work_schedule"
             ? `/workforce-policies/work-schedules/${resourceId}`
-            : `/workforce-policies/holiday-calendars/${resourceId}`;
+            : resourceType === "holiday_calendar"
+              ? `/workforce-policies/holiday-calendars/${resourceId}`
+              : `/workforce-policies/leave-policies/${resourceId}`;
       const response = await axios.get(path, { params: { companyId } });
       runInAction(() => {
         if (requestSequence === this.detailRequestSequence) {
@@ -554,6 +623,126 @@ class WorkforcePolicyStore {
       ).data;
     } catch (error: any) {
       throw new Error(this.getError(error, "Failed to publish holiday calendar"));
+    } finally {
+      runInAction(() => {
+        this.submitting = false;
+      });
+    }
+  };
+
+  createLeaveType = async (payload: any) => {
+    this.submitting = true;
+    try {
+      return (await axios.post("/workforce-policies/leave-types", payload)).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to create leave type"));
+    } finally {
+      runInAction(() => {
+        this.submitting = false;
+      });
+    }
+  };
+
+  updateLeaveType = async (leaveTypeId: string, payload: any) => {
+    this.submitting = true;
+    try {
+      return (await axios.put(`/workforce-policies/leave-types/${leaveTypeId}`, payload)).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to update leave type"));
+    } finally {
+      runInAction(() => {
+        this.submitting = false;
+      });
+    }
+  };
+
+  archiveLeaveType = async (leaveTypeId: string, payload: any) => {
+    this.submitting = true;
+    try {
+      return (
+        await axios.post(`/workforce-policies/leave-types/${leaveTypeId}/archive`, payload)
+      ).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to archive leave type"));
+    } finally {
+      runInAction(() => {
+        this.submitting = false;
+      });
+    }
+  };
+
+  createLeavePolicy = async (payload: any) => {
+    this.submitting = true;
+    try {
+      return (await axios.post("/workforce-policies/leave-policies", payload)).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to create leave policy"));
+    } finally {
+      runInAction(() => {
+        this.submitting = false;
+      });
+    }
+  };
+
+  updateLeavePolicyDraft = async (policyId: string, versionId: string, payload: any) => {
+    this.submitting = true;
+    try {
+      return (
+        await axios.put(
+          `/workforce-policies/leave-policies/${policyId}/versions/${versionId}`,
+          payload
+        )
+      ).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to update leave policy draft"));
+    } finally {
+      runInAction(() => {
+        this.submitting = false;
+      });
+    }
+  };
+
+  createLeavePolicyVersion = async (policyId: string, payload: any) => {
+    this.submitting = true;
+    try {
+      return (
+        await axios.post(`/workforce-policies/leave-policies/${policyId}/versions`, payload)
+      ).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to create leave policy version"));
+    } finally {
+      runInAction(() => {
+        this.submitting = false;
+      });
+    }
+  };
+
+  publishLeavePolicyVersion = async (policyId: string, versionId: string, payload: any) => {
+    this.submitting = true;
+    try {
+      return (
+        await axios.post(
+          `/workforce-policies/leave-policies/${policyId}/versions/${versionId}/publish`,
+          payload
+        )
+      ).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to publish leave policy"));
+    } finally {
+      runInAction(() => {
+        this.submitting = false;
+      });
+    }
+  };
+
+  archiveLeavePolicy = async (policyId: string, payload: any) => {
+    this.submitting = true;
+    try {
+      return (
+        await axios.post(`/workforce-policies/leave-policies/${policyId}/archive`, payload)
+      ).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to archive leave policy"));
     } finally {
       runInAction(() => {
         this.submitting = false;

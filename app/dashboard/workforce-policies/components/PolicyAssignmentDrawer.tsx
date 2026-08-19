@@ -30,6 +30,13 @@ import {
   workforcePolicyStore,
 } from "@/app/store/workforcePolicyStore/workforcePolicyStore";
 
+const ALL_POLICY_RESOURCE_TYPES: PolicyResourceType[] = [
+  "attendance_policy",
+  "work_schedule",
+  "holiday_calendar",
+  "leave_policy",
+];
+
 export type AssignmentScopeOption = {
   id: string;
   label: string;
@@ -43,6 +50,10 @@ type Props = {
   attendancePolicies: WorkforcePolicyItem[];
   workSchedules: WorkforcePolicyItem[];
   holidayCalendars: WorkforcePolicyItem[];
+  leavePolicies?: WorkforcePolicyItem[];
+  allowedResourceTypes?: PolicyResourceType[];
+  initialResourceType?: PolicyResourceType;
+  initialResourceId?: string;
   scopeOptions: AssignmentScopeOption[];
   assignment?: WorkforcePolicyAssignment | null;
   onSaved: () => Promise<void> | void;
@@ -59,13 +70,17 @@ export default function PolicyAssignmentDrawer({
   attendancePolicies,
   workSchedules,
   holidayCalendars,
+  leavePolicies = [],
+  allowedResourceTypes = ALL_POLICY_RESOURCE_TYPES,
+  initialResourceType = "attendance_policy",
+  initialResourceId = "",
   scopeOptions,
   assignment,
   onSaved,
 }: Props) {
   const toast = useToast();
   const isEnding = Boolean(assignment?._id);
-  const [resourceType, setResourceType] = useState<PolicyResourceType>("attendance_policy");
+  const [resourceType, setResourceType] = useState<PolicyResourceType>(initialResourceType);
   const [resourceId, setResourceId] = useState("");
   const [scopeType, setScopeType] = useState<PolicyScopeType>("company");
   const [scopeId, setScopeId] = useState("");
@@ -75,21 +90,27 @@ export default function PolicyAssignmentDrawer({
 
   useEffect(() => {
     if (!isOpen) return;
-    setResourceType("attendance_policy");
-    setResourceId("");
+    setResourceType(
+      allowedResourceTypes.includes(initialResourceType)
+        ? initialResourceType
+        : allowedResourceTypes[0] || "attendance_policy"
+    );
+    setResourceId(isEnding ? "" : initialResourceId);
     setScopeType("company");
     setScopeId("");
     setEffectiveFrom(todayValue());
     setEffectiveTo(isEnding ? todayValue() : "");
     setReason("");
-  }, [isEnding, isOpen]);
+  }, [allowedResourceTypes, initialResourceId, initialResourceType, isEnding, isOpen]);
 
   const resources =
     resourceType === "attendance_policy"
       ? attendancePolicies
       : resourceType === "work_schedule"
         ? workSchedules
-        : holidayCalendars;
+        : resourceType === "holiday_calendar"
+          ? holidayCalendars
+          : leavePolicies;
   const availableResources = resources.filter((resource) => resource.latestPublishedVersion);
   const availableScopes = scopeOptions.filter((option) => option.type === scopeType);
   const validationError = useMemo(() => {
@@ -181,9 +202,18 @@ export default function PolicyAssignmentDrawer({
                       setResourceId("");
                     }}
                   >
-                    <option value="attendance_policy">Attendance policy</option>
-                    <option value="work_schedule">Work schedule</option>
-                    <option value="holiday_calendar">Holiday calendar</option>
+                    {allowedResourceTypes.includes("attendance_policy") ? (
+                      <option value="attendance_policy">Attendance policy</option>
+                    ) : null}
+                    {allowedResourceTypes.includes("work_schedule") ? (
+                      <option value="work_schedule">Work schedule</option>
+                    ) : null}
+                    {allowedResourceTypes.includes("holiday_calendar") ? (
+                      <option value="holiday_calendar">Holiday calendar</option>
+                    ) : null}
+                    {allowedResourceTypes.includes("leave_policy") ? (
+                      <option value="leave_policy">Leave policy</option>
+                    ) : null}
                   </Select>
                 </FormControl>
                 <FormControl isRequired>

@@ -64,7 +64,7 @@ const PolicyCard = ({
 }: {
   title: string;
   resolved: ResolvedPolicyResource | null;
-  kind: "attendance" | "schedule" | "holiday";
+  kind: "attendance" | "schedule" | "holiday" | "leave";
 }) => {
   const borderColor = useColorModeValue("gray.200", "gray.700");
   const muted = useColorModeValue("gray.600", "gray.400");
@@ -88,6 +88,7 @@ const PolicyCard = ({
   const attendanceRules = kind === "attendance" ? (version.rules as any) : null;
   const scheduleRules = kind === "schedule" ? (version.rules as any) : null;
   const holidays = kind === "holiday" && Array.isArray(version.holidays) ? version.holidays : [];
+  const leaveRules = kind === "leave" && Array.isArray(version.rules) ? version.rules : [];
 
   return (
     <Box borderWidth="1px" borderColor={borderColor} borderRadius="md" p={4} minH={{ base: "auto", lg: "210px" }}>
@@ -130,6 +131,12 @@ const PolicyCard = ({
         ) : null}
         {kind === "holiday" ? (
           <Text><strong>Holidays:</strong> {holidays.length}</Text>
+        ) : null}
+        {kind === "leave" ? (
+          <>
+            <Text><strong>Leave year:</strong> starts {version.leaveYearStartDay || 1}/{version.leaveYearStartMonth || 1}</Text>
+            <Text><strong>Leave types:</strong> {leaveRules.map((rule: any) => rule.leaveTypeCodeSnapshot).filter(Boolean).join(", ") || "--"}</Text>
+          </>
         ) : null}
       </Stack>
     </Box>
@@ -204,7 +211,7 @@ export default function EmployeePolicyTab({
       ) : null}
 
       {loading ? (
-        <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={4}>
+        <SimpleGrid columns={{ base: 1, lg: 4 }} spacing={4}>
           <Skeleton h="220px" borderRadius="md" />
           <Skeleton h="220px" borderRadius="md" />
           <Skeleton h="220px" borderRadius="md" />
@@ -218,10 +225,11 @@ export default function EmployeePolicyTab({
             </Alert>
           ) : null}
 
-          <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={4}>
+          <SimpleGrid columns={{ base: 1, lg: 2, xl: 4 }} spacing={4}>
             <PolicyCard title="Attendance policy" resolved={resolution.attendancePolicy} kind="attendance" />
             <PolicyCard title="Work schedule" resolved={resolution.workSchedule} kind="schedule" />
             <PolicyCard title="Holiday calendar" resolved={resolution.holidayCalendar} kind="holiday" />
+            <PolicyCard title="Leave policy" resolved={resolution.leavePolicy} kind="leave" />
           </SimpleGrid>
 
           <Box borderWidth="1px" borderColor={borderColor} borderRadius="md" p={4}>

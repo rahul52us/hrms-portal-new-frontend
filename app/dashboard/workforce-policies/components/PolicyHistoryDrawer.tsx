@@ -20,6 +20,7 @@ import {
 import { observer } from "mobx-react-lite";
 import {
   AttendanceRules,
+  LeavePolicyRule,
   PolicyResourceType,
   WorkforcePolicyItem,
   WorkScheduleRules,
@@ -55,7 +56,9 @@ const PolicyHistoryDrawer = observer(function PolicyHistoryDrawer({
       ? detail?.policy
       : resourceType === "work_schedule"
         ? detail?.schedule
-        : detail?.calendar;
+        : resourceType === "holiday_calendar"
+          ? detail?.calendar
+          : detail?.policy;
   const versions = detailResource?._id === resource?._id ? detail?.versions || [] : [];
 
   return (
@@ -122,6 +125,18 @@ const PolicyHistoryDrawer = observer(function PolicyHistoryDrawer({
                     <Text mt={3} fontSize="xs" color="gray.600">
                       {version.holidays?.length || 0} holidays / {version.timezone || "Timezone not set"}
                     </Text>
+                  ) : null}
+                  {resourceType === "leave_policy" && Array.isArray(version.rules) ? (
+                    <Stack mt={3} spacing={1}>
+                      <Text fontSize="xs" color="gray.600">
+                        Leave year starts {version.leaveYearStartDay || 1}/{version.leaveYearStartMonth || 1}
+                      </Text>
+                      {(version.rules as LeavePolicyRule[]).map((rule) => (
+                        <Text key={String(rule.leaveType)} fontSize="xs" color="gray.600">
+                          {rule.leaveTypeCodeSnapshot || rule.leaveTypeNameSnapshot}: {rule.balanceTracked === false ? "No balance" : `${rule.annualEntitlement} days / ${rule.accrualFrequency}`}
+                        </Text>
+                      ))}
+                    </Stack>
                   ) : null}
                 </Box>
               ))}

@@ -40,7 +40,8 @@ const getResourceName = (assignment: WorkforcePolicyAssignment) =>
 const getResourceTypeLabel = (type: string) => {
   if (type === "attendance_policy") return "Attendance";
   if (type === "work_schedule") return "Schedule";
-  return "Holiday";
+  if (type === "holiday_calendar") return "Holiday";
+  return "Leave";
 };
 
 const PolicyAssignmentsPanel = observer(({
@@ -49,14 +50,16 @@ const PolicyAssignmentsPanel = observer(({
   borderColor,
   muted,
   onEndAssignment,
+  lockedResourceType,
 }: {
   companyId: string;
   canManage: boolean;
   borderColor: string;
   muted: string;
   onEndAssignment: (assignment: WorkforcePolicyAssignment) => void;
+  lockedResourceType?: string;
 }) => {
-  const [resourceType, setResourceType] = useState("");
+  const [resourceType, setResourceType] = useState(lockedResourceType || "");
   const [scopeType, setScopeType] = useState("");
   const [state, setState] = useState("");
   const [page, setPage] = useState(1);
@@ -76,22 +79,34 @@ const PolicyAssignmentsPanel = observer(({
       .catch((requestError: any) => setError(requestError?.message || "Failed to load assignments"));
   }, [companyId, page, resourceType, scopeType, state]);
 
+  useEffect(() => {
+    setResourceType(lockedResourceType || "");
+    setPage(1);
+  }, [lockedResourceType]);
+
   const pagination = workforcePolicyStore.assignmentsPagination;
 
   return (
     <Stack spacing={4}>
       <SimpleGrid columns={{ base: 1, md: 3 }} spacing={3}>
-        <Select
-          size="sm"
-          value={resourceType}
-          onChange={(event) => { setResourceType(event.target.value); setPage(1); }}
-          aria-label="Filter assignment category"
-        >
-          <option value="">All categories</option>
-          <option value="attendance_policy">Attendance policies</option>
-          <option value="work_schedule">Work schedules</option>
-          <option value="holiday_calendar">Holiday calendars</option>
-        </Select>
+        {lockedResourceType ? (
+          <Box borderWidth="1px" borderRadius="md" px={3} py={1.5} fontSize="sm">
+            {getResourceTypeLabel(lockedResourceType)} policies
+          </Box>
+        ) : (
+          <Select
+            size="sm"
+            value={resourceType}
+            onChange={(event) => { setResourceType(event.target.value); setPage(1); }}
+            aria-label="Filter assignment category"
+          >
+            <option value="">All categories</option>
+            <option value="attendance_policy">Attendance policies</option>
+            <option value="work_schedule">Work schedules</option>
+            <option value="holiday_calendar">Holiday calendars</option>
+            <option value="leave_policy">Leave policies</option>
+          </Select>
+        )}
         <Select
           size="sm"
           value={scopeType}
@@ -149,7 +164,7 @@ const PolicyAssignmentsPanel = observer(({
                 <Box minW={0}>
                   <HStack flexWrap="wrap">
                     <Text fontWeight="800">{getResourceName(assignment)}</Text>
-                    <Badge colorScheme={assignment.resourceType === "attendance_policy" ? "blue" : assignment.resourceType === "work_schedule" ? "cyan" : "purple"}>
+                    <Badge colorScheme={assignment.resourceType === "attendance_policy" ? "blue" : assignment.resourceType === "work_schedule" ? "cyan" : assignment.resourceType === "holiday_calendar" ? "purple" : "green"}>
                       {getResourceTypeLabel(assignment.resourceType)}
                     </Badge>
                     <Badge colorScheme={assignment.state === "active" ? "green" : assignment.state === "scheduled" ? "orange" : "gray"}>

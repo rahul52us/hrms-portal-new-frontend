@@ -387,7 +387,7 @@ const WorkforcePoliciesWorkspace = observer(() => {
         <WorkScheduleDrawer isOpen={editorDisclosure.isOpen && editor.type === "work_schedule"} onClose={editorDisclosure.onClose} companyId={companyId} mode={editor.mode} resource={editor.resource} version={editor.version} onSaved={refresh} />
         <HolidayCalendarDrawer isOpen={editorDisclosure.isOpen && editor.type === "holiday_calendar"} onClose={editorDisclosure.onClose} companyId={companyId} mode={editor.mode} resource={editor.resource} version={editor.version} onSaved={refresh} />
         <PolicyHistoryDrawer isOpen={historyDisclosure.isOpen} onClose={historyDisclosure.onClose} resourceType={history.type} resource={history.resource} />
-        <PolicyAssignmentDrawer isOpen={assignmentDisclosure.isOpen} onClose={assignmentDisclosure.onClose} companyId={companyId} attendancePolicies={workforcePolicyStore.attendancePolicies} workSchedules={workforcePolicyStore.workSchedules} holidayCalendars={workforcePolicyStore.holidayCalendars} scopeOptions={scopeOptions} assignment={endingAssignment} onSaved={refresh} />
+        <PolicyAssignmentDrawer isOpen={assignmentDisclosure.isOpen} onClose={assignmentDisclosure.onClose} companyId={companyId} attendancePolicies={workforcePolicyStore.attendancePolicies} workSchedules={workforcePolicyStore.workSchedules} holidayCalendars={workforcePolicyStore.holidayCalendars} leavePolicies={workforcePolicyStore.leavePolicies} scopeOptions={scopeOptions} assignment={endingAssignment} onSaved={refresh} />
       </Box>
     </PermissionGate>
   );

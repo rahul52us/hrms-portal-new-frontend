@@ -33,6 +33,7 @@ const POLICY_LABELS: Record<PolicyResourceType, string> = {
   attendance_policy: "Attendance policy",
   work_schedule: "Work schedule",
   holiday_calendar: "Holiday calendar",
+  leave_policy: "Leave policy",
 };
 
 const getLocalDateValue = () => {
@@ -145,9 +146,10 @@ const EmployeeCoverageRow = ({
 
   return (
     <Grid
+      minW={{ base: 0, lg: "1050px" }}
       templateColumns={{
         base: "minmax(0, 1fr)",
-        lg: "minmax(190px, 1.1fr) repeat(3, minmax(170px, 1fr)) minmax(135px, 0.75fr)",
+        lg: "minmax(190px, 1.1fr) repeat(4, minmax(170px, 1fr)) minmax(135px, 0.75fr)",
       }}
       borderTopWidth="1px"
       borderColor={borderColor}
@@ -174,6 +176,7 @@ const EmployeeCoverageRow = ({
         { label: POLICY_LABELS.attendance_policy, resolved: item.attendancePolicy },
         { label: POLICY_LABELS.work_schedule, resolved: item.workSchedule },
         { label: POLICY_LABELS.holiday_calendar, resolved: item.holidayCalendar },
+        { label: POLICY_LABELS.leave_policy, resolved: item.leavePolicy },
       ].map(({ label, resolved }) => (
         <Box
           key={label}
@@ -278,7 +281,7 @@ const PolicyCoveragePanel = observer(({
         <Box>
           <Text fontWeight="800">Coverage result</Text>
           <Text mt={0.5} fontSize="sm" color={muted}>
-            Checks attendance policy, work schedule and holiday calendar effective on the selected date.
+            Checks attendance, schedule, holiday and leave policies effective on the selected date.
           </Text>
         </Box>
         <Flex align={{ base: "stretch", sm: "center" }} direction={{ base: "column", sm: "row" }} gap={2} flexShrink={0}>
@@ -310,13 +313,14 @@ const PolicyCoveragePanel = observer(({
           <Text color={muted}>No employees match this search.</Text>
         </Box>
       ) : (
-        <Box borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">
+        <Box borderWidth="1px" borderColor={borderColor} borderRadius="md" overflowX="auto">
           <Grid
             display={{ base: "none", lg: "grid" }}
-            templateColumns="minmax(190px, 1.1fr) repeat(3, minmax(170px, 1fr)) minmax(135px, 0.75fr)"
+            minW="1050px"
+            templateColumns="minmax(190px, 1.1fr) repeat(4, minmax(170px, 1fr)) minmax(135px, 0.75fr)"
             bg={tableHeadBg}
           >
-            {["Employee", "Attendance policy", "Work schedule", "Holiday calendar", "Status"].map((label, index) => (
+            {["Employee", "Attendance policy", "Work schedule", "Holiday calendar", "Leave policy", "Status"].map((label, index) => (
               <Box key={label} px={4} py={3} borderLeftWidth={index === 0 ? "0" : "1px"} borderColor={borderColor}>
                 <Text fontSize="xs" fontWeight="800" color={muted} textTransform="uppercase">{label}</Text>
               </Box>

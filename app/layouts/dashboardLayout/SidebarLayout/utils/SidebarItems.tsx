@@ -80,6 +80,14 @@ const sidebarDatas: SidebarItem[] = [
     permissionKey: PERMISSION_KEYS.VIEW_WORKFORCE_POLICIES,
   },
   {
+    id: 105,
+    name: "Leave Management",
+    icon: <FiCalendar />,
+    url: "/dashboard/leave-management",
+    role: ["admin", "departmenthead", "hradmin", "hr"],
+    permissionKey: PERMISSION_KEYS.VIEW_WORKFORCE_POLICIES,
+  },
+  {
     id: 35,
     name: "Master Settings",
     icon: <FiDatabase />,
