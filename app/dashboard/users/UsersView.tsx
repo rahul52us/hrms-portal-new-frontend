@@ -37,7 +37,7 @@ import UsersHeader from "./components/UsersHeader";
 import UsersTable from "./components/UsersTable";
 import ProfileDetailsDrawer from "./components/ProfileDetailsDrawer";
 import { StatCard } from "../../component/common/StatCard/StatCard";
-import { FiUsers, FiFilter } from "react-icons/fi";
+import { FiUsers, FiFilter, FiCheckCircle, FiClock, FiShield } from "react-icons/fi";
 
 type UsersViewProps = {
   scopedCompanyId?: string;
@@ -385,15 +385,24 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
 
   const fetchUsers = useCallback(async () => {
     try {
-      await userStore.fetchUsers({
-        page,
-        limit: 10,
-        search: debouncedSearch,
+      const filters = {
         ...(!issueFilter ? { role: listTab } : {}),
         ...(issueFilter ? { issue: issueFilter } : {}),
         ...(locationFilter ? { officeLocationId: locationFilter } : {}),
         ...(isSuperadmin && scopedCompanyId ? { companyId: scopedCompanyId } : {}),
-      });
+      };
+
+      await Promise.all([
+        userStore.fetchUsers({
+          page,
+          limit: 10,
+          search: debouncedSearch,
+          ...filters
+        }),
+        userStore.fetchEmployeeStats({
+          ...(isSuperadmin && scopedCompanyId ? { companyId: scopedCompanyId } : {})
+        })
+      ]);
     } catch (err: any) {
       showToast({
         title: "Unable to load users",
@@ -1448,6 +1457,38 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   canOpenBulk={canOpenBulk}
   canOpenCreate={canOpenCreate}
 />
+
+      {/* Modern Compact Stat Cards */}
+      <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={4} mb={6}>
+        <StatCard
+          label="Total Employees"
+          value={userStore.employeeStats.total}
+          helper="Across all roles"
+          icon={FiUsers}
+          color="blue"
+        />
+        <StatCard
+          label="Active Employees"
+          value={userStore.employeeStats.active}
+          helper={`${userStore.employeeStats.total > 0 ? ((userStore.employeeStats.active / userStore.employeeStats.total) * 100).toFixed(1) : "0"}% active rate`}
+          icon={FiCheckCircle}
+          color="green"
+        />
+        <StatCard
+          label="Pending / Inactive"
+          value={userStore.employeeStats.pending + userStore.employeeStats.inactive}
+          helper={userStore.employeeStats.inactive > 0 ? `${userStore.employeeStats.inactive} deactivated, ${userStore.employeeStats.pending} pending` : "Awaiting activation"}
+          icon={FiClock}
+          color="orange"
+        />
+        <StatCard
+          label="Password Ready"
+          value={userStore.employeeStats.passwordReady}
+          helper={`${userStore.employeeStats.total > 0 ? ((userStore.employeeStats.passwordReady / userStore.employeeStats.total) * 100).toFixed(1) : "0"}% ready`}
+          icon={FiShield}
+          color="purple"
+        />
+      </SimpleGrid>
 
 <UsersTable
   users={userStore.users}

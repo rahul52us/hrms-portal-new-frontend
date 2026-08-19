@@ -39,7 +39,6 @@ import {
   FiClock,
   FiSearch
 } from "react-icons/fi";
-import { StatCard } from "../../../component/common/StatCard/StatCard";
 import CustomTable from "../../../component/config/component/CustomTable/CustomTable";
 import { FiEdit2, FiTrash2, FiEye, FiFileText } from "react-icons/fi";
 
@@ -73,7 +72,6 @@ type Props = {
   setLocationFilter?: (v: string) => void;
   onResetFilters?: () => void;
   onProfileDetails: (user: any) => void;
-  // User source separation for admin-created vs externally linked accounts.
   showUserSourceTabs?: boolean;
   userSourceTab?: "all" | "manual" | "public_enrolled";
   setUserSourceTab?: (v: "all" | "manual" | "public_enrolled") => void;
@@ -149,21 +147,9 @@ const UsersTable = ({
   setUserSourceTab,
   isPublicEnrolledUser,
 }: Props) => {
-  // Statistics calculations
-  const stats = {
-    total: pagination.total || 0,
-    active: users.filter((u: any) => getUserStatusMeta(u).label === "Active").length,
-    inactive: users.filter((u: any) => getUserStatusMeta(u).label === "Inactive").length,
-    pending: users.filter((u: any) => getUserStatusMeta(u).label === "Pending").length,
-    passwordReady: users.filter((u: any) => u.passwordStatus === "SET").length,
-  };
 
   const cardBg = useColorModeValue("white", "gray.800");
   const borderColorLight = useColorModeValue("gray.100", "gray.700");
-  const statNumberColor = useColorModeValue("gray.800", "white");
-  const activeNumberColor = useColorModeValue("green.600", "green.400");
-  const pendingNumberColor = useColorModeValue("orange.600", "orange.400");
-  const secureNumberColor = useColorModeValue("purple.600", "purple.400");
   const tabListBg = useColorModeValue("gray.50", "gray.700");
   const tabTextColor = useColorModeValue("gray.600", "gray.300");
   const statsBg = useColorModeValue("blue.50", "blue.900");
@@ -452,38 +438,6 @@ const UsersTable = ({
 
   return (
     <VStack spacing={{ base: 4, md: 6 }} align="stretch">
-      {/* Modern Compact Stat Cards */}
-      <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={4}>
-        <StatCard
-          label="Total Employees"
-          value={stats.total}
-          helper="Across all roles"
-          icon={FiUsers}
-          color="blue"
-        />
-        <StatCard
-          label="Active Employees"
-          value={stats.active}
-          helper={`${stats.total > 0 ? ((stats.active / stats.total) * 100).toFixed(1) : "0"}% active rate`}
-          icon={FiCheckCircle}
-          color="green"
-        />
-        <StatCard
-          label="Pending / Inactive"
-          value={stats.pending + stats.inactive}
-          helper={stats.inactive > 0 ? `${stats.inactive} deactivated, ${stats.pending} pending` : "Awaiting activation"}
-          icon={FiClock}
-          color="orange"
-        />
-        <StatCard
-          label="Password Ready"
-          value={stats.passwordReady}
-          helper={`${stats.total > 0 ? ((stats.passwordReady / stats.total) * 100).toFixed(1) : "0"}% ready`}
-          icon={FiShield}
-          color="purple"
-        />
-      </SimpleGrid>
-
       {/* Tabs & Filters Section */}
       <Box mb={6}>
         <Flex

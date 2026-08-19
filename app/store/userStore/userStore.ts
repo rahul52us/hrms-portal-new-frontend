@@ -12,6 +12,13 @@ class UserStore {
     totalPages: 1,
     total: 0,
   };
+  employeeStats = {
+    total: 0,
+    active: 0,
+    inactive: 0,
+    pending: 0,
+    passwordReady: 0,
+  };
   loading: boolean = false;
   submitting: boolean = false;
   uploadLoading: boolean = false;
@@ -220,6 +227,16 @@ class UserStore {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
       this.loading = false;
+    }
+  };
+
+  fetchEmployeeStats = async (params: any = {}) => {
+    try {
+      const response: any = await axios.get("/dashboard/hr-employee-stats", { params });
+      this.employeeStats = response?.data?.data || { total: 0, active: 0, inactive: 0, pending: 0, passwordReady: 0 };
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
     }
   };
 
