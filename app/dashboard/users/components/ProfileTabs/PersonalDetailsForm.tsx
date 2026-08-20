@@ -10,26 +10,47 @@ import {
   Text,
   useColorModeValue,
   HStack,
+  Stack,
   Divider,
+  InputGroup,
+  InputLeftAddon,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
-import { User, Calendar, Users, Briefcase } from "lucide-react";
+import { User, Calendar, Users, Briefcase, Image as ImageIcon } from "lucide-react";
+import CustomInput from "../../../../component/config/component/customInput/CustomInput";
 
 type Props = {
   data: any;
+  user?: any;
   onSave: (payload: any) => void;
   isSaving: boolean;
 };
 
-const PersonalDetailsForm = ({ data, onSave, isSaving }: Props) => {
-  const [formData, setFormData] = useState({
-    firstName: "",
-    middleName: "",
-    lastName: "",
+const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
+  const [formData, setFormData] = useState<any>({
+    pic: { file: null, url: "", isDeleted: 0, isAdd: 0 },
+    employeeNumber: "",
+    designation: "",
+    fullName: "",
     knownAs: "",
     maritalStatus: "",
     anniversaryDate: "",
     fatherHusbandName: "",
+    dateOfBirth: "",
+    gender: "",
+    bloodGroup: "",
+    religion: "",
+    nationality: "",
+    mobileNumber: "",
+    email: "",
+    personalEmail: "",
+    emergencyContactName: "",
+    emergencyContactNumber: "",
+    address: "",
+    city: "",
+    state: "",
+    country: "",
+    postalCode: "",
   });
 
   // Premium color tokens
@@ -37,22 +58,42 @@ const PersonalDetailsForm = ({ data, onSave, isSaving }: Props) => {
   const labelColor = useColorModeValue("gray.800", "gray.300");
   const headerGradient = useColorModeValue("linear(to-r, blue.600, purple.600)", "linear(to-r, blue.300, purple.300)");
   const sectionTitleColor = useColorModeValue("blue.600", "blue.300");
+  const muted = useColorModeValue("gray.500", "gray.400");
 
   useEffect(() => {
-    if (data?.personalDetails) {
+    if (data?.personalDetails || user) {
+      const genderStringMap: Record<number, string> = { 1: "male", 2: "female", 3: "other" };
       setFormData({
-        firstName: data.personalDetails.firstName || "",
-        middleName: data.personalDetails.middleName || "",
-        lastName: data.personalDetails.lastName || "",
-        knownAs: data.personalDetails.knownAs || "",
-        maritalStatus: data.personalDetails.maritalStatus || "",
-        anniversaryDate: data.personalDetails.anniversaryDate
+        pic: user?.pic ? { ...user.pic, file: null, isAdd: 0, isDeleted: 0, url: user.pic.url || "" } : { file: null, isAdd: 0, isDeleted: 0, url: "" },
+        employeeNumber: user?.employeeNumber || user?.code || "",
+        designation: user?.designation || "",
+        fullName: user?.name || "",
+        knownAs: data?.personalDetails?.knownAs || "",
+        maritalStatus: data?.personalDetails?.maritalStatus || "",
+        anniversaryDate: data?.personalDetails?.anniversaryDate
           ? new Date(data.personalDetails.anniversaryDate).toISOString().split("T")[0]
           : "",
-        fatherHusbandName: data.personalDetails.fatherHusbandName || "",
+        fatherHusbandName: data?.personalDetails?.fatherHusbandName || "",
+        dateOfBirth: user?.dateOfBirth
+          ? new Date(user.dateOfBirth).toISOString().split("T")[0]
+          : "",
+        gender: user?.gender ? genderStringMap[user.gender] || "" : "",
+        bloodGroup: data?.personalDetails?.bloodGroup || "",
+        religion: data?.personalDetails?.religion || "",
+        nationality: data?.personalDetails?.nationality || "",
+        mobileNumber: user?.mobileNumber || "",
+        email: user?.username || "",
+        personalEmail: data?.personalDetails?.personalEmail || "",
+        emergencyContactName: data?.personalDetails?.emergencyContactName || "",
+        emergencyContactNumber: data?.personalDetails?.emergencyContactNumber || "",
+        address: user?.address || "",
+        city: user?.city || "",
+        state: user?.state || "",
+        country: user?.country || "",
+        postalCode: user?.postalCode || "",
       });
     }
-  }, [data]);
+  }, [data, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -91,19 +132,131 @@ const PersonalDetailsForm = ({ data, onSave, isSaving }: Props) => {
         >
           <VStack spacing={6} align="stretch">
             <Box>
+              {formData.pic?.url || formData.pic?.file ? (
+                <Stack 
+                  direction={{ base: "column", sm: "row" }}
+                  spacing={6} 
+                  align={{ base: "center", sm: "center" }} 
+                  bg={useColorModeValue("gray.50", "whiteAlpha.50")} 
+                  p={{ base: 4, sm: 6 }} 
+                  borderRadius="2xl" 
+                  border="1px dashed" 
+                  borderColor={useColorModeValue("gray.300", "gray.600")}
+                  textAlign={{ base: "center", sm: "left" }}
+                >
+                  <Box
+                    borderRadius="full"
+                    overflow="hidden"
+                    border="4px solid"
+                    borderColor={useColorModeValue("white", "gray.700")}
+                    boxShadow="md"
+                    w={{ base: "100px", sm: "120px" }}
+                    h={{ base: "100px", sm: "120px" }}
+                    flexShrink={0}
+                  >
+                    <img
+                      src={formData.pic.file ? URL.createObjectURL(formData.pic.file) : formData.pic.url}
+                      alt="preview"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  </Box>
+                  <VStack align={{ base: "center", sm: "start" }} spacing={2}>
+                    <Text fontSize={{ base: "md", sm: "lg" }} fontWeight="800" color={sectionTitleColor} letterSpacing="tight">
+                      Profile Picture
+                    </Text>
+                    <Text fontSize={{ base: "xs", sm: "sm" }} color={muted} fontWeight="500">
+                      A picture helps your team recognize you.
+                    </Text>
+                    <Button
+                      size="sm"
+                      colorScheme="red"
+                      variant="solid"
+                      borderRadius="xl"
+                      mt={2}
+                      onClick={() =>
+                        setFormData((p: any) => ({
+                          ...p,
+                          pic: { file: null, url: "", isDeleted: 1, isAdd: 0 },
+                        }))
+                      }
+                    >
+                      Remove Photo
+                    </Button>
+                  </VStack>
+                </Stack>
+              ) : (
+                <Box>
+                  <Text fontSize="md" fontWeight="800" color={sectionTitleColor} textTransform="uppercase" letterSpacing="widest" mb={4}>
+                    Profile Image
+                  </Text>
+                  <CustomInput
+                    type="file-drag"
+                    name="pic"
+                    accept="image/*"
+                    onChange={(e: any) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setFormData((p: any) => ({
+                        ...p,
+                        pic: { file, url: "", isDeleted: 0, isAdd: 1 },
+                      }));
+                    }}
+                  />
+                </Box>
+              )}
+            </Box>
+
+            <Divider borderColor={cardBorder} />
+
+            <Box>
               <Text fontSize="md" fontWeight="800" color={sectionTitleColor} textTransform="uppercase" letterSpacing="widest" mb={4}>
-                Identity
+                Identity & Role
               </Text>
               <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
                 <FormControl>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
-                    <HStack spacing={1.5}><User size={14} /><span>First Name</span></HStack>
+                    <span>Employee Number</span>
+                  </FormLabel>
+                  <InputGroup size="lg" borderRadius="xl" overflow="hidden">
+                    <InputLeftAddon 
+                      fontWeight="700" 
+                      bg={useColorModeValue("gray.50", "whiteAlpha.100")}
+                      border="1px solid"
+                      borderColor={useColorModeValue("gray.200", "whiteAlpha.300")}
+                      borderRight="none"
+                    >
+                      {`${user?.companyCode || user?.company?.companyCode || "COMPANY"}-`}
+                    </InputLeftAddon>
+                    <Input
+                      name="employeeNumber"
+                      value={formData.employeeNumber}
+                      onChange={(e) => {
+                        const rawValue = e.target.value.toUpperCase();
+                        const cCode = user?.companyCode || user?.company?.companyCode;
+                        const prefix = cCode ? `${cCode.toUpperCase()}-` : "";
+                        const employeeNumber = prefix && rawValue.startsWith(prefix) ? rawValue.slice(prefix.length) : rawValue;
+                        setFormData((p: any) => ({ ...p, employeeNumber }));
+                      }}
+                      placeholder="001"
+                      maxLength={40}
+                      textTransform="uppercase"
+                      variant="outline"
+                      bg={useColorModeValue("white", "whiteAlpha.50")}
+                      _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                      fontSize="sm"
+                      borderLeftRadius="none"
+                    />
+                  </InputGroup>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <HStack spacing={1.5}><User size={14} /><span>Full Name</span></HStack>
                   </FormLabel>
                   <Input
-                    name="firstName"
-                    value={formData.firstName}
+                    name="fullName"
+                    value={formData.fullName}
                     onChange={handleChange}
-                    placeholder="First name"
+                    placeholder="Full name"
                     variant="outline"
                     _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
                     borderRadius="xl"
@@ -113,13 +266,32 @@ const PersonalDetailsForm = ({ data, onSave, isSaving }: Props) => {
                 </FormControl>
                 <FormControl>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
-                    <HStack spacing={1.5}><User size={14} /><span>Middle Name</span></HStack>
+                    <HStack spacing={1.5}><Briefcase size={14} /><span>Designation</span></HStack>
                   </FormLabel>
                   <Input
-                    name="middleName"
-                    value={formData.middleName}
+                    name="designation"
+                    value={formData.designation}
                     onChange={handleChange}
-                    placeholder="Middle name"
+                    placeholder="Designation"
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  />
+                </FormControl>
+              </SimpleGrid>
+
+              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} mt={4}>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <HStack spacing={1.5}><Calendar size={14} /><span>Date of Birth</span></HStack>
+                  </FormLabel>
+                  <Input
+                    type="date"
+                    name="dateOfBirth"
+                    value={formData.dateOfBirth}
+                    onChange={handleChange}
                     variant="outline"
                     _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
                     borderRadius="xl"
@@ -129,13 +301,77 @@ const PersonalDetailsForm = ({ data, onSave, isSaving }: Props) => {
                 </FormControl>
                 <FormControl>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
-                    <HStack spacing={1.5}><User size={14} /><span>Last Name</span></HStack>
+                    <HStack spacing={1.5}><User size={14} /><span>Gender</span></HStack>
+                  </FormLabel>
+                  <Select 
+                    name="gender" 
+                    value={formData.gender} 
+                    onChange={handleChange}
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  >
+                    <option value="">Select gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </Select>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <HStack spacing={1.5}><User size={14} /><span>Blood Group</span></HStack>
+                  </FormLabel>
+                  <Select 
+                    name="bloodGroup" 
+                    value={formData.bloodGroup} 
+                    onChange={handleChange}
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  >
+                    <option value="">Select group</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                  </Select>
+                </FormControl>
+              </SimpleGrid>
+
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} mt={4}>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <HStack spacing={1.5}><User size={14} /><span>Religion</span></HStack>
                   </FormLabel>
                   <Input
-                    name="lastName"
-                    value={formData.lastName}
+                    name="religion"
+                    value={formData.religion}
                     onChange={handleChange}
-                    placeholder="Last name"
+                    placeholder="Religion"
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <HStack spacing={1.5}><User size={14} /><span>Nationality</span></HStack>
+                  </FormLabel>
+                  <Input
+                    name="nationality"
+                    value={formData.nationality}
+                    onChange={handleChange}
+                    placeholder="Nationality"
                     variant="outline"
                     _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
                     borderRadius="xl"
@@ -179,15 +415,8 @@ const PersonalDetailsForm = ({ data, onSave, isSaving }: Props) => {
                   />
                 </FormControl>
               </SimpleGrid>
-            </Box>
 
-            <Divider borderColor={cardBorder} />
-
-            <Box>
-              <Text fontSize="md" fontWeight="800" color={sectionTitleColor} textTransform="uppercase" letterSpacing="widest" mb={4}>
-                Relationships
-              </Text>
-              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} mt={4}>
                 <FormControl>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
                     <HStack spacing={1.5}><Users size={14} /><span>Marital Status</span></HStack>
@@ -231,6 +460,193 @@ const PersonalDetailsForm = ({ data, onSave, isSaving }: Props) => {
                 )}
               </SimpleGrid>
             </Box>
+
+            <Divider borderColor={cardBorder} />
+
+            <Box>
+              <Text fontSize="md" fontWeight="800" color={sectionTitleColor} textTransform="uppercase" letterSpacing="widest" mb={4}>
+                Contact Information
+              </Text>
+              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <span>Mobile Number</span>
+                  </FormLabel>
+                  <Input
+                    name="mobileNumber"
+                    value={formData.mobileNumber}
+                    onChange={handleChange}
+                    placeholder="Mobile Number"
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <span>Work Email</span>
+                  </FormLabel>
+                  <Input
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="Work Email"
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <span>Personal Email</span>
+                  </FormLabel>
+                  <Input
+                    name="personalEmail"
+                    value={formData.personalEmail}
+                    onChange={handleChange}
+                    placeholder="Personal Email"
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  />
+                </FormControl>
+              </SimpleGrid>
+
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} mt={4}>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <span>Emergency Contact Name</span>
+                  </FormLabel>
+                  <Input
+                    name="emergencyContactName"
+                    value={formData.emergencyContactName}
+                    onChange={handleChange}
+                    placeholder="Contact Name"
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <span>Emergency Contact Number</span>
+                  </FormLabel>
+                  <Input
+                    name="emergencyContactNumber"
+                    value={formData.emergencyContactNumber}
+                    onChange={handleChange}
+                    placeholder="Contact Number"
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  />
+                </FormControl>
+              </SimpleGrid>
+            </Box>
+
+            <Divider borderColor={cardBorder} />
+
+            <Box>
+              <Text fontSize="md" fontWeight="800" color={sectionTitleColor} textTransform="uppercase" letterSpacing="widest" mb={4}>
+                Address
+              </Text>
+              <SimpleGrid columns={{ base: 1, md: 1 }} spacing={4}>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <span>Street Address</span>
+                  </FormLabel>
+                  <Input
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    placeholder="Address"
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  />
+                </FormControl>
+              </SimpleGrid>
+
+              <SimpleGrid columns={{ base: 1, md: 4 }} spacing={4} mt={4}>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <span>City</span>
+                  </FormLabel>
+                  <Input
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    placeholder="City"
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <span>State</span>
+                  </FormLabel>
+                  <Input
+                    name="state"
+                    value={formData.state}
+                    onChange={handleChange}
+                    placeholder="State"
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <span>Country</span>
+                  </FormLabel>
+                  <Input
+                    name="country"
+                    value={formData.country}
+                    onChange={handleChange}
+                    placeholder="Country"
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <span>Pincode</span>
+                  </FormLabel>
+                  <Input
+                    name="postalCode"
+                    value={formData.postalCode}
+                    onChange={handleChange}
+                    placeholder="Pincode"
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  />
+                </FormControl>
+              </SimpleGrid>
+            </Box>
+
           </VStack>
         </Box>
 

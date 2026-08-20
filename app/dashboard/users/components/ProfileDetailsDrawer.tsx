@@ -10,6 +10,7 @@ import {
   Text,
   useColorModeValue,
   useToast,
+  useBreakpointValue,
   VStack,
   Spinner,
   Center,
@@ -19,11 +20,13 @@ import {
   Divider,
 } from "@chakra-ui/react";
 import { FiUser, FiUsers, FiStar, FiShield, FiFolder } from "react-icons/fi";
+import { readFileAsBase64 } from "../../../config/utils/utils";
 import DashboardDrawer from "../../../component/common/Drawer/DashboardDrawer";
 import PersonalDetailsForm from "./ProfileTabs/PersonalDetailsForm";
 import FamilyContactsForm from "./ProfileTabs/FamilyContactsForm";
 import SkillsMappingForm from "./ProfileTabs/SkillsMappingForm";
 import StatutoryDetailsForm from "./ProfileTabs/StatutoryDetailsForm";
+import DocumentsForm from "./ProfileTabs/DocumentsForm";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
 import stores from "../../../store/stores";
@@ -75,7 +78,36 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
     if (!user?._id) return;
     setSaving(true);
     try {
-      await userStore.updatePersonalDetails(user._id, payload);
+      const finalPayload = { ...payload };
+      if (payload.pic?.isDeleted) {
+        finalPayload.pic = { isDeleted: 1, isAdd: 0 };
+      }
+      if (payload.pic?.file instanceof File) {
+        const buffer = await readFileAsBase64(payload.pic.file);
+        finalPayload.pic = {
+          buffer,
+          filename: payload.pic.file.name,
+          type: payload.pic.file.type,
+          isAdd: 1,
+          isDeleted: payload.pic?.isDeleted || 0,
+        };
+      } else if (!payload.pic?.isDeleted) {
+        delete finalPayload.pic; // Don't send empty pic object if nothing changed
+      }
+
+      await userStore.updatePersonalDetails(user._id, finalPayload);
+      
+      // Update the local user object so the UI reflects the core field changes immediately
+      Object.assign(user, {
+        address: finalPayload.address ?? user.address,
+        city: finalPayload.city ?? user.city,
+        state: finalPayload.state ?? user.state,
+        country: finalPayload.country ?? user.country,
+        postalCode: finalPayload.postalCode ?? user.postalCode,
+        employeeNumber: finalPayload.employeeNumber ?? user.employeeNumber,
+        designation: finalPayload.designation ?? user.designation,
+      });
+
       toast({ title: "Personal details updated", status: "success" });
       loadProfileDetails();
     } catch (error: any) {
@@ -128,13 +160,15 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
   };
 
 
+  const isMobile = useBreakpointValue({ base: true, md: false });
+
   return (
     <DashboardDrawer
       isOpen={isOpen}
       onClose={onClose}
-      maxW="80%"
+      maxW={{ base: "100%", md: "80%" }}
       titlePrefix="Extended Profile"
-      titleSuffix={user?.name ? `- ${user.name}` : ""}
+      titleSuffix={isMobile ? "" : (user?.name ? `- ${user.name}` : "")}
       badgeLabel={user?.role?.toUpperCase() || "EMPLOYEE"}
     >
       <Box h="100%" display="flex" flexDirection="column">
@@ -202,48 +236,47 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
             </Box>
           </VStack>
         ) : (
-          <Tabs variant="unstyled" colorScheme="blue">
-            <Box mb={4} display="flex" justifyContent="flex-start">
+          <Tabs variant="unstyled" isLazy>
+            <Box mb={8} overflowX="auto" css={{ "&::-webkit-scrollbar": { display: "none" } }}>
               <TabList
-                borderBottom="1px solid"
-                borderColor={useColorModeValue("gray.200", "gray.700")}
                 display="flex"
                 w="full"
-                overflowX="auto"
-                css={{ "&::-webkit-scrollbar": { display: "none" } }}
-                gap={6}
+                borderBottom="1px solid"
+                borderColor={useColorModeValue("gray.200", "gray.700")}
+                gap={2}
               >
                 {[
-                  { name: "Personal", icon: <FiUser size={16} /> },
-                  { name: "Family", icon: <FiUsers size={16} /> },
-                  { name: "Skills", icon: <FiStar size={16} /> },
-                  { name: "Statutory", icon: <FiShield size={16} /> },
-                  { name: "Documents", icon: <FiFolder size={16} /> }
+                  { name: "Personal", icon: <FiUser size={18} /> },
+                  { name: "Family", icon: <FiUsers size={18} /> },
+                  { name: "Skills", icon: <FiStar size={18} /> },
+                  { name: "Statutory", icon: <FiShield size={18} /> },
+                  { name: "Documents", icon: <FiFolder size={18} /> }
                 ].map((tab) => (
                   <Tab
                     key={tab.name}
                     _selected={{
                       color: useColorModeValue("blue.600", "blue.300"),
                       borderColor: useColorModeValue("blue.600", "blue.300"),
-                      fontWeight: "700",
+                      fontWeight: "600",
                     }}
                     _hover={{
-                      color: useColorModeValue("blue.500", "blue.300"),
+                      color: useColorModeValue("blue.500", "blue.400"),
+                      bg: useColorModeValue("gray.50", "whiteAlpha.50"),
                     }}
                     color={useColorModeValue("gray.500", "gray.400")}
                     fontSize="sm"
-                    fontWeight="600"
-                    px={1}
+                    fontWeight="500"
+                    px={5}
                     py={3}
-                    borderBottom="2px solid transparent"
+                    borderBottom="3px solid transparent"
+                    borderTopRadius="md"
                     transition="all 0.2s"
-                    display="flex"
-                    alignItems="center"
-                    gap={2.5}
-                    whiteSpace="nowrap"
+                    mb="-1px"
                   >
-                    {tab.icon}
-                    {tab.name}
+                    <HStack spacing={2}>
+                      {tab.icon}
+                      <Text>{tab.name}</Text>
+                    </HStack>
                   </Tab>
                 ))}
               </TabList>
@@ -252,6 +285,7 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
             <TabPanels pt={0}>
               <TabPanel px={0} pt={0}>
                 <PersonalDetailsForm
+                  user={user}
                   data={profileData}
                   onSave={handleSavePersonalDetails}
                   isSaving={saving}
@@ -279,7 +313,7 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
                 />
               </TabPanel>
               <TabPanel px={0} pt={0}>
-                <Text>Document Upload coming soon...</Text>
+                {user?._id ? <DocumentsForm userId={user._id} /> : <Text>Loading...</Text>}
               </TabPanel>
             </TabPanels>
           </Tabs>

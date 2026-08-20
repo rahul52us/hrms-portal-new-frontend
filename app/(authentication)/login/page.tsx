@@ -107,8 +107,8 @@ const LoginPage = observer(() => {
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
               />
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-0 top-0 h-full px-4 flex items-center justify-center text-slate-400 hover:text-slate-600"
                 tabIndex={-1}
