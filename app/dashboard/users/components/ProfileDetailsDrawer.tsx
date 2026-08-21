@@ -106,6 +106,11 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
         postalCode: finalPayload.postalCode ?? user.postalCode,
         employeeNumber: finalPayload.employeeNumber ?? user.employeeNumber,
         designation: finalPayload.designation ?? user.designation,
+        dateOfBirth: finalPayload.dateOfBirth ?? user.dateOfBirth,
+        gender: finalPayload.gender ? { 'male': 1, 'female': 2, 'other': 3 }[finalPayload.gender.toLowerCase() as string] || user.gender : user.gender,
+        name: finalPayload.fullName ?? user.name,
+        mobileNumber: finalPayload.mobileNumber ?? user.mobileNumber,
+        username: finalPayload.email ?? user.username,
       });
 
       toast({ title: "Personal details updated", status: "success" });
