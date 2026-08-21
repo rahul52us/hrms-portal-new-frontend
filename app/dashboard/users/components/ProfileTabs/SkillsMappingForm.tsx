@@ -65,7 +65,7 @@ const SkillsMappingForm = observer(({ data, onSave, isSaving }: Props) => {
   const [selectedSkill, setSelectedSkill] = useState("");
 
   const bg = useColorModeValue("white", "gray.800");
-  const cardBorder = useColorModeValue("gray.200", "whiteAlpha.100");
+  const cardBorder = useColorModeValue("gray.400", "whiteAlpha.100");
   const labelColor = useColorModeValue("gray.800", "gray.300");
   const headerGradient = useColorModeValue("linear(to-r, blue.600, purple.600)", "linear(to-r, blue.300, purple.300)");
   const sectionTitleColor = useColorModeValue("blue.600", "blue.300");
@@ -132,19 +132,26 @@ const SkillsMappingForm = observer(({ data, onSave, isSaving }: Props) => {
       <VStack spacing={8} align="stretch">
         
         {/* Header */}
-        <HStack spacing={4} align="center">
-          <Box display="inline-flex" p={2.5} borderRadius="lg" bg={useColorModeValue("blue.50", "blue.900/30")} color={sectionTitleColor} boxShadow="sm">
-            <Trophy size={20} />
-          </Box>
-          <Box>
-            <Text fontSize="lg" fontWeight="800" bgGradient={headerGradient} bgClip="text" letterSpacing="tight">
-              Skills & Expertise
-            </Text>
-            <Text fontSize="xs" color={useColorModeValue("gray.500", "gray.400")} fontWeight="600" mt={0.5}>
-              Map out your professional domains and specific technical skills.
-            </Text>
-          </Box>
-        </HStack>
+        <Flex 
+          direction={{ base: "column", sm: "row" }} 
+          justify="space-between" 
+          align={{ base: "stretch", sm: "center" }} 
+          gap={4}
+        >
+          <HStack spacing={4} align="center">
+            <Box display="inline-flex" p={2.5} borderRadius="lg" bg={useColorModeValue("blue.50", "blue.900/30")} color={sectionTitleColor} boxShadow="sm">
+              <Trophy size={20} />
+            </Box>
+            <Box>
+              <Text fontSize="lg" fontWeight="800" bgGradient={headerGradient} bgClip="text" letterSpacing="tight">
+                Skills & Expertise
+              </Text>
+              <Text fontSize="xs" color={useColorModeValue("gray.500", "gray.400")} fontWeight="600" mt={0.5}>
+                Manage technical and soft skills.
+              </Text>
+            </Box>
+          </HStack>
+        </Flex>
 
         {/* ── Stat Row ── */}
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>

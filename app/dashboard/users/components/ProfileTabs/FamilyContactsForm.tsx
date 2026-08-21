@@ -30,7 +30,7 @@ const FamilyContactsForm = ({ data, onSave, isSaving }: Props) => {
 
   // Premium color tokens
   const cardBg = useColorModeValue("white", "whiteAlpha.50");
-  const cardBorder = useColorModeValue("gray.200", "whiteAlpha.100");
+  const cardBorder = useColorModeValue("gray.400", "whiteAlpha.100");
   const inputBg = useColorModeValue("gray.50", "whiteAlpha.50");
   const inputHoverBg = useColorModeValue("gray.100", "whiteAlpha.100");
   const labelColor = useColorModeValue("gray.800", "gray.300");
@@ -97,7 +97,12 @@ const FamilyContactsForm = ({ data, onSave, isSaving }: Props) => {
   return (
     <Box>
       <VStack spacing={8} align="stretch">
-        <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
+        <Flex 
+          direction={{ base: "column", sm: "row" }} 
+          justify="space-between" 
+          align={{ base: "stretch", sm: "center" }} 
+          gap={4}
+        >
           <HStack spacing={4} align="center">
             <Box display="inline-flex" p={2.5} borderRadius="lg" bg={useColorModeValue("blue.50", "blue.900/30")} color={sectionTitleColor} boxShadow="sm">
               <Users size={20} />
@@ -118,6 +123,7 @@ const FamilyContactsForm = ({ data, onSave, isSaving }: Props) => {
             borderRadius="full"
             px={6}
             fontWeight="bold"
+            w={{ base: "full", sm: "auto" }}
             boxShadow="0 4px 14px 0 rgba(0, 118, 255, 0.39)"
             _hover={{ transform: "translateY(-2px)", boxShadow: "0 6px 20px rgba(0, 118, 255, 0.23)" }}
             transition="all 0.2s"

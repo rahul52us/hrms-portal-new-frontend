@@ -16,7 +16,7 @@ import {
   InputLeftAddon,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
-import { User, Calendar, Users, Briefcase, Image as ImageIcon } from "lucide-react";
+import { User, Calendar, Users, Briefcase, Image as ImageIcon, Trash2 } from "lucide-react";
 import CustomInput from "../../../../component/config/component/customInput/CustomInput";
 
 type Props = {
@@ -54,7 +54,7 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
   });
 
   // Premium color tokens
-  const cardBorder = useColorModeValue("gray.200", "whiteAlpha.100");
+  const cardBorder = useColorModeValue("gray.400", "whiteAlpha.100");
   const labelColor = useColorModeValue("gray.800", "gray.300");
   const headerGradient = useColorModeValue("linear(to-r, blue.600, purple.600)", "linear(to-r, blue.300, purple.300)");
   const sectionTitleColor = useColorModeValue("blue.600", "blue.300");
@@ -141,7 +141,7 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                   p={{ base: 4, sm: 6 }} 
                   borderRadius="2xl" 
                   border="1px dashed" 
-                  borderColor={useColorModeValue("gray.300", "gray.600")}
+                  borderColor={useColorModeValue("gray.400", "gray.600")}
                   textAlign={{ base: "center", sm: "left" }}
                 >
                   <Box
@@ -170,9 +170,13 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     <Button
                       size="sm"
                       colorScheme="red"
-                      variant="solid"
-                      borderRadius="xl"
+                      variant="outline"
+                      borderRadius="lg"
+                      borderWidth="2px"
+                      leftIcon={<Trash2 size={16} />}
                       mt={2}
+                      _hover={{ bg: "red.50" }}
+                      _dark={{ _hover: { bg: "red.900" } }}
                       onClick={() =>
                         setFormData((p: any) => ({
                           ...p,
@@ -222,7 +226,7 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                       fontWeight="700" 
                       bg={useColorModeValue("gray.50", "whiteAlpha.100")}
                       border="1px solid"
-                      borderColor={useColorModeValue("gray.200", "whiteAlpha.300")}
+                      borderColor={useColorModeValue("gray.300", "whiteAlpha.300")}
                       borderRight="none"
                     >
                       {`${user?.companyCode || user?.company?.companyCode || "COMPANY"}-`}

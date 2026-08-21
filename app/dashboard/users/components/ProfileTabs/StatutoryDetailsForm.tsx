@@ -32,7 +32,7 @@ const StatutoryDetailsForm = ({ data, onSave, isSaving }: Props) => {
   });
 
   // Premium color tokens
-  const cardBorder = useColorModeValue("gray.200", "whiteAlpha.100");
+  const cardBorder = useColorModeValue("gray.400", "whiteAlpha.100");
   const labelColor = useColorModeValue("gray.800", "gray.300");
   const headerGradient = useColorModeValue("linear(to-r, blue.600, purple.600)", "linear(to-r, blue.300, purple.300)");
   const sectionTitleColor = useColorModeValue("blue.600", "blue.300");

@@ -47,7 +47,7 @@ const DocumentsForm = observer(({ userId }: Props) => {
   const [selectedType, setSelectedType] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const cardBorder = useColorModeValue("gray.200", "whiteAlpha.100");
+  const cardBorder = useColorModeValue("gray.400", "whiteAlpha.100");
   const headerGradient = useColorModeValue("linear(to-r, blue.600, purple.600)", "linear(to-r, blue.300, purple.300)");
   const sectionTitleColor = useColorModeValue("blue.600", "blue.300");
   const tableBg = useColorModeValue("white", "whiteAlpha.50");

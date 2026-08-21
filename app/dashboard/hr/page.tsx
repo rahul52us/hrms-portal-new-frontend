@@ -296,7 +296,7 @@ const HrDashboardPage = observer(() => {
       fallbackHref="/dashboard/profile"
     >
       <Box minH="100dvh">
-        <Stack spacing={6} maxW="1400px" mx="auto">
+        <Stack spacing={6} mx="auto">
           <PageBanner
             titlePrefix="HR"
             titleHighlight="DASHBOARD"

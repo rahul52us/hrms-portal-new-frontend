@@ -598,6 +598,60 @@ class UserStore {
     }
   };
 
+  getMyProfileDetails = async () => {
+    try {
+      const response = await axios.get(`/User/me/profile-details`);
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    }
+  };
+
+  updateMyPersonalDetails = async (payload: any) => {
+    try {
+      const response = await axios.put(`/User/me/profile/personal`, payload);
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    }
+  };
+
+  updateMyFamilyContacts = async (payload: any) => {
+    try {
+      const response = await axios.put(`/User/me/profile/family`, payload);
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    }
+  };
+
+  updateMySkills = async (payload: any) => {
+    try {
+      const response = await axios.put(`/User/me/profile/skills`, payload);
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    }
+  };
+
+  updateMyStatutoryDetails = async (payload: any) => {
+    try {
+      const response = await axios.put(`/User/me/profile/statutory`, payload);
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    }
+  };
+
+  updateMyEmployeeDocuments = async (payload: any) => {
+    try {
+      const response = await axios.put(`/User/me/profile/documents`, payload);
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    }
+  };
+
   updateSkills = async (id: string, payload: any) => {
     try {
       const response = await axios.put(`/admin/users/${id}/profile/skills`, payload);
