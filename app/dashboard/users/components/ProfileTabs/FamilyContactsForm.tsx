@@ -168,7 +168,7 @@ const FamilyContactsForm = ({ data, onSave, isSaving }: Props) => {
                       <User size={20} />
                     </Flex>
                     <Box>
-                      <Text fontSize="xs" fontWeight="800" color="blue.500" textTransform="uppercase" letterSpacing="widest">
+                      <Text fontSize="xs" fontWeight="800" color={useColorModeValue("blue.600", "blue.300")} textTransform="uppercase" letterSpacing="widest">
                         Contact {index + 1}
                       </Text>
                       <Text fontSize="md" fontWeight="bold" color={useColorModeValue("gray.800", "white")}>

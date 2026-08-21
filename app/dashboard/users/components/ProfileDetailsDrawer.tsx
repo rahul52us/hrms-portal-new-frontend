@@ -58,8 +58,8 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
     }
   }, [isOpen, user]);
 
-  const loadProfileDetails = async () => {
-    setLoading(true);
+  const loadProfileDetails = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const res = await userStore.getManagedUserProfileDetails(user._id);
       setProfileData(res?.data || {});
@@ -70,7 +70,7 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
         status: "error",
       });
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -109,7 +109,7 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
       });
 
       toast({ title: "Personal details updated", status: "success" });
-      loadProfileDetails();
+      loadProfileDetails(false);
     } catch (error: any) {
       toast({ title: "Failed to update", description: getApiErrorMessage(error), status: "error" });
     } finally {
@@ -123,7 +123,7 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
     try {
       await userStore.updateFamilyContacts(user._id, payload);
       toast({ title: "Family contacts updated", status: "success" });
-      loadProfileDetails();
+      loadProfileDetails(false);
     } catch (error: any) {
       toast({ title: "Failed to update", description: getApiErrorMessage(error), status: "error" });
     } finally {
@@ -137,7 +137,7 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
     try {
       await userStore.updateSkills(user._id, payload);
       toast({ title: "Skills updated", status: "success" });
-      loadProfileDetails();
+      loadProfileDetails(false);
     } catch (error: any) {
       toast({ title: "Failed to update", description: getApiErrorMessage(error), status: "error" });
     } finally {
@@ -151,7 +151,7 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
     try {
       await userStore.updateStatutoryDetails(user._id, payload);
       toast({ title: "Statutory details updated", status: "success" });
-      loadProfileDetails();
+      loadProfileDetails(false);
     } catch (error: any) {
       toast({ title: "Failed to update", description: getApiErrorMessage(error), status: "error" });
     } finally {
@@ -159,6 +159,11 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
     }
   };
 
+  const handleSaveDocuments = async () => {
+    // Documents upload directly in the form component using user._id
+    // This function can just trigger a reload if needed
+    loadProfileDetails(false);
+  };
 
   const isMobile = useBreakpointValue({ base: true, md: false });
 
@@ -257,6 +262,7 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
                     _selected={{
                       color: useColorModeValue("blue.600", "blue.300"),
                       borderColor: useColorModeValue("blue.600", "blue.300"),
+                      bg: useColorModeValue("blue.50", "rgba(66, 153, 225, 0.15)"),
                       fontWeight: "600",
                     }}
                     _hover={{

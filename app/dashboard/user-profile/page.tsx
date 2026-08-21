@@ -88,7 +88,7 @@ const ProfilePage: React.FC = observer(() => {
       }
 
       await userStore.updateMyPersonalDetails(finalPayload);
-      
+
       // Refresh local user to update navbar avatar/name
       await auth.fetchUser();
       toast({ title: "Personal details updated", status: "success" });
@@ -150,15 +150,15 @@ const ProfilePage: React.FC = observer(() => {
 
   // Use horizontal tabs on mobile for better space utilization
   const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false; // basic fallback
-  
+
   return (
     <Box p={{ base: 2, md: 2 }} w="full">
       <VStack align="stretch" spacing={4}>
-        
+
         {/* Simple Profile Header */}
-        <Flex 
-          direction={{ base: "column", md: "row" }} 
-          align="center" 
+        <Flex
+          direction={{ base: "column", md: "row" }}
+          align="center"
           textAlign={{ base: "center", md: "left" }}
           justify="space-between"
           bg={cardBg}
@@ -170,10 +170,10 @@ const ProfilePage: React.FC = observer(() => {
           gap={4}
         >
           <Flex direction={{ base: "column", md: "row" }} align="center" gap={{ base: 4, md: 6 }} w="full">
-            <Avatar 
-              size="xl" 
-              name={fullName} 
-              src={avatarUrl} 
+            <Avatar
+              size="xl"
+              name={fullName}
+              src={avatarUrl}
               boxShadow="md"
             />
             <VStack align={{ base: "center", md: "start" }} spacing={1} flex="1">
@@ -182,26 +182,26 @@ const ProfilePage: React.FC = observer(() => {
                   <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="bold">{fullName}</Text>
                   <Icon as={MdOutlineVerified} color="blue.400" boxSize={5} />
                 </HStack>
-                <Badge 
-                  colorScheme="blue" 
-                  variant="solid" 
-                  px={3} 
-                  py={1} 
-                  borderRadius="full" 
+                <Badge
+                  colorScheme="blue"
+                  variant="solid"
+                  px={3}
+                  py={1}
+                  borderRadius="full"
                   fontSize="xs"
                 >
                   {user?.role?.toUpperCase() || "EMPLOYEE"}
                 </Badge>
               </Flex>
               <Text color={muted} fontSize="md">{designation}</Text>
-              
-              <Flex 
-                direction="row" 
-                wrap="wrap" 
-                justify={{ base: "center", md: "flex-start" }} 
-                gap={{ base: 3, md: 4 }} 
-                mt={2} 
-                color={muted} 
+
+              <Flex
+                direction="row"
+                wrap="wrap"
+                justify={{ base: "center", md: "flex-start" }}
+                gap={{ base: 3, md: 4 }}
+                mt={2}
+                color={muted}
                 fontSize="sm"
               >
                 {user?.username && <HStack><Icon as={FiMail} /> <Text>{user.username}</Text></HStack>}
@@ -214,9 +214,9 @@ const ProfilePage: React.FC = observer(() => {
         {loading ? (
           <Flex direction={{ base: "column", md: "row" }} w="full" gap={6} align="stretch">
             {/* Sidebar Skeleton */}
-            <Box 
-              w={{ base: "full", md: "260px" }} 
-              bg={cardBg} borderRadius="lg" borderWidth="1px" borderColor={cardBorder} 
+            <Box
+              w={{ base: "full", md: "260px" }}
+              bg={cardBg} borderRadius="lg" borderWidth="1px" borderColor={cardBorder}
               p={{ base: 2, md: 4 }} flexShrink={0}
             >
               <Skeleton height="12px" width="100px" mb={6} ml={2} />
@@ -226,7 +226,7 @@ const ProfilePage: React.FC = observer(() => {
                 ))}
               </VStack>
             </Box>
-            
+
             {/* Content Skeleton */}
             <Box flex="1" w="full" bg={cardBg} borderRadius="lg" borderWidth="1px" borderColor={cardBorder} p={{ base: 4, md: 6 }}>
               <HStack spacing={4} mb={8}>
@@ -250,10 +250,10 @@ const ProfilePage: React.FC = observer(() => {
         ) : (
           <Tabs orientation={{ base: "horizontal", md: "vertical" } as any} variant="unstyled" isLazy w="full">
             <Flex direction={{ base: "column", md: "row" }} w="full" gap={6} align="stretch">
-              
+
               {/* Left Sidebar / Top Scroller - Vertical Tabs */}
-              <Box 
-                w={{ base: "full", md: "260px" }} 
+              <Box
+                w={{ base: "full", md: "260px" }}
                 bg={cardBg}
                 borderRadius="lg"
                 borderWidth="1px"
@@ -266,10 +266,10 @@ const ProfilePage: React.FC = observer(() => {
                 <Text display={{ base: "none", md: "block" }} fontSize="xs" fontWeight="bold" color={muted} textTransform="uppercase" letterSpacing="wider" mb={4} px={2}>
                   Profile Settings
                 </Text>
-                
-                <TabList 
-                  display="flex" 
-                  flexDirection={{ base: "row", md: "column" }} 
+
+                <TabList
+                  display="flex"
+                  flexDirection={{ base: "row", md: "column" }}
                   gap={2}
                   overflowX={{ base: "auto", md: "visible" }}
                   pb={{ base: 2, md: 0 }}
@@ -356,7 +356,7 @@ const ProfilePage: React.FC = observer(() => {
                     </TabPanel>
                   </TabPanels>
                 </Box>
-                
+
               </Flex>
             </Tabs>
         )}

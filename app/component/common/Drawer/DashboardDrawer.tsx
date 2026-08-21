@@ -113,8 +113,8 @@ const DashboardDrawer: React.FC<DashboardDrawerProps> = ({
 
         <DrawerBody
           bg={useColorModeValue("white", "gray.800")}
-          px={8}
-          py={8}
+          px={{ base: 4, md: 8 }}
+          py={{ base: 4, md: 5 }}
           overflowX="hidden"
           overflowY="auto"
           css={{

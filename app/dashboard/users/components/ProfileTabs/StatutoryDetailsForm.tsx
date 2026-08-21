@@ -97,7 +97,7 @@ const StatutoryDetailsForm = ({ data, onSave, isSaving }: Props) => {
         >
           <VStack spacing={6} align="stretch">
             <Box>
-              <Text fontSize="md" fontWeight="800" color="blue.500" textTransform="uppercase" letterSpacing="widest" mb={4}>
+              <Text fontSize="md" fontWeight="800" color={sectionTitleColor} textTransform="uppercase" letterSpacing="widest" mb={4}>
                 Aadhar Details
               </Text>
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
@@ -140,7 +140,7 @@ const StatutoryDetailsForm = ({ data, onSave, isSaving }: Props) => {
             <Divider borderColor={cardBorder} />
 
             <Box>
-              <Text fontSize="md" fontWeight="800" color="blue.500" textTransform="uppercase" letterSpacing="widest" mb={4}>
+              <Text fontSize="md" fontWeight="800" color={sectionTitleColor} textTransform="uppercase" letterSpacing="widest" mb={4}>
                 PAN Details
               </Text>
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
@@ -184,7 +184,7 @@ const StatutoryDetailsForm = ({ data, onSave, isSaving }: Props) => {
             <Divider borderColor={cardBorder} />
 
             <Box>
-              <Text fontSize="md" fontWeight="800" color="blue.500" textTransform="uppercase" letterSpacing="widest" mb={4}>
+              <Text fontSize="md" fontWeight="800" color={sectionTitleColor} textTransform="uppercase" letterSpacing="widest" mb={4}>
                 Other Statutory Info
               </Text>
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
