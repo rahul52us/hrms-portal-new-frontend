@@ -26,7 +26,7 @@ type Props = {
 };
 
 const ChangeManagerModal = observer(({ isOpen, onClose, user, onRefresh }: Props) => {
-  const { userStore } = stores;
+  const { userStore, auth } = stores;
   const [selectedManager, setSelectedManager] = useState<any>(null);
   
   const borderColor = useColorModeValue("gray.200", "gray.700");
@@ -65,7 +65,7 @@ const ChangeManagerModal = observer(({ isOpen, onClose, user, onRefresh }: Props
     if (typeof u.companyId === 'string') return u.companyId;
     
     // Fallback for non-superadmin HRs where the user list might not populate company
-    if (userStore.auth?.company) return userStore.auth.company;
+    if (auth?.company) return auth.company;
     return undefined;
   };
 
