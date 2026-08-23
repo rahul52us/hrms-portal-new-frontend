@@ -66,15 +66,18 @@ interface CustomTableProps {
 const TableActions: React.FC<any> = ({ actions, column, row }) => {
   const { actionBtn } = actions || {};
   const iconColor = useColorModeValue("gray.600", "gray.300");
+  const actionBg = useColorModeValue("white", "gray.800");
+  const actionBorderColor = useColorModeValue("gray.300", "gray.600");
+  const deleteIconColor = useColorModeValue("red.500", "red.400");
 
   return (
     <Td
       position={column?.props?.isSticky ? "sticky" : "relative"}
       right={column?.props?.isSticky ? "0" : undefined}
       zIndex={column?.props?.isSticky ? 10 : undefined}
-      bg={useColorModeValue("white", "gray.800")}
+      bg={actionBg}
       borderBottomWidth="1px"
-      borderBottomColor={useColorModeValue("gray.300", "gray.600")}
+      borderBottomColor={actionBorderColor}
       p={1}
       textAlign="center"
     >
@@ -130,7 +133,7 @@ const TableActions: React.FC<any> = ({ actions, column, row }) => {
               icon={<MdDelete />}
               size="sm"
               variant="ghost"
-              color={useColorModeValue("red.500", "red.400")}
+              color={deleteIconColor}
               _hover={{
                 bg: "red.50",
                 color: "red.600",
@@ -248,9 +251,13 @@ const CustomTable: React.FC<CustomTableProps> = ({
   const borderColor = useColorModeValue("gray.300", "gray.600");
   const rowHover = useColorModeValue("blue.50", "gray.800");
   const shadow = useColorModeValue(
-    "0 20px 40px -15px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.02)",
-    "0 20px 40px -15px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)"
+    "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
+    "0 4px 6px -1px rgba(0, 0, 0, 0.2)"
   );
+  const headerTextColor = useColorModeValue("blue.800", "gray.300");
+  const headerBorderColor = useColorModeValue("blue.200", "gray.700");
+  const searchBg = useColorModeValue("white", "gray.800");
+  const cellBorderColor = useColorModeValue("gray.300", "gray.600");
 
   return (
     <Box
@@ -299,7 +306,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
               size="md"
               width="260px"
               borderRadius="full"
-              bg={useColorModeValue("white", "gray.800")}
+              bg={searchBg}
               borderColor={borderColor}
               _focus={{
                 borderColor: accent,
@@ -406,7 +413,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
                     fontSize="xs"
                     textTransform="uppercase"
                     letterSpacing="wider"
-                    color={useColorModeValue("blue.800", "gray.300")}
+                    color={headerTextColor}
                     fontWeight="600"
                     py={4}
                     px={5}
@@ -422,7 +429,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
                     fontSize="xs"
                     textTransform="uppercase"
                     letterSpacing="wider"
-                    color={useColorModeValue("blue.800", "gray.300")}
+                    color={headerTextColor}
                     fontWeight="600"
                     py={4}
                     px={5}
@@ -431,7 +438,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
                     bg={headerBg}
                     zIndex={col?.props?.isSticky ? 10 : undefined}
                     borderBottom="2px solid"
-                    borderColor={useColorModeValue("blue.200", "gray.700")}
+                    borderColor={headerBorderColor}
                   >
                     {col.headerName}
                   </Th>
@@ -458,7 +465,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
                         px={5}
                         fontSize="sm"
                         borderBottomWidth="1px"
-                        borderBottomColor={useColorModeValue("gray.300", "gray.600")}
+                        borderBottomColor={cellBorderColor}
                       >
                         {rowIndex + 1}
                       </Td>

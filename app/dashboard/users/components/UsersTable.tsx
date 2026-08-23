@@ -40,7 +40,7 @@ import {
   FiSearch
 } from "react-icons/fi";
 import CustomTable from "../../../component/config/component/CustomTable/CustomTable";
-import { FiEdit2, FiTrash2, FiEye, FiFileText } from "react-icons/fi";
+import { FiEdit2, FiTrash2, FiEye, FiFileText, FiUserPlus } from "react-icons/fi";
 
 type Props = {
   users: any[];
@@ -71,6 +71,7 @@ type Props = {
   locationFilter?: string;
   setLocationFilter?: (v: string) => void;
   onResetFilters?: () => void;
+  onChangeManager?: (user: any) => void;
   onProfileDetails: (user: any) => void;
   showUserSourceTabs?: boolean;
   userSourceTab?: "all" | "manual" | "public_enrolled";
@@ -141,6 +142,7 @@ const UsersTable = ({
   locationFilter = "",
   setLocationFilter,
   onResetFilters,
+  onChangeManager,
   onProfileDetails,
   showUserSourceTabs = false,
   userSourceTab = "all",
@@ -177,9 +179,7 @@ const UsersTable = ({
               color="white"
               fontWeight="bold"
               fontSize="sm"
-            >
-              {user.name?.charAt(0) || "U"}
-            </Avatar>
+            />
             <VStack align="start" spacing={0}>
               <Text fontWeight="semibold" fontSize="sm" color={employeeNameColor}>
                 {user.name || "--"}
@@ -210,12 +210,12 @@ const UsersTable = ({
               <HStack spacing={1} fontSize="sm">
                 <Icon as={FiBriefcase} boxSize={3} color="purple.500" />
                 <Text fontWeight="medium" color={departmentTextColor}>
-                  {user.department || "--"}
+                  {user.department?.departmentName || (typeof user.department === "string" ? user.department : "--")}
                 </Text>
               </HStack>
               {user.team ? (
                 <Text fontSize="xs" color={muted}>
-                  Team: {user.team}
+                  Team: {user.team?.name || (typeof user.team === "string" ? user.team : "--")}
                 </Text>
               ) : null}
               <HStack spacing={1}>
@@ -326,46 +326,13 @@ const UsersTable = ({
                   {statusMeta.label}
                 </Badge>
               </HStack>
-              <Text fontSize="10px" color={muted}>
-                {statusMeta.helperText}
-              </Text>
             </VStack>
           );
         },
       },
     },
 
-    {
-      headerName: "Security",
-      key: "passwordStatus",
-      type: "component",
-      width: "120px",
-      metaData: {
-        component: (user: any) => {
-          const isPasswordSet = user?.passwordStatus === "SET";
-          return (
-          <Tooltip
-            label={isPasswordSet ? "Email and password login is ready" : "Password setup is pending"}
-            hasArrow
-          >
-            <Badge
-              variant="solid"
-              colorScheme={isPasswordSet ? "green" : "orange"}
-              px={2.5}
-              py={1}
-              borderRadius="full"
-              fontSize="xs"
-            >
-              <HStack spacing={1}>
-                <Icon as={FiShield} boxSize={3} />
-                <Text>{isPasswordSet ? "Password" : "Setup Pending"}</Text>
-              </HStack>
-            </Badge>
-          </Tooltip>
-        );
-        },
-      },
-    },
+
     {
       headerName: "Actions",
       key: "actions",
@@ -377,7 +344,7 @@ const UsersTable = ({
             <Tooltip label="Extended Profile" hasArrow>
               <IconButton
                 aria-label="Profile"
-                icon={<Icon as={FiFileText} />}
+                icon={<Icon as={FiEdit2} />}
                 size="sm"
                 variant="ghost"
                 colorScheme="purple"
@@ -400,17 +367,17 @@ const UsersTable = ({
                 }}
               />
             </Tooltip>
-            {canEdit && !isPublicEnrolledUser?.(user) && (
-              <Tooltip label="Edit" hasArrow>
+            {onChangeManager && !isPublicEnrolledUser?.(user) && (
+              <Tooltip label="Change Manager" hasArrow>
                 <IconButton
-                  aria-label="Edit"
-                  icon={<Icon as={FiEdit2} />} 
+                  aria-label="Change Manager"
+                  icon={<Icon as={FiUserPlus} />}
                   size="sm"
                   variant="ghost"
-                  colorScheme="green"
+                  colorScheme="orange"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onEdit(user);
+                    onChangeManager(user);
                   }}
                 />
               </Tooltip>
@@ -687,11 +654,11 @@ const UsersTable = ({
                       </Box>
                       <Box>
                         <Text fontSize="10px" textTransform="uppercase" color={muted}>Department</Text>
-                        <Text fontSize="xs" fontWeight="medium" noOfLines={1}>{user.department || "--"}</Text>
+                        <Text fontSize="xs" fontWeight="medium" noOfLines={1}>{user.department?.departmentName || (typeof user.department === "string" ? user.department : "--")}</Text>
                       </Box>
                       <Box>
                         <Text fontSize="10px" textTransform="uppercase" color={muted}>Team</Text>
-                        <Text fontSize="xs" fontWeight="medium" noOfLines={1}>{user.team || "--"}</Text>
+                        <Text fontSize="xs" fontWeight="medium" noOfLines={1}>{user.team?.name || (typeof user.team === "string" ? user.team : "--")}</Text>
                       </Box>
                       <Box>
                         <Text fontSize="10px" textTransform="uppercase" color={muted}>Office Location</Text>

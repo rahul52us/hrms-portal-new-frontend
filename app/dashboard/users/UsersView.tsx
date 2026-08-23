@@ -36,6 +36,7 @@ import UserDrawer from "./components/UserDrawer";
 import UsersHeader from "./components/UsersHeader";
 import UsersTable from "./components/UsersTable";
 import ProfileDetailsDrawer from "./components/ProfileDetailsDrawer";
+import ChangeManagerModal from "./components/ChangeManagerModal";
 import { StatCard } from "../../component/common/StatCard/StatCard";
 import { FiUsers, FiFilter, FiCheckCircle, FiClock, FiShield } from "react-icons/fi";
 
@@ -248,6 +249,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const [isUserDrawerOpen, setIsUserDrawerOpen] = useState(false);
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [isChangeManagerModalOpen, setIsChangeManagerModalOpen] = useState(false);
+  const [selectedManagerUser, setSelectedManagerUser] = useState<any>(null);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [selectedProfileUser, setSelectedProfileUser] = useState<any | null>(null);
   const [statusDialog, setStatusDialog] = useState<{ user: any; nextIsEnabled: boolean } | null>(null);
@@ -507,7 +510,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const clearIssueFilter = useCallback(() => {
     replaceQueryParams({ issue: null });
     setPage(1);
-  }, [replaceQueryParams]);
+    fetchUsers();
+  }, [replaceQueryParams, fetchUsers]);
 
   const handleListTabChange = (nextTab: string) => {
     setListTab(nextTab);
@@ -723,6 +727,11 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   const openProfileDetails = (user: any) => {
     setSelectedProfileUser(user);
     setIsProfileDrawerOpen(true);
+  };
+
+  const openChangeManager = (user: any) => {
+    setSelectedManagerUser(user);
+    setIsChangeManagerModalOpen(true);
   };
 
   const openDelete = (user: any) => {
@@ -1520,6 +1529,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
   setLocationFilter={setLocationFilter}
   onResetFilters={clearIssueFilter}
   onProfileDetails={openProfileDetails}
+  onChangeManager={openChangeManager}
 />
 
       </VStack>
@@ -1587,6 +1597,17 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     setSelectedProfileUser(null);
   }}
   user={selectedProfileUser}
+  onRefresh={fetchUsers}
+/>
+
+<ChangeManagerModal
+  isOpen={isChangeManagerModalOpen}
+  onClose={() => {
+    setIsChangeManagerModalOpen(false);
+    setSelectedManagerUser(null);
+  }}
+  user={selectedManagerUser}
+  onRefresh={fetchUsers}
 />
 
 <BulkUploadResultModal

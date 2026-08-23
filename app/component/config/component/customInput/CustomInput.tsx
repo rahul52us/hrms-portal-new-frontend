@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Avatar,
   Box,
   Button,
   Checkbox,
@@ -16,10 +17,12 @@ import {
   Tag,
   TagCloseButton,
   TagLabel,
+  Text,
   Textarea,
   useColorMode,
   useColorModeValue,
   useTheme,
+  VStack,
   Wrap,
   WrapItem,
 } from "@chakra-ui/react";
@@ -34,7 +37,7 @@ import React, {
 import { RiEyeLine, RiEyeOffLine } from "react-icons/ri";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
-import Select from "react-select";
+import Select, { components } from "react-select";
 import CreatableSelect from 'react-select/creatable';
 import stores from "../../../../store/stores";
 
@@ -139,6 +142,22 @@ const CustomInput: React.FC<CustomInputProps> = ({
   emptyOptionsMessage = "No options",
   ...rest
 }) => {
+  const CustomOption = (props: any) => {
+    return (
+      <components.Option {...props}>
+        <HStack spacing={3} align="center">
+          <Avatar size="sm" name={props.data.name || props.data.username} src={props.data.pic?.url} />
+          <VStack align="start" spacing={0}>
+            <Text fontWeight="600" fontSize="sm" color={useColorModeValue("gray.800", "white")}>{props.data.name || props.data.username}</Text>
+            <Text fontSize="xs" color="gray.500">
+              {props.data.designation || (props.data.role ? String(props.data.role).toUpperCase() : "EMPLOYEE")} • {props.data.username}
+            </Text>
+          </VStack>
+        </HStack>
+      </components.Option>
+    );
+  };
+
   const [inputValue, setInputValue] = useState<string>("");
   const theme = useTheme();
   const isMounted = useRef(false);
@@ -202,10 +221,11 @@ const CustomInput: React.FC<CustomInputProps> = ({
           if (requestId === searchRequestId.current) {
             setUserOptions(
               matchingUsers.map((it: any) => ({
-                label: `${it.user.name || it.user.username}${it.user.designation ? ` - ${it.user.designation}` : ""}${it.user.department ? ` - ${it.user.department}` : ""} (${it.user.username})`,
+                label: `${it.user.name || it.user.username} (${it.user.username})`,
                 value: it.user._id,
                 name: it.user.name,
                 username: it.user.username,
+                pic: it.user.pic,
                 code: it.user.code,
                 role: it.user.role,
                 designation: it.user.designation,
@@ -891,12 +911,14 @@ const CustomInput: React.FC<CustomInputProps> = ({
             isDisabled={disabled}
             styles={getSelectStyles()}
             components={{
+              Option: type === "real-time-user-search" ? CustomOption : undefined,
               IndicatorSeparator: null,
               DropdownIndicator: () => (
                 <div className="chakra-select__dropdown-indicator" />
               ),
             }}
             menuPosition={isPortal ? "fixed" : undefined}
+            menuPortalTarget={isPortal && typeof document !== "undefined" ? document.body : undefined}
           />
         ) : (
           <Select
@@ -942,12 +964,14 @@ const CustomInput: React.FC<CustomInputProps> = ({
             isDisabled={disabled}
             styles={getSelectStyles()}
             components={{
+              Option: type === "real-time-user-search" ? CustomOption : undefined,
               IndicatorSeparator: null,
               DropdownIndicator: () => (
                 <div className="chakra-select__dropdown-indicator" />
               ),
             }}
             menuPosition={isPortal ? "fixed" : undefined}
+            menuPortalTarget={isPortal && typeof document !== "undefined" ? document.body : undefined}
           />
         );
 

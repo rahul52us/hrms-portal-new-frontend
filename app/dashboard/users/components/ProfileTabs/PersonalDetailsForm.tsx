@@ -16,8 +16,12 @@ import {
   InputLeftAddon,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
+import { observer } from "mobx-react-lite";
+import * as yup from "yup";
+import { FormErrorMessage } from "@chakra-ui/react";
 import { User, Calendar, Users, Briefcase, Image as ImageIcon, Trash2 } from "lucide-react";
 import CustomInput from "../../../../component/config/component/customInput/CustomInput";
+import stores from "@/app/store/stores";
 
 type Props = {
   data: any;
@@ -26,7 +30,35 @@ type Props = {
   isSaving: boolean;
 };
 
-const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
+const PersonalDetailsForm = observer(({ data, user, onSave, isSaving }: Props) => {
+  const [errors, setErrors] = useState<any>({});
+
+  const schema = yup.object().shape({
+    employeeNumber: yup.string().required("Employee Number is required"),
+    fullName: yup.string().required("Full Name is required"),
+    designation: yup.string().required("Designation is required"),
+    department: yup.string().required("Department is required"),
+    officeLocation: yup.string().required("Location is required"),
+    dateOfBirth: yup.string().required("Date of Birth is required"),
+    gender: yup.string().required("Gender is required"),
+    bloodGroup: yup.string().required("Blood Group is required"),
+    religion: yup.string().required("Religion is required"),
+    nationality: yup.string().required("Nationality is required"),
+    knownAs: yup.string().required("Known As is required"),
+    fatherHusbandName: yup.string().required("Father/Husband Name is required"),
+    maritalStatus: yup.string().required("Marital Status is required"),
+    mobileNumber: yup.string().required("Mobile Number is required"),
+    email: yup.string().email("Invalid email").required("Work Email is required"),
+    personalEmail: yup.string().email("Invalid email").required("Personal Email is required"),
+    emergencyContactName: yup.string().required("Emergency Contact Name is required"),
+    emergencyContactNumber: yup.string().required("Emergency Contact Number is required"),
+    address: yup.string().required("Street Address is required"),
+    city: yup.string().required("City is required"),
+    state: yup.string().required("State is required"),
+    country: yup.string().required("Country is required"),
+    postalCode: yup.string().required("Pincode is required"),
+  });
+
   const [formData, setFormData] = useState<any>({
     pic: { file: null, url: "", isDeleted: 0, isAdd: 0 },
     employeeNumber: "",
@@ -61,12 +93,28 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
   const muted = useColorModeValue("gray.500", "gray.400");
 
   useEffect(() => {
+    const cId = user?.company?._id || user?.companyId || stores.companyStore.getActiveCompanyId();
+    if (!stores.departmentStore.departments || stores.departmentStore.departments.length === 0) {
+      stores.departmentStore.fetchDepartments(cId, 1, 100);
+    }
+    if (!stores.locationStore.locations || stores.locationStore.locations.length === 0) {
+      stores.locationStore.fetchLocations(cId, 1, 100);
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (data?.personalDetails || user) {
+      console.log("DEBUG USER DEPT/LOC", { 
+        department: user?.department, 
+        loc: user?.officeLocation 
+      });
       const genderStringMap: Record<number, string> = { 1: "male", 2: "female", 3: "other" };
       setFormData({
         pic: user?.pic ? { ...user.pic, file: null, isAdd: 0, isDeleted: 0, url: user.pic.url || "" } : { file: null, isAdd: 0, isDeleted: 0, url: "" },
         employeeNumber: user?.employeeNumber || user?.code || "",
         designation: user?.designation || "",
+        department: (user?.department?._id || user?.department || "").toString(),
+        officeLocation: (user?.officeLocation?._id || user?.officeLocation || "").toString(),
         fullName: user?.name || "",
         knownAs: data?.personalDetails?.knownAs || "",
         maritalStatus: data?.personalDetails?.maritalStatus || "",
@@ -93,19 +141,52 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
         postalCode: user?.postalCode || "",
       });
     }
-  }, [data, user]);
+  }, [data, user, user?.pic?.url]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors((prev: any) => ({ ...prev, [name]: undefined }));
+    }
   };
 
-  const handleSubmit = () => {
-    onSave(formData);
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    try {
+      await schema.validate(formData, { abortEarly: false });
+      setErrors({});
+      
+      const payload = { ...formData };
+      if (!payload.department) delete payload.department;
+      if (!payload.officeLocation) delete payload.officeLocation;
+
+      console.log("DEBUG SUBMIT PAYLOAD", payload);
+      onSave(payload);
+    } catch (err: any) {
+      console.error("Validation error:", err);
+      const newErrors: any = {};
+      if (err.inner && err.inner.length > 0) {
+        err.inner.forEach((error: any) => {
+          if (error.path) {
+            newErrors[error.path] = error.message;
+          }
+        });
+      } else if (err.path) {
+        newErrors[err.path] = err.message;
+      }
+      setErrors(newErrors);
+    }
   };
+
+  console.log("DEBUG RENDER:", {
+    userDept: user?.department,
+    formDataDept: formData.department,
+    departmentsLength: stores.departmentStore.departments?.length,
+  });
 
   return (
-    <Box>
+    <Box as="form" onSubmit={handleSubmit} noValidate>
       <VStack spacing={8} align="stretch">
         {/* Header */}
         <HStack spacing={4} align="center">
@@ -155,7 +236,7 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     flexShrink={0}
                   >
                     <img
-                      src={formData.pic.file ? URL.createObjectURL(formData.pic.file) : formData.pic.url}
+                      src={formData.pic.file ? URL.createObjectURL(formData.pic.file) : (formData.pic.url ? `${formData.pic.url}${formData.pic.url.includes('?') ? '&' : '?'}t=${user?.updatedAt ? new Date(user.updatedAt).getTime() : Date.now()}` : "")}
                       alt="preview"
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
@@ -217,7 +298,7 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                 Identity & Role
               </Text>
               <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
-                <FormControl>
+                <FormControl isInvalid={!!errors.employeeNumber} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
                     <span>Employee Number</span>
                   </FormLabel>
@@ -240,6 +321,9 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                         const prefix = cCode ? `${cCode.toUpperCase()}-` : "";
                         const employeeNumber = prefix && rawValue.startsWith(prefix) ? rawValue.slice(prefix.length) : rawValue;
                         setFormData((p: any) => ({ ...p, employeeNumber }));
+                        if (errors.employeeNumber) {
+                          setErrors((prev: any) => ({ ...prev, employeeNumber: undefined }));
+                        }
                       }}
                       placeholder="001"
                       maxLength={40}
@@ -251,10 +335,10 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                       borderLeftRadius="none"
                     />
                   </InputGroup>
-                </FormControl>
-                <FormControl>
+                {errors.employeeNumber && <FormErrorMessage>{errors.employeeNumber}</FormErrorMessage>}</FormControl>
+                <FormControl isInvalid={!!errors.fullName} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
-                    <HStack spacing={1.5}><User size={14} /><span>Full Name</span></HStack>
+                    <HStack spacing={1.5} display="inline-flex"><User size={14} /><span>Full Name</span></HStack>
                   </FormLabel>
                   <Input
                     name="fullName"
@@ -267,10 +351,10 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
-                <FormControl>
+                {errors.fullName && <FormErrorMessage>{errors.fullName}</FormErrorMessage>}</FormControl>
+                <FormControl isInvalid={!!errors.designation} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
-                    <HStack spacing={1.5}><Briefcase size={14} /><span>Designation</span></HStack>
+                    <HStack spacing={1.5} display="inline-flex"><Briefcase size={14} /><span>Designation</span></HStack>
                   </FormLabel>
                   <Input
                     name="designation"
@@ -283,13 +367,57 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
+                {errors.designation && <FormErrorMessage>{errors.designation}</FormErrorMessage>}</FormControl>
+              </SimpleGrid>
+
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} mt={4}>
+                <FormControl isInvalid={!!errors.department} isRequired>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <HStack spacing={1.5} display="inline-flex"><Briefcase size={14} /><span>Department</span></HStack>
+                  </FormLabel>
+                  <Select
+                    name="department"
+                    value={formData.department}
+                    onChange={handleChange}
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  >
+                    <option value="">Select department</option>
+                    {stores.departmentStore.departments?.map((dept: any) => (
+                      <option key={dept._id} value={dept._id}>{dept.departmentName}</option>
+                    ))}
+                  </Select>
+                {errors.department && <FormErrorMessage>{errors.department}</FormErrorMessage>}</FormControl>
+                
+                <FormControl isInvalid={!!errors.officeLocation} isRequired>
+                  <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
+                    <HStack spacing={1.5} display="inline-flex"><Briefcase size={14} /><span>Location</span></HStack>
+                  </FormLabel>
+                  <Select
+                    name="officeLocation"
+                    value={formData.officeLocation}
+                    onChange={handleChange}
+                    variant="outline"
+                    _focus={{ borderColor: sectionTitleColor, boxShadow: `0 0 0 1px var(--chakra-colors-blue-400)` }}
+                    borderRadius="xl"
+                    size="lg"
+                    fontSize="sm"
+                  >
+                    <option value="">Select location</option>
+                    {stores.locationStore.locations?.map((loc: any) => (
+                      <option key={loc._id} value={loc._id}>{loc.name}</option>
+                    ))}
+                  </Select>
+                {errors.officeLocation && <FormErrorMessage>{errors.officeLocation}</FormErrorMessage>}</FormControl>
               </SimpleGrid>
 
               <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} mt={4}>
-                <FormControl>
+                <FormControl isInvalid={!!errors.dateOfBirth} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
-                    <HStack spacing={1.5}><Calendar size={14} /><span>Date of Birth</span></HStack>
+                    <HStack spacing={1.5} display="inline-flex"><Calendar size={14} /><span>Date of Birth</span></HStack>
                   </FormLabel>
                   <Input
                     type="date"
@@ -302,10 +430,10 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
-                <FormControl>
+                {errors.dateOfBirth && <FormErrorMessage>{errors.dateOfBirth}</FormErrorMessage>}</FormControl>
+                <FormControl isInvalid={!!errors.gender} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
-                    <HStack spacing={1.5}><User size={14} /><span>Gender</span></HStack>
+                    <HStack spacing={1.5} display="inline-flex"><User size={14} /><span>Gender</span></HStack>
                   </FormLabel>
                   <Select 
                     name="gender" 
@@ -322,10 +450,10 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     <option value="female">Female</option>
                     <option value="other">Other</option>
                   </Select>
-                </FormControl>
-                <FormControl>
+                {errors.gender && <FormErrorMessage>{errors.gender}</FormErrorMessage>}</FormControl>
+                <FormControl isInvalid={!!errors.bloodGroup} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
-                    <HStack spacing={1.5}><User size={14} /><span>Blood Group</span></HStack>
+                    <HStack spacing={1.5} display="inline-flex"><User size={14} /><span>Blood Group</span></HStack>
                   </FormLabel>
                   <Select 
                     name="bloodGroup" 
@@ -347,13 +475,13 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     <option value="AB+">AB+</option>
                     <option value="AB-">AB-</option>
                   </Select>
-                </FormControl>
+                {errors.bloodGroup && <FormErrorMessage>{errors.bloodGroup}</FormErrorMessage>}</FormControl>
               </SimpleGrid>
 
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} mt={4}>
-                <FormControl>
+                <FormControl isInvalid={!!errors.religion} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
-                    <HStack spacing={1.5}><User size={14} /><span>Religion</span></HStack>
+                    <HStack spacing={1.5} display="inline-flex"><User size={14} /><span>Religion</span></HStack>
                   </FormLabel>
                   <Input
                     name="religion"
@@ -366,10 +494,10 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
-                <FormControl>
+                {errors.religion && <FormErrorMessage>{errors.religion}</FormErrorMessage>}</FormControl>
+                <FormControl isInvalid={!!errors.nationality} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
-                    <HStack spacing={1.5}><User size={14} /><span>Nationality</span></HStack>
+                    <HStack spacing={1.5} display="inline-flex"><User size={14} /><span>Nationality</span></HStack>
                   </FormLabel>
                   <Input
                     name="nationality"
@@ -382,13 +510,13 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
+                {errors.nationality && <FormErrorMessage>{errors.nationality}</FormErrorMessage>}</FormControl>
               </SimpleGrid>
 
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} mt={4}>
-                <FormControl>
+                <FormControl isInvalid={!!errors.knownAs} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
-                    <HStack spacing={1.5}><User size={14} /><span>Known As</span></HStack>
+                    <HStack spacing={1.5} display="inline-flex"><User size={14} /><span>Known As</span></HStack>
                   </FormLabel>
                   <Input
                     name="knownAs"
@@ -401,10 +529,10 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
-                <FormControl>
+                {errors.knownAs && <FormErrorMessage>{errors.knownAs}</FormErrorMessage>}</FormControl>
+                <FormControl isInvalid={!!errors.fatherHusbandName} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
-                    <HStack spacing={1.5}><Users size={14} /><span>Father/Husband Name</span></HStack>
+                    <HStack spacing={1.5} display="inline-flex"><Users size={14} /><span>Father/Husband Name</span></HStack>
                   </FormLabel>
                   <Input
                     name="fatherHusbandName"
@@ -417,13 +545,13 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
+                {errors.fatherHusbandName && <FormErrorMessage>{errors.fatherHusbandName}</FormErrorMessage>}</FormControl>
               </SimpleGrid>
 
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} mt={4}>
-                <FormControl>
+                <FormControl isInvalid={!!errors.maritalStatus} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
-                    <HStack spacing={1.5}><Users size={14} /><span>Marital Status</span></HStack>
+                    <HStack spacing={1.5} display="inline-flex"><Users size={14} /><span>Marital Status</span></HStack>
                   </FormLabel>
                   <Select 
                     name="maritalStatus" 
@@ -442,12 +570,12 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     <option value="widowed">Widowed</option>
                     <option value="other">Other</option>
                   </Select>
-                </FormControl>
+                {errors.maritalStatus && <FormErrorMessage>{errors.maritalStatus}</FormErrorMessage>}</FormControl>
 
                 {formData.maritalStatus === "married" && (
-                  <FormControl>
+                  <FormControl isInvalid={!!errors.anniversaryDate} isRequired>
                     <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
-                      <HStack spacing={1.5}><Calendar size={14} /><span>Anniversary Date</span></HStack>
+                      <HStack spacing={1.5} display="inline-flex"><Calendar size={14} /><span>Anniversary Date</span></HStack>
                     </FormLabel>
                     <Input
                       type="date"
@@ -460,7 +588,7 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                       size="lg"
                       fontSize="sm"
                     />
-                  </FormControl>
+                  {errors.anniversaryDate && <FormErrorMessage>{errors.anniversaryDate}</FormErrorMessage>}</FormControl>
                 )}
               </SimpleGrid>
             </Box>
@@ -472,7 +600,7 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                 Contact Information
               </Text>
               <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
-                <FormControl>
+                <FormControl isInvalid={!!errors.mobileNumber} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
                     <span>Mobile Number</span>
                   </FormLabel>
@@ -487,8 +615,8 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
-                <FormControl>
+                {errors.mobileNumber && <FormErrorMessage>{errors.mobileNumber}</FormErrorMessage>}</FormControl>
+                <FormControl isInvalid={!!errors.email} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
                     <span>Work Email</span>
                   </FormLabel>
@@ -503,8 +631,8 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
-                <FormControl>
+                {errors.email && <FormErrorMessage>{errors.email}</FormErrorMessage>}</FormControl>
+                <FormControl isInvalid={!!errors.personalEmail} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
                     <span>Personal Email</span>
                   </FormLabel>
@@ -519,11 +647,11 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
+                {errors.personalEmail && <FormErrorMessage>{errors.personalEmail}</FormErrorMessage>}</FormControl>
               </SimpleGrid>
 
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} mt={4}>
-                <FormControl>
+                <FormControl isInvalid={!!errors.emergencyContactName} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
                     <span>Emergency Contact Name</span>
                   </FormLabel>
@@ -538,8 +666,8 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
-                <FormControl>
+                {errors.emergencyContactName && <FormErrorMessage>{errors.emergencyContactName}</FormErrorMessage>}</FormControl>
+                <FormControl isInvalid={!!errors.emergencyContactNumber} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
                     <span>Emergency Contact Number</span>
                   </FormLabel>
@@ -554,7 +682,7 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
+                {errors.emergencyContactNumber && <FormErrorMessage>{errors.emergencyContactNumber}</FormErrorMessage>}</FormControl>
               </SimpleGrid>
             </Box>
 
@@ -565,7 +693,7 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                 Address
               </Text>
               <SimpleGrid columns={{ base: 1, md: 1 }} spacing={4}>
-                <FormControl>
+                <FormControl isInvalid={!!errors.address} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
                     <span>Street Address</span>
                   </FormLabel>
@@ -580,11 +708,11 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
+                {errors.address && <FormErrorMessage>{errors.address}</FormErrorMessage>}</FormControl>
               </SimpleGrid>
 
               <SimpleGrid columns={{ base: 1, md: 4 }} spacing={4} mt={4}>
-                <FormControl>
+                <FormControl isInvalid={!!errors.city} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
                     <span>City</span>
                   </FormLabel>
@@ -599,8 +727,8 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
-                <FormControl>
+                {errors.city && <FormErrorMessage>{errors.city}</FormErrorMessage>}</FormControl>
+                <FormControl isInvalid={!!errors.state} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
                     <span>State</span>
                   </FormLabel>
@@ -615,8 +743,8 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
-                <FormControl>
+                {errors.state && <FormErrorMessage>{errors.state}</FormErrorMessage>}</FormControl>
+                <FormControl isInvalid={!!errors.country} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
                     <span>Country</span>
                   </FormLabel>
@@ -631,8 +759,8 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
-                <FormControl>
+                {errors.country && <FormErrorMessage>{errors.country}</FormErrorMessage>}</FormControl>
+                <FormControl isInvalid={!!errors.postalCode} isRequired>
                   <FormLabel fontSize="xs" fontWeight="700" color={labelColor} textTransform="uppercase" letterSpacing="wide">
                     <span>Pincode</span>
                   </FormLabel>
@@ -647,7 +775,7 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
                     size="lg"
                     fontSize="sm"
                   />
-                </FormControl>
+                {errors.postalCode && <FormErrorMessage>{errors.postalCode}</FormErrorMessage>}</FormControl>
               </SimpleGrid>
             </Box>
 
@@ -657,7 +785,7 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
         <Box display="flex" justifyContent="flex-end" pt={2} pb={6}>
           <Button 
             colorScheme="blue" 
-            onClick={handleSubmit} 
+            type="submit" 
             isLoading={isSaving} 
             px={10} 
             borderRadius="full" 
@@ -674,6 +802,6 @@ const PersonalDetailsForm = ({ data, user, onSave, isSaving }: Props) => {
       </VStack>
     </Box>
   );
-};
+});
 
 export default PersonalDetailsForm;

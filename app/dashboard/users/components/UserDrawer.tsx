@@ -591,7 +591,10 @@ const UserDrawer = ({
                           placeholder="Select department"
                           value={
                             userForm.department
-                              ? { label: userForm.department, value: userForm.department }
+                              ? { 
+                                  label: userForm.department?.departmentName || (typeof userForm.department === "string" ? userForm.department : ""), 
+                                  value: userForm.department?.departmentName || (typeof userForm.department === "string" ? userForm.department : "") 
+                                }
                               : null
                           }
                           error={validationErrors.department}
@@ -621,7 +624,10 @@ const UserDrawer = ({
                           }
                           value={
                             userForm.team
-                              ? { label: userForm.team, value: userForm.team }
+                              ? { 
+                                  label: userForm.team?.name || (typeof userForm.team === "string" ? userForm.team : ""), 
+                                  value: userForm.team?.name || (typeof userForm.team === "string" ? userForm.team : "") 
+                                }
                               : null
                           }
                           error={validationErrors.team}
@@ -654,24 +660,6 @@ const UserDrawer = ({
                         />
                       </>
                     ) : null}
-                    <CustomInput
-                      label="City"
-                      name="city"
-                      placeholder="Enter city"
-                      value={userForm.city}
-                      onChange={(e: any) =>
-                        setUserForm((p: any) => ({ ...p, city: e.target.value }))
-                      }
-                    />
-                    <CustomInput
-                      label="State"
-                      name="state"
-                      placeholder="Enter state"
-                      value={userForm.state}
-                      onChange={(e: any) =>
-                        setUserForm((p: any) => ({ ...p, state: e.target.value }))
-                      }
-                    />
                   </>
                 )}
               </SimpleGrid>
@@ -708,11 +696,6 @@ const UserDrawer = ({
                 </Text>
               ) : (
                 <VStack align="stretch" spacing={4}>
-                  <Text fontSize="sm" color={muted}>
-                    {isCompanyAdminRole
-                      ? "Leave password blank to generate a setup link for this company admin. If SMTP is unavailable, the setup link will be shown after saving."
-                      : "Leave password blank to send a setup link. Enter a password only when you want to set initial access manually."}
-                  </Text>
                   <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                     <Box>
                       <Text mb={2} fontSize="sm" fontWeight="600">
@@ -776,24 +759,13 @@ const UserDrawer = ({
                       ) : null}
                     </Box>
                   </SimpleGrid>
-                  <Checkbox
-                    isChecked={userForm.sendInvite !== false}
-                    onChange={(event) =>
-                      setUserForm((p: any) => ({ ...p, sendInvite: event.target.checked }))
-                    }
-                    isDisabled={Boolean(userForm.password)}
-                  >
-                    {isCompanyAdminRole
-                      ? "Send setup invite email when no password is provided"
-                      : "Send setup invite email when no password is provided"}
-                  </Checkbox>
                 </VStack>
               )}
             </SectionCard>
 
             {/* COMPANY */}
-            <SectionCard title="Company" icon={Building2} color="purple">
-              {isSuperadmin ? (
+            {isSuperadmin ? (
+              <SectionCard title="Company" icon={Building2} color="purple">
                 <VStack align="stretch" spacing={4}>
                   <CustomInput
                     type="select"
@@ -828,12 +800,8 @@ const UserDrawer = ({
                     isSearchable
                   />
                 </VStack>
-              ) : (
-                <Box p={3} borderRadius="md" bg="gray.100">
-                  {currentCompanyName}
-                </Box>
-              )}
-            </SectionCard>
+              </SectionCard>
+            ) : null}
 
             {isScopedHrRole ? (
               <SectionCard title="HR Scope" icon={Building2} color="orange">

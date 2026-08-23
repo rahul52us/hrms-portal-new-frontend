@@ -678,6 +678,18 @@ class UserStore {
       return Promise.reject(err?.response?.data || err.message);
     }
   };
+
+  updateReportingManager = async (id: string, reportingManager: string | null) => {
+    this.submitting = true;
+    try {
+      const response = await axios.put(`/admin/users/${id}/manager`, { reportingManager });
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    } finally {
+      this.submitting = false;
+    }
+  };
 }
 
 export const userStore = new UserStore();

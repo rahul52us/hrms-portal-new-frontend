@@ -54,13 +54,13 @@ const ManagerHierarchy = ({
           isSearchable
           isClear
           placeholder="Search by employee name or email"
-          loadOptionsOnMenuOpen
           excludeOptionValues={currentUserId ? [currentUserId] : []}
           excludeUserRoles={["admin", "superadmin"]}
           excludeDisabledUsers
           emptyOptionsMessage="No eligible employees found"
           onChange={(val: any) => onChange(val)}
           disabled={isDisabled || (!managerCompanyId && createCompany)}
+          isPortal
         />
 
         {!managerCompanyId && createCompany ? (
@@ -69,19 +69,6 @@ const ManagerHierarchy = ({
           </Text>
         ) : null}
 
-        <Text fontSize="sm" color={muted}>
-          Any employee can be selected. They become a manager when someone reports to them.
-        </Text>
-
-        {email ? (
-          <Text fontSize="sm" color={muted}>
-            Selected: {email}
-          </Text>
-        ) : (
-          <Text fontSize="sm" color={muted}>
-            Leave empty for a top-level employee.
-          </Text>
-        )}
       </VStack>
     </Box>
   );

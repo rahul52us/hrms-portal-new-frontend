@@ -36,9 +36,10 @@ type Props = {
   isOpen: boolean;
   onClose: () => void;
   user: any;
+  onRefresh?: () => void;
 };
 
-const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
+const ProfileDetailsDrawer = observer(({ isOpen, onClose, user, onRefresh }: Props) => {
   const { userStore } = stores;
   const toast = useToast();
   
@@ -63,6 +64,9 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
     try {
       const res = await userStore.getManagedUserProfileDetails(user._id);
       setProfileData(res?.data || {});
+      if (res?.data?.user) {
+        Object.assign(user, res.data.user);
+      }
     } catch (error: any) {
       toast({
         title: "Failed to load profile",
@@ -114,7 +118,8 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
       });
 
       toast({ title: "Personal details updated", status: "success" });
-      loadProfileDetails(false);
+      await loadProfileDetails(false);
+      if (onRefresh) onRefresh();
     } catch (error: any) {
       toast({ title: "Failed to update", description: getApiErrorMessage(error), status: "error" });
     } finally {
@@ -129,6 +134,7 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
       await userStore.updateFamilyContacts(user._id, payload);
       toast({ title: "Family contacts updated", status: "success" });
       loadProfileDetails(false);
+      if (onRefresh) onRefresh();
     } catch (error: any) {
       toast({ title: "Failed to update", description: getApiErrorMessage(error), status: "error" });
     } finally {
@@ -143,6 +149,7 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
       await userStore.updateSkills(user._id, payload);
       toast({ title: "Skills updated", status: "success" });
       loadProfileDetails(false);
+      if (onRefresh) onRefresh();
     } catch (error: any) {
       toast({ title: "Failed to update", description: getApiErrorMessage(error), status: "error" });
     } finally {
@@ -157,6 +164,7 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
       await userStore.updateStatutoryDetails(user._id, payload);
       toast({ title: "Statutory details updated", status: "success" });
       loadProfileDetails(false);
+      if (onRefresh) onRefresh();
     } catch (error: any) {
       toast({ title: "Failed to update", description: getApiErrorMessage(error), status: "error" });
     } finally {
@@ -168,9 +176,20 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
     // Documents upload directly in the form component using user._id
     // This function can just trigger a reload if needed
     loadProfileDetails(false);
+    if (onRefresh) onRefresh();
   };
 
   const isMobile = useBreakpointValue({ base: true, md: false });
+  const skeletonStartColor = useColorModeValue("gray.100", "whiteAlpha.100");
+  const skeletonEndColor = useColorModeValue("gray.300", "whiteAlpha.300");
+  const dividerColor = useColorModeValue("gray.200", "whiteAlpha.100");
+  const cardBgColor = useColorModeValue("white", "whiteAlpha.50");
+  const tabsBorderColor = useColorModeValue("gray.200", "gray.700");
+  const tabColorActive = useColorModeValue("blue.600", "blue.300");
+  const tabBgActive = useColorModeValue("blue.50", "rgba(66, 153, 225, 0.15)");
+  const tabColorHover = useColorModeValue("blue.500", "blue.400");
+  const tabBgHover = useColorModeValue("gray.50", "whiteAlpha.50");
+  const tabColorNormal = useColorModeValue("gray.500", "gray.400");
 
   return (
     <DashboardDrawer
@@ -185,19 +204,19 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
         {loading ? (
           <VStack spacing={6} align="stretch" p={2} pt={4}>
             {/* Tabs Skeleton */}
-            <HStack spacing={8} borderBottom="1px solid" borderColor={useColorModeValue("gray.200", "gray.700")} pb={2}>
-              <Skeleton height="20px" width="80px" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
-              <Skeleton height="20px" width="80px" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
-              <Skeleton height="20px" width="80px" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
-              <Skeleton height="20px" width="80px" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
+            <HStack spacing={8} borderBottom="1px solid" borderColor={tabsBorderColor} pb={2}>
+              <Skeleton height="20px" width="80px" startColor={skeletonStartColor} endColor={skeletonEndColor} />
+              <Skeleton height="20px" width="80px" startColor={skeletonStartColor} endColor={skeletonEndColor} />
+              <Skeleton height="20px" width="80px" startColor={skeletonStartColor} endColor={skeletonEndColor} />
+              <Skeleton height="20px" width="80px" startColor={skeletonStartColor} endColor={skeletonEndColor} />
             </HStack>
 
             {/* Header Skeleton */}
             <HStack spacing={4} mt={6}>
-              <Skeleton boxSize="40px" borderRadius="lg" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
+              <Skeleton boxSize="40px" borderRadius="lg" startColor={skeletonStartColor} endColor={skeletonEndColor} />
               <VStack align="start" spacing={2}>
-                <Skeleton height="20px" width="200px" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
-                <Skeleton height="12px" width="300px" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
+                <Skeleton height="20px" width="200px" startColor={skeletonStartColor} endColor={skeletonEndColor} />
+                <Skeleton height="12px" width="300px" startColor={skeletonStartColor} endColor={skeletonEndColor} />
               </VStack>
             </HStack>
 
@@ -205,41 +224,41 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
             <Box 
               p={{ base: 5, md: 8 }} 
               borderWidth="1px" 
-              borderColor={useColorModeValue("gray.200", "whiteAlpha.100")} 
+              borderColor={dividerColor} 
               borderRadius="3xl" 
-              bg={useColorModeValue("white", "whiteAlpha.50")} 
+              bg={cardBgColor} 
               mt={4}
             >
               <VStack spacing={8} align="stretch">
-                <Skeleton height="16px" width="120px" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
+                <Skeleton height="16px" width="120px" startColor={skeletonStartColor} endColor={skeletonEndColor} />
                 
                 <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
                   <VStack align="start" spacing={2}>
-                    <Skeleton height="12px" width="80px" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
-                    <Skeleton height="45px" width="100%" borderRadius="xl" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
+                    <Skeleton height="12px" width="80px" startColor={skeletonStartColor} endColor={skeletonEndColor} />
+                    <Skeleton height="45px" width="100%" borderRadius="xl" startColor={skeletonStartColor} endColor={skeletonEndColor} />
                   </VStack>
                   <VStack align="start" spacing={2}>
-                    <Skeleton height="12px" width="80px" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
-                    <Skeleton height="45px" width="100%" borderRadius="xl" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
+                    <Skeleton height="12px" width="80px" startColor={skeletonStartColor} endColor={skeletonEndColor} />
+                    <Skeleton height="45px" width="100%" borderRadius="xl" startColor={skeletonStartColor} endColor={skeletonEndColor} />
                   </VStack>
                   <VStack align="start" spacing={2}>
-                    <Skeleton height="12px" width="80px" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
-                    <Skeleton height="45px" width="100%" borderRadius="xl" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
+                    <Skeleton height="12px" width="80px" startColor={skeletonStartColor} endColor={skeletonEndColor} />
+                    <Skeleton height="45px" width="100%" borderRadius="xl" startColor={skeletonStartColor} endColor={skeletonEndColor} />
                   </VStack>
                 </SimpleGrid>
 
-                <Divider borderColor={useColorModeValue("gray.200", "whiteAlpha.100")} />
+                <Divider borderColor={dividerColor} />
 
-                <Skeleton height="16px" width="120px" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
+                <Skeleton height="16px" width="120px" startColor={skeletonStartColor} endColor={skeletonEndColor} />
                 
                 <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                   <VStack align="start" spacing={2}>
-                    <Skeleton height="12px" width="80px" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
-                    <Skeleton height="45px" width="100%" borderRadius="xl" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
+                    <Skeleton height="12px" width="80px" startColor={skeletonStartColor} endColor={skeletonEndColor} />
+                    <Skeleton height="45px" width="100%" borderRadius="xl" startColor={skeletonStartColor} endColor={skeletonEndColor} />
                   </VStack>
                   <VStack align="start" spacing={2}>
-                    <Skeleton height="12px" width="80px" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
-                    <Skeleton height="45px" width="100%" borderRadius="xl" startColor={useColorModeValue("gray.100", "whiteAlpha.100")} endColor={useColorModeValue("gray.300", "whiteAlpha.300")} />
+                    <Skeleton height="12px" width="80px" startColor={skeletonStartColor} endColor={skeletonEndColor} />
+                    <Skeleton height="45px" width="100%" borderRadius="xl" startColor={skeletonStartColor} endColor={skeletonEndColor} />
                   </VStack>
                 </SimpleGrid>
               </VStack>
@@ -252,7 +271,7 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
                 display="flex"
                 w="full"
                 borderBottom="1px solid"
-                borderColor={useColorModeValue("gray.200", "gray.700")}
+                borderColor={tabsBorderColor}
                 gap={2}
               >
                 {[
@@ -265,16 +284,16 @@ const ProfileDetailsDrawer = observer(({ isOpen, onClose, user }: Props) => {
                   <Tab
                     key={tab.name}
                     _selected={{
-                      color: useColorModeValue("blue.600", "blue.300"),
-                      borderColor: useColorModeValue("blue.600", "blue.300"),
-                      bg: useColorModeValue("blue.50", "rgba(66, 153, 225, 0.15)"),
+                      color: tabColorActive,
+                      borderColor: tabColorActive,
+                      bg: tabBgActive,
                       fontWeight: "600",
                     }}
                     _hover={{
-                      color: useColorModeValue("blue.500", "blue.400"),
-                      bg: useColorModeValue("gray.50", "whiteAlpha.50"),
+                      color: tabColorHover,
+                      bg: tabBgHover,
                     }}
-                    color={useColorModeValue("gray.500", "gray.400")}
+                    color={tabColorNormal}
                     fontSize="sm"
                     fontWeight="500"
                     px={5}
