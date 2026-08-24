@@ -3,6 +3,7 @@
 import stores from "@/app/store/stores";
 import { getDefaultAuthenticatedRoute, isEmployeeDashboardRole } from "@/app/config/utils/roleAccess";
 import ManagerApprovalInbox from "@/app/component/approvals/ManagerApprovalInbox";
+import TodayPunchCard from "@/app/component/attendance/TodayPunchCard";
 import {
   Badge,
   Box,
@@ -35,7 +36,6 @@ import {
   FiMail,
   FiMapPin,
   FiPhone,
-  FiPower,
   FiShield,
   FiUser,
   FiUsers,
@@ -181,8 +181,6 @@ const EmployeePage = observer(() => {
   const { user, sessionReady } = stores.auth;
   const role = String(stores.auth.role || user?.role || "");
   const isEmployee = Boolean(user) && isEmployeeDashboardRole(role);
-  const accountStatus = String(user?.status || "PENDING").toUpperCase();
-
   useEffect(() => {
     if (!sessionReady) {
       return;
@@ -220,11 +218,6 @@ const EmployeePage = observer(() => {
   const borderColor = useColorModeValue("gray.200", "whiteAlpha.200");
   const mutedText = useColorModeValue("gray.600", "gray.400");
   const strongText = useColorModeValue("gray.950", "gray.50");
-  const tableHeaderBg = useColorModeValue("gray.100", "gray.700");
-  const punchBadgeBg = useColorModeValue("yellow.300", "yellow.500");
-  const punchButtonBg = useColorModeValue("orange.400", "orange.300");
-  const punchButtonText = useColorModeValue("white", "gray.900");
-  const detailsButtonBg = useColorModeValue("green.500", "green.400");
 
   if (!sessionReady || !user || !isEmployee) {
     return (
@@ -261,95 +254,7 @@ const EmployeePage = observer(() => {
           <Grid templateColumns={{ base: "1fr", xl: "1.05fr 1fr" }} gap={5}>
           <GridItem>
             <Stack spacing={5}>
-              <Box
-                bg={cardBg}
-                border="1px solid"
-                borderColor={borderColor}
-                borderRadius="14px"
-                p={{ base: 5, md: 6 }}
-                boxShadow="0 10px 28px rgba(15, 23, 42, 0.06)"
-              >
-                <HStack justify="space-between" align="center" mb={5}>
-                  <HStack spacing={3}>
-                    <Center w="34px" h="34px" borderRadius="full" bg={useColorModeValue("gray.100", "gray.700")}>
-                      <Icon as={FiPower} boxSize={4} color={useColorModeValue("gray.700", "gray.200")} />
-                    </Center>
-                    <Text fontSize="18px" fontWeight="900">
-                      Todays Punches
-                    </Text>
-                  </HStack>
-                  <Badge
-                    colorScheme={accountStatus === "ACTIVE" ? "green" : accountStatus === "INACTIVE" ? "red" : "yellow"}
-                    borderRadius="full"
-                    px={3}
-                    py={1}
-                  >
-                    {accountStatus === "ACTIVE" ? "Active" : accountStatus === "INACTIVE" ? "Inactive" : "Pending"}
-                  </Badge>
-                </HStack>
-
-                <HStack spacing={3} flexWrap="wrap">
-                  <Badge
-                    borderRadius="full"
-                    px={4}
-                    py={2}
-                    bg={punchBadgeBg}
-                    color="gray.900"
-                    fontSize="13px"
-                    fontWeight="800"
-                  >
-                    Last Punch : 18:23
-                  </Badge>
-                  <Button borderRadius="full" bg={punchButtonBg} color={punchButtonText} _hover={{ opacity: 0.92 }}>
-                    Punch Time
-                  </Button>
-                  <Button borderRadius="full" bg={detailsButtonBg} color="white" _hover={{ opacity: 0.92 }}>
-                    Get Details
-                  </Button>
-                </HStack>
-              </Box>
-
-              <Box
-                bg={cardBg}
-                border="1px solid"
-                borderColor={borderColor}
-                borderRadius="14px"
-                p={{ base: 5, md: 6 }}
-                boxShadow="0 10px 28px rgba(15, 23, 42, 0.06)"
-              >
-                <Text fontSize="18px" fontWeight="900" mb={4}>
-                  My Attendance
-                </Text>
-                <Box overflowX="auto">
-                  <Box minW="560px">
-                    <Flex bg={tableHeaderBg} borderRadius="8px 8px 0 0" px={4} py={3} fontSize="13px" fontWeight="800">
-                      <Box flex="1">Date</Box>
-                      <Box flex="0.7">In</Box>
-                      <Box flex="0.7">Out</Box>
-                      <Box flex="0.7">WHrs</Box>
-                      <Box flex="0.6">Status</Box>
-                      <Box flex="0.6">Late</Box>
-                      <Box flex="0.6">Early</Box>
-                    </Flex>
-                    {[
-                      { date: "20 Jul 2026", in: "09:01", out: "18:15", whrs: "09:14", status: "P", late: "-", early: "-" },
-                      { date: "19 Jul 2026", in: "00:00", out: "00:00", whrs: "00:00", status: "WO", late: "-", early: "-" },
-                    ].map((row) => (
-                      <Flex key={row.date} px={4} py={3} borderTop="1px solid" borderColor={borderColor} fontSize="13px">
-                        <Box flex="1">{row.date}</Box>
-                        <Box flex="0.7">{row.in}</Box>
-                        <Box flex="0.7">{row.out}</Box>
-                        <Box flex="0.7">{row.whrs}</Box>
-                        <Box flex="0.6" fontWeight="700">
-                          {row.status}
-                        </Box>
-                        <Box flex="0.6">{row.late}</Box>
-                        <Box flex="0.6">{row.early}</Box>
-                      </Flex>
-                    ))}
-                  </Box>
-                </Box>
-              </Box>
+              <TodayPunchCard dashboard />
 
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
                 <Box
@@ -407,7 +312,7 @@ const EmployeePage = observer(() => {
                   Quick Links
                 </Text>
                 <SimpleGrid columns={{ base: 2, md: 3 }} spacing={6}>
-                  <QuickLinkTile icon={FiCalendar} label="Monthly Att." href="/dashboard/user-profile" />
+                  <QuickLinkTile icon={FiCalendar} label="Monthly Att." href="/dashboard/my-attendance" />
                   <QuickLinkTile icon={FiClock} label="Leave Request" href="/dashboard/request/leave" />
                   <QuickLinkTile icon={FiShield} label="Holiday List" href="/dashboard/company/policy/holidays" />
                   <QuickLinkTile icon={FiCreditCard} label="Expense Claim" href="/dashboard/request" />
