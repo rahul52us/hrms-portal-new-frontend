@@ -62,6 +62,8 @@ type UserFormState = {
   state: string;
   designation: string;
   joiningDate: string;
+  confirmationDate: string;
+  employmentEndDate: string;
   dateOfBirth: string;
   gender: number | "";
   role: string;
@@ -207,6 +209,8 @@ const initialForm = (): UserFormState => ({
   state: "",
   designation: "",
   joiningDate: "",
+  confirmationDate: "",
+  employmentEndDate: "",
   dateOfBirth: "",
   gender: "",
   role: "user",
@@ -696,6 +700,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       state: user.state || "",
       designation: user.designation || "",
       joiningDate: user.joiningDate ? String(user.joiningDate).slice(0, 10) : "",
+      confirmationDate: user.confirmationDate ? String(user.confirmationDate).slice(0, 10) : "",
+      employmentEndDate: user.employmentEndDate ? String(user.employmentEndDate).slice(0, 10) : "",
       dateOfBirth: user.dateOfBirth ? String(user.dateOfBirth).slice(0, 10) : "",
       gender: typeof user.gender === "number" ? user.gender : "",
       role: roleValue,
@@ -786,6 +792,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     const state = userForm.state.trim();
     const designation = userForm.designation.trim();
     const joiningDate = userForm.joiningDate;
+    const confirmationDate = userForm.confirmationDate;
+    const employmentEndDate = userForm.employmentEndDate;
     const dateOfBirth = userForm.dateOfBirth;
     const gender = userForm.gender;
     const selectedReportingManager = userForm.reportingManager;
@@ -857,6 +865,34 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
         });
         return;
       }
+    }
+
+    if (joiningDate && confirmationDate && confirmationDate < joiningDate) {
+      showToast({
+        title: "Invalid confirmation date",
+        description: "Confirmation date cannot be before joining date.",
+        status: "warning",
+        duration: 3000,
+      });
+      return;
+    }
+    if (joiningDate && employmentEndDate && employmentEndDate < joiningDate) {
+      showToast({
+        title: "Invalid employment end date",
+        description: "Employment end date cannot be before joining date.",
+        status: "warning",
+        duration: 3000,
+      });
+      return;
+    }
+    if (confirmationDate && employmentEndDate && employmentEndDate < confirmationDate) {
+      showToast({
+        title: "Invalid employment dates",
+        description: "Employment end date cannot be before confirmation date.",
+        status: "warning",
+        duration: 3000,
+      });
+      return;
     }
 
     if (!userForm.id) {
@@ -949,6 +985,8 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       state,
       designation,
       joiningDate,
+      confirmationDate,
+      employmentEndDate,
       dateOfBirth,
       gender: gender ? Number(gender) : undefined,
       role: roleValue,

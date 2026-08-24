@@ -566,6 +566,26 @@ const UserDrawer = ({
                         setUserForm((p: any) => ({ ...p, joiningDate: e.target.value }))
                       }
                     />
+                    <CustomInput
+                      label="Confirmation Date (Optional)"
+                      name="confirmationDate"
+                      type="date"
+                      minDate={userForm.joiningDate || undefined}
+                      value={userForm.confirmationDate}
+                      onChange={(e: any) =>
+                        setUserForm((p: any) => ({ ...p, confirmationDate: e.target.value }))
+                      }
+                    />
+                    <CustomInput
+                      label="Employment End Date (Optional)"
+                      name="employmentEndDate"
+                      type="date"
+                      minDate={userForm.confirmationDate || userForm.joiningDate || undefined}
+                      value={userForm.employmentEndDate}
+                      onChange={(e: any) =>
+                        setUserForm((p: any) => ({ ...p, employmentEndDate: e.target.value }))
+                      }
+                    />
                   </>
                 )}
                 <CustomInput

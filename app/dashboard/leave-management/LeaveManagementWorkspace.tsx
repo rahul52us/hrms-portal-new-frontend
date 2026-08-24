@@ -52,6 +52,8 @@ import ArchiveLeaveDialog from "./components/ArchiveLeaveDialog";
 import LeaveCoveragePanel from "./components/LeaveCoveragePanel";
 import LeavePolicyDrawer from "./components/LeavePolicyDrawer";
 import LeaveTypeDrawer from "./components/LeaveTypeDrawer";
+import LeaveRequestsPanel from "./components/LeaveRequestsPanel";
+import LeaveBalancesPanel from "./components/LeaveBalancesPanel";
 
 const LEAVE_RESOURCE_TYPES = ["leave_policy"] as const;
 
@@ -81,7 +83,9 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
   const toast = useToast();
   const role = String(auth.role || auth.user?.role || "").toLowerCase();
   const isSuperadmin = role === "superadmin";
-  const canView = hasPermission(auth.user, PERMISSION_KEYS.VIEW_WORKFORCE_POLICIES);
+  const canViewConfiguration = hasPermission(auth.user, PERMISSION_KEYS.VIEW_WORKFORCE_POLICIES);
+  const canViewOperations = hasPermission(auth.user, PERMISSION_KEYS.VIEW_LEAVE_REQUESTS);
+  const canView = canViewConfiguration || canViewOperations;
   const canManage = ["superadmin", "admin", "hradmin"].includes(role) &&
     hasPermission(auth.user, PERMISSION_KEYS.MANAGE_WORKFORCE_POLICIES);
   const [tabIndex, setTabIndex] = useState(0);
@@ -114,14 +118,14 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
   const activeCompany = companies.find((company: any) => company._id === companyId) || auth.user?.companyDetails || null;
 
   const refresh = useCallback(async () => {
-    if (!companyId || !canView) return;
+    if (!companyId || !canViewConfiguration) return;
     await workforcePolicyStore.fetchWorkspace(companyId);
-  }, [canView, companyId]);
+  }, [canViewConfiguration, companyId]);
 
   useEffect(() => {
-    if (!companyId || !canView) return;
+    if (!companyId || !canViewConfiguration) return;
     refresh().catch(() => undefined);
-  }, [canView, companyId, refresh]);
+  }, [canViewConfiguration, companyId, refresh]);
 
   useEffect(() => {
     if (!companyId || !canManage) {
@@ -304,7 +308,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
     <PermissionGate
       allowed={canView}
       title="Leave management is disabled"
-      description="This account does not have permission to view leave configurations."
+      description="This account does not have permission to view leave operations or configurations."
       fallbackHref="/dashboard/profile"
     >
       <Box minH="100dvh" bg={pageBg} px={{ base: 3, md: 6 }} py={{ base: 4, md: 6 }}>
@@ -334,14 +338,16 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
             <Tabs index={tabIndex} onChange={setTabIndex} colorScheme="blue" isLazy>
               <Flex direction={{ base: "column", md: "row" }} justify="space-between" gap={3} px={4} pt={4}>
                 <TabList overflowX="auto">
-                  <Tab whiteSpace="nowrap">Leave types</Tab>
-                  <Tab whiteSpace="nowrap">Leave policies</Tab>
-                  <Tab whiteSpace="nowrap">Assignments</Tab>
-                  <Tab whiteSpace="nowrap">Coverage</Tab>
+                  {canViewConfiguration ? <Tab whiteSpace="nowrap">Leave types</Tab> : null}
+                  {canViewConfiguration ? <Tab whiteSpace="nowrap">Leave policies</Tab> : null}
+                  {canViewConfiguration ? <Tab whiteSpace="nowrap">Assignments</Tab> : null}
+                  {canViewConfiguration ? <Tab whiteSpace="nowrap">Coverage</Tab> : null}
+                  {canViewOperations ? <Tab whiteSpace="nowrap">Requests</Tab> : null}
+                  {canViewOperations ? <Tab whiteSpace="nowrap">Balances</Tab> : null}
                 </TabList>
                 <HStack pb={{ md: 2 }}>
-                  {tabIndex < 2 ? <InputGroup size="sm" maxW="250px"><InputLeftElement><FiSearch /></InputLeftElement><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" /></InputGroup> : null}
-                  {canManage && companyId && tabIndex < 3 ? (
+                  {canViewConfiguration && tabIndex < 2 ? <InputGroup size="sm" maxW="250px"><InputLeftElement><FiSearch /></InputLeftElement><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" /></InputGroup> : null}
+                  {canViewConfiguration && canManage && companyId && tabIndex < 3 ? (
                     <Button size="sm" colorScheme="blue" leftIcon={<FiPlus />} flexShrink={0} onClick={() => tabIndex === 0 ? openType() : tabIndex === 1 ? openPolicy("create") : openAssignment()}>
                       {tabIndex === 0 ? "New leave type" : tabIndex === 1 ? "New policy" : "New assignment"}
                     </Button>
@@ -349,10 +355,12 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
                 </HStack>
               </Flex>
               <TabPanels>
-                <TabPanel><LeaveTypeList /></TabPanel>
-                <TabPanel><LeavePolicyList /></TabPanel>
-                <TabPanel><PolicyAssignmentsPanel companyId={companyId} canManage={canManage} borderColor={borderColor} muted={muted} lockedResourceType="leave_policy" onEndAssignment={(assignment) => openAssignment(assignment)} /></TabPanel>
-                <TabPanel><LeaveCoveragePanel companyId={companyId} borderColor={borderColor} muted={muted} onManageAssignments={() => setTabIndex(2)} /></TabPanel>
+                {canViewConfiguration ? <TabPanel><LeaveTypeList /></TabPanel> : null}
+                {canViewConfiguration ? <TabPanel><LeavePolicyList /></TabPanel> : null}
+                {canViewConfiguration ? <TabPanel><PolicyAssignmentsPanel companyId={companyId} canManage={canManage} borderColor={borderColor} muted={muted} lockedResourceType="leave_policy" onEndAssignment={(assignment) => openAssignment(assignment)} /></TabPanel> : null}
+                {canViewConfiguration ? <TabPanel><LeaveCoveragePanel companyId={companyId} borderColor={borderColor} muted={muted} onManageAssignments={() => setTabIndex(2)} /></TabPanel> : null}
+                {canViewOperations ? <TabPanel><LeaveRequestsPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel> : null}
+                {canViewOperations ? <TabPanel><LeaveBalancesPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel> : null}
               </TabPanels>
             </Tabs>
           </Box>

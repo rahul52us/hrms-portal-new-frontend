@@ -57,6 +57,23 @@ const getResource = (resolved: ResolvedPolicyResource | null) =>
     ? resolved.assignment.resource
     : null;
 
+const formatCredit = (value: number) =>
+  new Intl.NumberFormat("en-IN", { maximumFractionDigits: 4 }).format(Number(value || 0));
+
+const leaveRuleSchedule = (rule: any) => {
+  const components = Array.isArray(rule.creditComponents) ? rule.creditComponents : [];
+  if (!components.length) {
+    return rule.accrualFrequency === "none" ? "manual credits" : String(rule.accrualFrequency || "manual credits");
+  }
+  return components.map((component: any) => {
+    if (component.frequency === "monthly") return `${formatCredit(component.amount)}/month`;
+    if (component.frequency === "quarterly") return `${formatCredit(component.amount)}/quarter`;
+    return component.upfrontTiming === "first_eligibility"
+      ? `${formatCredit(component.amount)} once`
+      : `${formatCredit(component.amount)} yearly upfront`;
+  }).join(" + ");
+};
+
 const PolicyCard = ({
   title,
   resolved,
@@ -136,6 +153,11 @@ const PolicyCard = ({
           <>
             <Text><strong>Leave year:</strong> starts {version.leaveYearStartDay || 1}/{version.leaveYearStartMonth || 1}</Text>
             <Text><strong>Leave types:</strong> {leaveRules.map((rule: any) => rule.leaveTypeCodeSnapshot).filter(Boolean).join(", ") || "--"}</Text>
+            {leaveRules.slice(0, 3).map((rule: any) => (
+              <Text key={String(rule.leaveType?._id || rule.leaveType)} fontSize="xs" color={muted}>
+                {rule.leaveTypeCodeSnapshot}: {formatCredit(rule.annualEntitlement)}/year, {leaveRuleSchedule(rule)}
+              </Text>
+            ))}
           </>
         ) : null}
       </Stack>

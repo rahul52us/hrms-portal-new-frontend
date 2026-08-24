@@ -46,6 +46,15 @@ export interface LeaveTypeItem {
   displayOrder: number;
 }
 
+export interface LeaveCreditComponent {
+  componentId: string;
+  frequency: "upfront" | "monthly" | "quarterly";
+  amount: number;
+  upfrontTiming: "leave_year_start" | "first_eligibility";
+  prorateOnJoining: boolean;
+  prorateOnExit: boolean;
+}
+
 export interface LeavePolicyRule {
   _id?: string;
   leaveType: string;
@@ -56,6 +65,7 @@ export interface LeavePolicyRule {
   annualEntitlement: number;
   accrualFrequency: "upfront" | "monthly" | "quarterly" | "none";
   accrualAmount: number;
+  creditComponents: LeaveCreditComponent[];
   prorateOnJoining: boolean;
   prorateOnExit: boolean;
   carryForwardEnabled: boolean;

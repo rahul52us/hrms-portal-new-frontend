@@ -5,7 +5,7 @@ import styled, { keyframes } from "styled-components";
 import { Avatar, useTheme } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
 import stores from "../../../../store/stores";
-import { dashboard } from "../../../../config/utils/routes";
+import { getDefaultAuthenticatedRoute } from "../../../../config/utils/roleAccess";
 import { headerHeight } from "../../../../component/config/utils/variable";
 
 /* ── animations ── */
@@ -59,7 +59,7 @@ const SidebarLogo: React.FC<SidebarLogoProps> = observer(({ showBrand = false })
   return (
     <LogoWrapper
       $height={headerHeight}
-      onClick={() => router.push(dashboard.home)}
+      onClick={() => router.push(getDefaultAuthenticatedRoute(user))}
       role="button"
       aria-label="Go to home"
     >

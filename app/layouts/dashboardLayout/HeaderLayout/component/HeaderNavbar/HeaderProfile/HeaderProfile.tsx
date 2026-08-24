@@ -2,6 +2,7 @@
 
 import {
   Avatar,
+  Button,
   Menu,
   MenuButton,
   MenuList,
@@ -28,9 +29,9 @@ import {
   FaHome,
 } from "react-icons/fa";
 import stores from "../../../../../../store/stores";
-import { authentication, main } from "../../../../../../config/utils/routes";
+import { authentication } from "../../../../../../config/utils/routes";
+import { formatRoleLabel, getDefaultAuthenticatedRoute } from "../../../../../../config/utils/roleAccess";
 import { useRouter, usePathname } from "next/navigation";
-import { WEBSITE_TITLE } from "../../../../../../config/utils/variables";
 import ProfileDetailsModal from "../../../../../../component/ProfileSettings/component/ProfileDetailsModal/ProfileDetailsModal";
 
 const HeaderProfile = observer(() => {
@@ -43,14 +44,30 @@ const HeaderProfile = observer(() => {
   } = stores;
   const { isOpen:profileIsOpen, onOpen:profileOnOpen, onClose:profileOnClose } = useDisclosure();
   const { colorMode } = useColorMode();
+  const homeRoute = getDefaultAuthenticatedRoute(user);
 
   return user ? (
     <>
       <Menu closeOnSelect={true} placement="bottom-end">
         <MenuButton
-          as={IconButton}
+          as={Button}
           aria-label="User Menu"
-          icon={
+          variant="ghost"
+          h="auto"
+          minW={0}
+          px={2}
+          py={1.5}
+          borderRadius="md"
+          bg={useColorModeValue("blackAlpha.50", "whiteAlpha.100")}
+          _hover={{
+            bg: useColorModeValue("blackAlpha.100", "whiteAlpha.200"),
+          }}
+          _active={{
+            bg: useColorModeValue("blackAlpha.200", "whiteAlpha.300"),
+          }}
+          transition="background 0.2s ease"
+        >
+          <Flex align="center" gap={2.5} minW={0}>
             <Avatar
               src={user?.pic?.url || undefined}
               size="sm"
@@ -62,32 +79,32 @@ const HeaderProfile = observer(() => {
               color="white"
               fontWeight="bold"
             />
-          }
-          isRound
-          w="40px"
-          h="40px"
-          minW="40px"
-          p={0}
-          bg={useColorModeValue("blackAlpha.50", "whiteAlpha.100")}
-          _hover={{
-            bg: useColorModeValue("blackAlpha.100", "whiteAlpha.200"),
-            transform: "scale(1.05)"
-          }}
-          _active={{
-            bg: useColorModeValue("blackAlpha.200", "whiteAlpha.300"),
-            transform: "scale(0.97)"
-          }}
-          transition="all 0.2s ease"
-        />
+            <Box textAlign="left" minW={0} maxW="160px">
+              <Text fontSize="sm" fontWeight="700" lineHeight="short" noOfLines={1}>
+                {user?.name || user?.username}
+              </Text>
+              <Text
+                mt={0.5}
+                fontSize="xs"
+                fontWeight="500"
+                lineHeight="short"
+                color={colorMode === "light" ? "gray.500" : "gray.400"}
+                noOfLines={1}
+              >
+                {formatRoleLabel(user?.role)}
+              </Text>
+            </Box>
+          </Flex>
+        </MenuButton>
         <Portal>
           <MenuList borderRadius="2xl" p={0} overflow="hidden" border="1px solid" borderColor={colorMode === 'light' ? 'gray.100' : 'whiteAlpha.100'} boxShadow={colorMode === 'light' ? '0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01)' : '0 10px 25px -5px rgba(0,0,0,0.5)'} bg={colorMode === 'light' ? 'white' : 'gray.900'} minWidth="240px" zIndex={9999}>
             <Box px={4} py={3.5} borderBottom="1px solid" borderColor={colorMode === 'light' ? 'gray.100' : 'whiteAlpha.100'} bg={colorMode === 'light' ? 'gray.50' : 'whiteAlpha.50'}>
               <Text fontWeight="800" fontSize="15px" color={colorMode === 'light' ? 'gray.900' : 'white'} noOfLines={1}>{user?.name}</Text>
-              <Text fontSize="13px" fontWeight="500" color={colorMode === 'light' ? 'gray.500' : 'gray.400'} noOfLines={1}>{WEBSITE_TITLE?.split('-').join(' ')}</Text>
+              <Text fontSize="13px" fontWeight="500" color={colorMode === 'light' ? 'gray.500' : 'gray.400'} noOfLines={1}>{formatRoleLabel(user?.role)}</Text>
             </Box>
             <Box p={2}>
-              {user && pathname !== main.home && (
-                <MenuItem bg="transparent" _focus={{ bg: colorMode === 'light' ? 'gray.100' : 'whiteAlpha.100' }} borderRadius="xl" px={3} py={2} mb={1} onClick={() => router.push('/dashboard')} _hover={{ bg: colorMode === 'light' ? 'gray.100' : 'whiteAlpha.100' }} transition="all 0.2s">
+              {user && pathname !== homeRoute && (
+                <MenuItem bg="transparent" _focus={{ bg: colorMode === 'light' ? 'gray.100' : 'whiteAlpha.100' }} borderRadius="xl" px={3} py={2} mb={1} onClick={() => router.push(homeRoute)} _hover={{ bg: colorMode === 'light' ? 'gray.100' : 'whiteAlpha.100' }} transition="all 0.2s">
                   <Flex align="center" gap={3}>
                     <Flex align="center" justify="center" w={8} h={8} borderRadius="md" bg={colorMode === 'light' ? 'blue.50' : 'rgba(59, 130, 246, 0.15)'} color={colorMode === 'light' ? 'blue.500' : 'blue.300'}>
                       <Icon as={FaHome} boxSize={4} />

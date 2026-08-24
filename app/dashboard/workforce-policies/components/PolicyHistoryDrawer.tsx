@@ -44,6 +44,26 @@ function formatDate(value?: string | null) {
   }).format(new Date(value));
 }
 
+function formatCredit(value: number) {
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 4 }).format(Number(value || 0));
+}
+
+function leaveRuleSummary(rule: LeavePolicyRule) {
+  if (rule.balanceTracked === false) return "No balance";
+  const components = Array.isArray(rule.creditComponents) ? rule.creditComponents : [];
+  if (!components.length) {
+    return `${formatCredit(rule.annualEntitlement)}/year / ${rule.accrualFrequency === "none" ? "manual credits" : rule.accrualFrequency}`;
+  }
+  const schedule = components.map((component) => {
+    if (component.frequency === "monthly") return `${formatCredit(component.amount)}/month`;
+    if (component.frequency === "quarterly") return `${formatCredit(component.amount)}/quarter`;
+    return component.upfrontTiming === "first_eligibility"
+      ? `${formatCredit(component.amount)} once when first eligible`
+      : `${formatCredit(component.amount)} at leave-year start`;
+  }).join(" + ");
+  return `${formatCredit(rule.annualEntitlement)}/year / ${schedule}`;
+}
+
 const PolicyHistoryDrawer = observer(function PolicyHistoryDrawer({
   isOpen,
   onClose,
@@ -133,7 +153,7 @@ const PolicyHistoryDrawer = observer(function PolicyHistoryDrawer({
                       </Text>
                       {(version.rules as LeavePolicyRule[]).map((rule) => (
                         <Text key={String(rule.leaveType)} fontSize="xs" color="gray.600">
-                          {rule.leaveTypeCodeSnapshot || rule.leaveTypeNameSnapshot}: {rule.balanceTracked === false ? "No balance" : `${rule.annualEntitlement} days / ${rule.accrualFrequency}`}
+                          {rule.leaveTypeCodeSnapshot || rule.leaveTypeNameSnapshot}: {leaveRuleSummary(rule)}
                         </Text>
                       ))}
                     </Stack>

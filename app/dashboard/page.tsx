@@ -8,35 +8,29 @@ import stores from "../store/stores";
 import PermissionGate from "../component/common/PermissionGate";
 import ScopedDashboard from "./components/LMS/ScopedDashboard";
 import { PERMISSION_KEYS, hasPermission } from "../config/utils/permissions";
+import { getDefaultAuthenticatedRoute } from "../config/utils/roleAccess";
 
 const Page = observer(() => {
   const { auth } = stores;
   const router = useRouter();
-  const role = String(auth.role || auth.user?.role || "").toLowerCase();
   const canViewDashboard = hasPermission(auth.user, PERMISSION_KEYS.VIEW_DASHBOARD);
   const isLoading = auth.isLoading || !auth.sessionReady;
+  const pageBg = useColorModeValue("gray.50", "gray.900");
+  const defaultRoute = auth.user
+    ? getDefaultAuthenticatedRoute(auth.user)
+    : "/login";
 
   useEffect(() => {
-    if (isLoading) {
+    if (isLoading || !auth.user) {
       return;
     }
 
-    if (role === "hradmin" || role === "hr") {
-      router.replace("/dashboard/hr");
-      return;
+    if (defaultRoute !== "/dashboard") {
+      router.replace(defaultRoute);
     }
+  }, [auth.user, defaultRoute, isLoading, router]);
 
-    if (role === "admin" || role === "departmenthead") {
-      router.replace("/dashboard/users");
-      return;
-    }
-
-    if (!role || role !== "superadmin") {
-      router.replace("/");
-    }
-  }, [isLoading, role, router]);
-
-  if (isLoading || role === "admin" || role === "departmenthead" || role === "hradmin" || role === "hr") {
+  if (isLoading || !auth.user || defaultRoute !== "/dashboard") {
     return (
       <Center h="100vh">
         <VStack spacing={4}>
@@ -48,8 +42,6 @@ const Page = observer(() => {
       </Center>
     );
   }
-
-  const pageBg = useColorModeValue("gray.50", "gray.900");
 
   return (
     <PermissionGate

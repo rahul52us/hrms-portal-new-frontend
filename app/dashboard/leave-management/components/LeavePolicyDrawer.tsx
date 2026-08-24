@@ -35,6 +35,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { FiPlus, FiTrash2 } from "react-icons/fi";
 import {
+  LeaveCreditComponent,
   LeavePolicyRule,
   LeaveTypeItem,
   PolicyVersion,
@@ -70,6 +71,31 @@ function calculateAccrualAmount(
   return Math.round((annualEntitlement / periods) * 10000) / 10000;
 }
 
+function createCreditComponentId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `credit-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function scheduledAnnualCredit(components: LeaveCreditComponent[]) {
+  return Math.round(
+    (components.reduce((total, component) => {
+      const periods = component.frequency === "monthly" ? 12 : component.frequency === "quarterly" ? 4 : 1;
+      return total + component.amount * periods;
+    }, 0) + Number.EPSILON) * 10000
+  ) / 10000;
+}
+
+function componentSummary(component: LeaveCreditComponent) {
+  const amount = formatCreditNumber(component.amount);
+  if (component.frequency === "monthly") return `${amount}/month`;
+  if (component.frequency === "quarterly") return `${amount}/quarter`;
+  return component.upfrontTiming === "first_eligibility"
+    ? `${amount} once when first eligible`
+    : `${amount} at leave-year start`;
+}
+
 function formatCreditNumber(value: number) {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 4 }).format(value);
 }
@@ -77,20 +103,6 @@ function formatCreditNumber(value: number) {
 function leaveUnitLabel(unit: LeaveTypeItem["unit"] | undefined, value: number) {
   if (unit === "hours") return value === 1 ? "hour" : "hours";
   return value === 1 ? "day" : "days";
-}
-
-function accrualFieldLabel(frequency: LeavePolicyRule["accrualFrequency"]) {
-  if (frequency === "monthly") return "Credit per month";
-  if (frequency === "quarterly") return "Credit per quarter";
-  if (frequency === "upfront") return "Upfront credit";
-  return "Automatic credit";
-}
-
-function accrualFieldHelp(frequency: LeavePolicyRule["accrualFrequency"]) {
-  if (frequency === "monthly") return "Annual entitlement divided into 12 monthly credits.";
-  if (frequency === "quarterly") return "Annual entitlement divided into 4 quarterly credits.";
-  if (frequency === "upfront") return "The full annual entitlement is credited at once.";
-  return "No leave balance is credited automatically.";
 }
 
 function OptionalPositiveNumberInput({
@@ -154,6 +166,9 @@ function accrualSummary(rule: LeavePolicyRule, leaveType?: LeaveTypeItem) {
   }
   const unit = leaveType?.unit;
   const entitlement = `${formatCreditNumber(rule.annualEntitlement)} ${leaveUnitLabel(unit, rule.annualEntitlement)}/year`;
+  if (rule.creditComponents.length) {
+    return `${entitlement} / ${rule.creditComponents.map(componentSummary).join(" + ")}`;
+  }
   const creditAmount = calculateAccrualAmount(rule.annualEntitlement, rule.accrualFrequency);
   if (rule.accrualFrequency === "monthly") {
     return `${entitlement} / ${formatCreditNumber(creditAmount)} ${leaveUnitLabel(unit, creditAmount)}/month`;
@@ -175,6 +190,16 @@ function emptyRule(leaveType: LeaveTypeItem): LeavePolicyRule {
     annualEntitlement: 0,
     accrualFrequency: leaveType.balanceTracked ? "upfront" : "none",
     accrualAmount: 0,
+    creditComponents: leaveType.balanceTracked
+      ? [{
+          componentId: createCreditComponentId(),
+          frequency: "upfront",
+          amount: 0,
+          upfrontTiming: "leave_year_start",
+          prorateOnJoining: true,
+          prorateOnExit: true,
+        }]
+      : [],
     prorateOnJoining: true,
     prorateOnExit: true,
     carryForwardEnabled: false,
@@ -196,14 +221,47 @@ function emptyRule(leaveType: LeaveTypeItem): LeavePolicyRule {
 }
 
 function normalizeSourceRule(rule: any): LeavePolicyRule {
-  const annualEntitlement = Number(rule.annualEntitlement || 0);
-  const accrualFrequency = rule.accrualFrequency || "upfront";
+  const storedAnnualEntitlement = Number(rule.annualEntitlement || 0);
+  const storedAccrualFrequency = rule.accrualFrequency || "upfront";
+  const storedComponents = Array.isArray(rule.creditComponents) ? rule.creditComponents : [];
+  const creditComponents: LeaveCreditComponent[] = storedComponents.length
+    ? storedComponents.map((component: any) => ({
+        componentId: String(component.componentId || createCreditComponentId()),
+        frequency: component.frequency || "monthly",
+        amount: Number(component.amount || 0),
+        upfrontTiming: component.upfrontTiming || "leave_year_start",
+        prorateOnJoining: component.prorateOnJoining !== false,
+        prorateOnExit: component.prorateOnExit !== false,
+      }))
+    : storedAccrualFrequency !== "none" && rule.balanceTracked !== false
+      ? [{
+          componentId: `legacy-${storedAccrualFrequency}`,
+          frequency: storedAccrualFrequency,
+          amount: Number(
+            rule.accrualAmount || calculateAccrualAmount(storedAnnualEntitlement, storedAccrualFrequency)
+          ),
+          upfrontTiming: "leave_year_start",
+          prorateOnJoining: rule.prorateOnJoining !== false,
+          prorateOnExit: rule.prorateOnExit !== false,
+        }]
+      : [];
+  const annualEntitlement = creditComponents.length
+    ? scheduledAnnualCredit(creditComponents)
+    : storedAnnualEntitlement;
+  const accrualFrequency = creditComponents.length === 1
+    ? creditComponents[0].frequency
+    : creditComponents.length > 1
+      ? "none"
+      : storedAccrualFrequency;
   return {
     ...rule,
     leaveType: String(rule.leaveType?._id || rule.leaveType || ""),
     annualEntitlement,
     accrualFrequency,
-    accrualAmount: calculateAccrualAmount(annualEntitlement, accrualFrequency),
+    accrualAmount: creditComponents.length === 1
+      ? creditComponents[0].amount
+      : calculateAccrualAmount(annualEntitlement, accrualFrequency),
+    creditComponents,
     maxCarryForward: Number(rule.maxCarryForward || 0),
     carryForwardExpiryMonths: Number(rule.carryForwardExpiryMonths || 0),
     maxEncashmentPerYear: Number(rule.maxEncashmentPerYear || 0),
@@ -282,6 +340,9 @@ export default function LeavePolicyDrawer({
     for (const rule of rules) {
       const leaveType = leaveTypeById.get(rule.leaveType);
       const code = leaveType?.code || rule.leaveTypeCodeSnapshot || "Leave type";
+      if (rule.creditComponents.some((component) => component.amount <= 0)) {
+        return `${code} automatic credit amounts must be greater than zero.`;
+      }
       if (rule.carryForwardEnabled && rule.maxCarryForward <= 0) {
         return `${code} maximum carry-forward must be greater than zero.`;
       }
@@ -332,6 +393,58 @@ export default function LeavePolicyDrawer({
   const updateRule = (index: number, patch: Partial<LeavePolicyRule>) => {
     setRules((current) =>
       current.map((rule, ruleIndex) => (ruleIndex === index ? { ...rule, ...patch } : rule))
+    );
+  };
+
+  const setCreditComponents = (ruleIndex: number, creditComponents: LeaveCreditComponent[]) => {
+    setRules((current) =>
+      current.map((rule, index) => {
+        if (index !== ruleIndex) return rule;
+        const annualEntitlement = creditComponents.length
+          ? scheduledAnnualCredit(creditComponents)
+          : rule.annualEntitlement;
+        const accrualFrequency = creditComponents.length === 1
+          ? creditComponents[0].frequency
+          : "none";
+        return {
+          ...rule,
+          annualEntitlement,
+          accrualFrequency,
+          accrualAmount: creditComponents.length === 1 ? creditComponents[0].amount : 0,
+          creditComponents,
+        };
+      })
+    );
+  };
+
+  const addCreditComponent = (ruleIndex: number) => {
+    const rule = rules[ruleIndex];
+    if (!rule || rule.creditComponents.length >= 20) return;
+    setCreditComponents(ruleIndex, [
+      ...rule.creditComponents,
+      {
+        componentId: createCreditComponentId(),
+        frequency: "monthly",
+        amount: 0,
+        upfrontTiming: "leave_year_start",
+        prorateOnJoining: true,
+        prorateOnExit: true,
+      },
+    ]);
+  };
+
+  const updateCreditComponent = (
+    ruleIndex: number,
+    componentIndex: number,
+    patch: Partial<LeaveCreditComponent>
+  ) => {
+    const rule = rules[ruleIndex];
+    if (!rule) return;
+    setCreditComponents(
+      ruleIndex,
+      rule.creditComponents.map((component, index) =>
+        index === componentIndex ? { ...component, ...patch } : component
+      )
     );
   };
 
@@ -502,10 +615,6 @@ export default function LeavePolicyDrawer({
                   {rules.map((rule, index) => {
                     const leaveType = leaveTypeById.get(rule.leaveType);
                     const balanceTracked = leaveType?.balanceTracked ?? rule.balanceTracked !== false;
-                    const creditAmount = calculateAccrualAmount(
-                      rule.annualEntitlement,
-                      rule.accrualFrequency
-                    );
                     const ruleUnit = leaveType?.unit === "hours" ? "hours" : "days";
                     const requestStep = ruleUnit === "hours" ? 0.25 : rule.allowHalfDay ? 0.5 : 1;
                     return (
@@ -522,46 +631,165 @@ export default function LeavePolicyDrawer({
                         </AccordionButton>
                         <AccordionPanel borderTopWidth="1px" py={5}>
                           <Stack spacing={5}>
-                            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
-                              <FormControl>
-                                <FormLabel fontSize="sm">Annual entitlement ({ruleUnit})</FormLabel>
-                                <OptionalPositiveNumberInput
-                                  value={rule.annualEntitlement}
-                                  isDisabled={!balanceTracked}
-                                  placeholder="e.g. 12"
-                                  onValueChange={(annualEntitlement) => {
-                                    updateRule(index, {
-                                      annualEntitlement,
-                                      accrualAmount: calculateAccrualAmount(annualEntitlement, rule.accrualFrequency),
-                                    });
-                                  }}
-                                />
-                              </FormControl>
-                              <FormControl>
-                                <FormLabel fontSize="sm">Credit frequency</FormLabel>
-                                <Select isDisabled={!balanceTracked} value={rule.accrualFrequency} onChange={(event) => {
-                                  const accrualFrequency = event.target.value as LeavePolicyRule["accrualFrequency"];
-                                  updateRule(index, {
-                                    accrualFrequency,
-                                    accrualAmount: calculateAccrualAmount(rule.annualEntitlement, accrualFrequency),
-                                  });
-                                }}>
-                                  <option value="upfront">Upfront</option>
-                                  <option value="monthly">Monthly</option>
-                                  <option value="quarterly">Quarterly</option>
-                                  <option value="none">No automatic credit</option>
-                                </Select>
-                              </FormControl>
-                              <FormControl>
-                                <FormLabel fontSize="sm">{accrualFieldLabel(rule.accrualFrequency)}</FormLabel>
-                                <Input
-                                  isReadOnly
-                                  variant="filled"
-                                  value={`${formatCreditNumber(creditAmount)} ${leaveUnitLabel(leaveType?.unit, creditAmount)}`}
-                                />
-                                <Text mt={1} fontSize="xs" color="gray.500">{accrualFieldHelp(rule.accrualFrequency)}</Text>
-                              </FormControl>
-                            </SimpleGrid>
+                            {balanceTracked ? (
+                              <Stack spacing={4}>
+                                <FormControl maxW={{ md: "280px" }}>
+                                  <FormLabel fontSize="sm">
+                                    {rule.creditComponents.length ? "Scheduled annual credit" : "Annual allowance"} ({ruleUnit})
+                                  </FormLabel>
+                                  {rule.creditComponents.length ? (
+                                    <Input
+                                      isReadOnly
+                                      variant="filled"
+                                      value={formatCreditNumber(rule.annualEntitlement)}
+                                    />
+                                  ) : (
+                                    <OptionalPositiveNumberInput
+                                      value={rule.annualEntitlement}
+                                      placeholder="e.g. 12"
+                                      onValueChange={(annualEntitlement) => updateRule(index, {
+                                        annualEntitlement,
+                                        accrualFrequency: "none",
+                                        accrualAmount: 0,
+                                      })}
+                                    />
+                                  )}
+                                  <Text mt={1} fontSize="xs" color="gray.500">
+                                    {rule.creditComponents.length
+                                      ? "Calculated from all automatic credits below."
+                                      : "No automatic credits. HR posts opening balances and adjustments manually."}
+                                  </Text>
+                                </FormControl>
+
+                                <Box>
+                                  <Flex justify="space-between" align="center" gap={3} mb={3}>
+                                    <Box>
+                                      <Text fontSize="sm" fontWeight="700">Automatic credit schedule</Text>
+                                      <Text fontSize="xs" color="gray.500">Combine upfront, monthly, or quarterly credits.</Text>
+                                    </Box>
+                                    <Button
+                                      size="xs"
+                                      variant="outline"
+                                      leftIcon={<FiPlus />}
+                                      onClick={() => addCreditComponent(index)}
+                                      isDisabled={rule.creditComponents.length >= 20}
+                                    >
+                                      Add credit
+                                    </Button>
+                                  </Flex>
+
+                                  {rule.creditComponents.length === 0 ? (
+                                    <Box borderWidth="1px" borderStyle="dashed" borderRadius="md" p={4}>
+                                      <Text fontSize="sm" color="gray.500">Automatic credit is disabled for this leave type.</Text>
+                                    </Box>
+                                  ) : (
+                                    <Stack spacing={3}>
+                                      {rule.creditComponents.map((component, componentIndex) => (
+                                        <Box key={component.componentId} borderWidth="1px" borderRadius="md" p={3}>
+                                          <Flex justify="space-between" align="start" gap={3}>
+                                            <SimpleGrid
+                                              flex="1"
+                                              columns={{ base: 1, md: component.frequency === "upfront" ? 3 : 2 }}
+                                              spacing={3}
+                                            >
+                                              <FormControl>
+                                                <FormLabel mb={1} fontSize="xs">Credit frequency</FormLabel>
+                                                <Select
+                                                  size="sm"
+                                                  value={component.frequency}
+                                                  onChange={(event) => {
+                                                    const frequency = event.target.value as LeaveCreditComponent["frequency"];
+                                                    updateCreditComponent(index, componentIndex, {
+                                                      componentId: component.componentId.startsWith("legacy-")
+                                                        ? createCreditComponentId()
+                                                        : component.componentId,
+                                                      frequency,
+                                                      upfrontTiming: "leave_year_start",
+                                                    });
+                                                  }}
+                                                >
+                                                  <option value="upfront">Upfront</option>
+                                                  <option value="monthly">Monthly</option>
+                                                  <option value="quarterly">Quarterly</option>
+                                                </Select>
+                                              </FormControl>
+                                              <FormControl isRequired>
+                                                <FormLabel mb={1} fontSize="xs">
+                                                  {component.frequency === "monthly"
+                                                    ? `Amount each month (${ruleUnit})`
+                                                    : component.frequency === "quarterly"
+                                                      ? `Amount each quarter (${ruleUnit})`
+                                                      : `Amount credited (${ruleUnit})`}
+                                                </FormLabel>
+                                                <OptionalPositiveNumberInput
+                                                  min={0.0001}
+                                                  step={0.0001}
+                                                  value={component.amount}
+                                                  onValueChange={(amount) => updateCreditComponent(index, componentIndex, { amount })}
+                                                  placeholder={component.frequency === "monthly" ? "e.g. 0.25" : "e.g. 10"}
+                                                />
+                                              </FormControl>
+                                              {component.frequency === "upfront" ? (
+                                                <FormControl>
+                                                  <FormLabel mb={1} fontSize="xs">When to credit</FormLabel>
+                                                  <Select
+                                                    size="sm"
+                                                    value={component.upfrontTiming}
+                                                    onChange={(event) => updateCreditComponent(index, componentIndex, {
+                                                      upfrontTiming: event.target.value as LeaveCreditComponent["upfrontTiming"],
+                                                    })}
+                                                  >
+                                                    <option value="leave_year_start">At each leave-year start</option>
+                                                    <option value="first_eligibility">Once, when first eligible</option>
+                                                  </Select>
+                                                </FormControl>
+                                              ) : null}
+                                            </SimpleGrid>
+                                            <Button
+                                              size="xs"
+                                              variant="ghost"
+                                              colorScheme="red"
+                                              aria-label="Remove automatic credit"
+                                              onClick={() => setCreditComponents(
+                                                index,
+                                                rule.creditComponents.filter((_, itemIndex) => itemIndex !== componentIndex)
+                                              )}
+                                            >
+                                              <FiTrash2 />
+                                            </Button>
+                                          </Flex>
+                                          <HStack mt={3} spacing={5} align="start" flexWrap="wrap">
+                                            <Checkbox
+                                              size="sm"
+                                              isChecked={component.prorateOnJoining}
+                                              onChange={(event) => updateCreditComponent(index, componentIndex, {
+                                                prorateOnJoining: event.target.checked,
+                                              })}
+                                            >
+                                              Prorate the joining period
+                                            </Checkbox>
+                                            <Checkbox
+                                              size="sm"
+                                              isChecked={component.prorateOnExit}
+                                              onChange={(event) => updateCreditComponent(index, componentIndex, {
+                                                prorateOnExit: event.target.checked,
+                                              })}
+                                            >
+                                              Prorate the exit period
+                                            </Checkbox>
+                                          </HStack>
+                                        </Box>
+                                      ))}
+                                    </Stack>
+                                  )}
+                                </Box>
+                              </Stack>
+                            ) : (
+                              <Alert status="info" borderRadius="md">
+                                <AlertIcon />
+                                <AlertDescription>This leave type does not track a balance or automatic credits.</AlertDescription>
+                              </Alert>
+                            )}
 
                             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
                               <FormControl isRequired>
@@ -609,9 +837,7 @@ export default function LeavePolicyDrawer({
                               </FormControl>
                             </SimpleGrid>
 
-                            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={3}>
-                              <Checkbox isChecked={rule.prorateOnJoining} onChange={(event) => updateRule(index, { prorateOnJoining: event.target.checked })}>Prorate on joining</Checkbox>
-                              <Checkbox isChecked={rule.prorateOnExit} onChange={(event) => updateRule(index, { prorateOnExit: event.target.checked })}>Prorate on exit</Checkbox>
+                            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
                               <Checkbox
                                 isChecked={rule.allowHalfDay}
                                 isDisabled={leaveType?.unit !== "days" || !leaveType?.allowHalfDay}

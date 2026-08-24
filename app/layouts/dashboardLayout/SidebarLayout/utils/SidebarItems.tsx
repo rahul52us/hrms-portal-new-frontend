@@ -80,12 +80,26 @@ const sidebarDatas: SidebarItem[] = [
     permissionKey: PERMISSION_KEYS.VIEW_WORKFORCE_POLICIES,
   },
   {
+    id: 106,
+    name: "My Leave",
+    icon: <FiCalendar />,
+    url: "/dashboard/my-leave",
+    role: ["departmenthead", "hradmin", "hr"],
+  },
+  {
+    id: 107,
+    name: "My Attendance",
+    icon: <FiClock />,
+    url: "/dashboard/my-attendance",
+    role: ["admin", "departmenthead", "hradmin", "hr"],
+  },
+  {
     id: 105,
     name: "Leave Management",
     icon: <FiCalendar />,
     url: "/dashboard/leave-management",
     role: ["admin", "departmenthead", "hradmin", "hr"],
-    permissionKey: PERMISSION_KEYS.VIEW_WORKFORCE_POLICIES,
+    permissionKey: PERMISSION_KEYS.VIEW_LEAVE_REQUESTS,
   },
   {
     id: 35,
@@ -224,6 +238,13 @@ const sidebarDatas: SidebarItem[] = [
     ],
   },
   {
+    id: 216,
+    name: "My Leave",
+    icon: <FiCalendar />,
+    url: "/employee/leave",
+    role: ["user"],
+  },
+  {
     id: 215,
     name: "My Profile",
     icon: <FiUser />,
@@ -299,7 +320,7 @@ const sidebarDatas: SidebarItem[] = [
     id: 216,
     name: "My Attendance",
     icon: <FiCalendar />,
-    url: "/employee#attendance",
+    url: "/dashboard/my-attendance",
     role: ["user"],
   },
   {
