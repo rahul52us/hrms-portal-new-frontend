@@ -215,12 +215,15 @@ export default function MyAttendanceWorkspace() {
                 {today.context.holiday ? (
                   <Alert status="info" borderRadius="md"><AlertIcon /><AlertDescription>{today.context.holiday.name}{today.context.holiday.isHalfDay ? " (half day)" : ""}</AlertDescription></Alert>
                 ) : null}
+                {today.remoteWorkAuthorization ? (
+                  <Alert status="info" borderRadius="md"><AlertIcon /><AlertDescription>Approved {today.remoteWorkAuthorization.portion === "full" ? "WFH" : "half-day WFH"} applies today. Punch in normally; attendance will use {today.remoteWorkAuthorization.workMode} work mode.</AlertDescription></Alert>
+                ) : null}
                 {today.context.missingPolicies.length ? (
                   <Alert status="warning" borderRadius="md"><AlertIcon /><AlertDescription>Attendance setup is incomplete: {today.context.missingPolicies.map(titleCase).join(", ")}.</AlertDescription></Alert>
                 ) : null}
 
                 <HStack spacing={5} flexWrap="wrap" fontSize="sm">
-                  <Box><Text color={muted} fontSize="xs">Work mode</Text><Text fontWeight="700">{titleCase(record?.workMode || "office")}</Text></Box>
+                  <Box><Text color={muted} fontSize="xs">Work mode</Text><Text fontWeight="700">{titleCase(record?.workMode || today.remoteWorkAuthorization?.workMode || "office")}</Text></Box>
                   <Box><Text color={muted} fontSize="xs">Worked</Text><Text fontWeight="700">{formatMinutes(record?.workedMinutes || 0)}</Text></Box>
                   <Box><Text color={muted} fontSize="xs">Expected</Text><Text fontWeight="700">{formatMinutes(today.context.expectedWorkMinutes || 0)}</Text></Box>
                   <Box><Text color={muted} fontSize="xs">Sessions</Text><Text fontWeight="700">{record?.punchSessions?.length || 0}</Text></Box>

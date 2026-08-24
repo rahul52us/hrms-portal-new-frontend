@@ -3,7 +3,7 @@ import { expandRoleAliases } from "@/app/config/utils/roleAccess";
 import { PERMISSION_KEYS, hasPermission } from "@/app/config/utils/permissions";
 import { LucideBriefcaseBusiness, Network } from "lucide-react";
 import { BiCategory } from "react-icons/bi";
-import { FiBell, FiCalendar, FiCamera, FiClock, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers, FiPieChart, FiDatabase } from "react-icons/fi";
+import { FiBell, FiCalendar, FiCamera, FiClock, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers, FiPieChart, FiDatabase, FiWifi } from "react-icons/fi";
 
 interface SidebarItem {
   id: number;
@@ -31,6 +31,13 @@ const sidebarDatas: SidebarItem[] = [
     url: "/dashboard/hr",
     role: ["admin", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_DASHBOARD,
+  },
+  {
+    id: 200,
+    name: "Dashboard",
+    icon: <FiPieChart />,
+    url: "/employee",
+    role: ["user", "departmenthead"],
   },
   {
     id: 3,
@@ -102,6 +109,13 @@ const sidebarDatas: SidebarItem[] = [
     permissionKey: PERMISSION_KEYS.VIEW_LEAVE_REQUESTS,
   },
   {
+    id: 109,
+    name: "Work From Home",
+    icon: <FiWifi />,
+    url: "/dashboard/remote-work",
+    role: ["admin", "departmenthead", "hradmin", "hr"],
+  },
+  {
     id: 35,
     name: "Master Settings",
     icon: <FiDatabase />,
@@ -129,13 +143,6 @@ const sidebarDatas: SidebarItem[] = [
     icon: <FiBell />,
     url: "/dashboard/notifications",
     role: ["superadmin"],
-  },
-  {
-    id: 200,
-    name: "Home",
-    icon: <FiUser />,
-    url: "/employee",
-    role: ["user"],
   },
   {
     id: 201,
@@ -238,13 +245,6 @@ const sidebarDatas: SidebarItem[] = [
     ],
   },
   {
-    id: 216,
-    name: "My Leave",
-    icon: <FiCalendar />,
-    url: "/employee/leave",
-    role: ["user"],
-  },
-  {
     id: 215,
     name: "My Profile",
     icon: <FiUser />,
@@ -339,7 +339,7 @@ const sidebarDatas: SidebarItem[] = [
       },
       {
         id: 219,
-        name: "Leave/OD/WFH",
+        name: "Leave",
         icon: <FiFileText />,
         url: "/dashboard/request/leave",
         role: ["user"],

@@ -79,7 +79,11 @@ const formatDate = (value: string) => new Intl.DateTimeFormat("en-IN", {
   timeZone: "UTC",
 }).format(new Date(`${value.slice(0, 10)}T00:00:00Z`));
 
-export default function MyLeaveWorkspace() {
+type MyLeaveWorkspaceProps = {
+  embedded?: boolean;
+};
+
+export default function MyLeaveWorkspace({ embedded = false }: MyLeaveWorkspaceProps) {
   const toast = useToast();
   const drawer = useDisclosure();
   const surface = useColorModeValue("white", "gray.800");
@@ -216,8 +220,13 @@ export default function MyLeaveWorkspace() {
   };
 
   return (
-    <Box minH="100dvh" bg={pageBg} px={{ base: 3, md: 6 }} py={{ base: 4, md: 6 }}>
-      <Stack maxW="1400px" mx="auto" spacing={5}>
+    <Box
+      minH={embedded ? undefined : "100dvh"}
+      bg={embedded ? "transparent" : pageBg}
+      px={embedded ? 0 : { base: 3, md: 6 }}
+      py={embedded ? 0 : { base: 4, md: 6 }}
+    >
+      <Stack maxW={embedded ? undefined : "1400px"} mx={embedded ? undefined : "auto"} spacing={5}>
         <Flex direction={{ base: "column", md: "row" }} justify="space-between" align={{ md: "center" }} gap={3}>
           <Box>
             <Heading size="lg">My leave</Heading>

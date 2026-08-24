@@ -81,7 +81,7 @@ const PolicyCard = ({
 }: {
   title: string;
   resolved: ResolvedPolicyResource | null;
-  kind: "attendance" | "schedule" | "holiday" | "leave";
+  kind: "attendance" | "schedule" | "holiday" | "leave" | "remote";
 }) => {
   const borderColor = useColorModeValue("gray.200", "gray.700");
   const muted = useColorModeValue("gray.600", "gray.400");
@@ -106,6 +106,7 @@ const PolicyCard = ({
   const scheduleRules = kind === "schedule" ? (version.rules as any) : null;
   const holidays = kind === "holiday" && Array.isArray(version.holidays) ? version.holidays : [];
   const leaveRules = kind === "leave" && Array.isArray(version.rules) ? version.rules : [];
+  const remoteRules = kind === "remote" && !Array.isArray(version.rules) ? version.rules as any : null;
 
   return (
     <Box borderWidth="1px" borderColor={borderColor} borderRadius="md" p={4} minH={{ base: "auto", lg: "210px" }}>
@@ -158,6 +159,13 @@ const PolicyCard = ({
                 {rule.leaveTypeCodeSnapshot}: {formatCredit(rule.annualEntitlement)}/year, {leaveRuleSchedule(rule)}
               </Text>
             ))}
+          </>
+        ) : null}
+        {remoteRules ? (
+          <>
+            <Text><strong>Approval:</strong> {String(remoteRules.approvalMode || "").replaceAll("_", " ")}</Text>
+            <Text><strong>Limits:</strong> {remoteRules.maxDaysPerWeek || "Unlimited"}/week, {remoteRules.maxDaysPerMonth || "unlimited"}/month</Text>
+            <Text><strong>Notice:</strong> {remoteRules.minimumNoticeDays || 0} calendar days</Text>
           </>
         ) : null}
       </Stack>
@@ -247,11 +255,12 @@ export default function EmployeePolicyTab({
             </Alert>
           ) : null}
 
-          <SimpleGrid columns={{ base: 1, lg: 2, xl: 4 }} spacing={4}>
+          <SimpleGrid columns={{ base: 1, lg: 2, xl: 5 }} spacing={4}>
             <PolicyCard title="Attendance policy" resolved={resolution.attendancePolicy} kind="attendance" />
             <PolicyCard title="Work schedule" resolved={resolution.workSchedule} kind="schedule" />
             <PolicyCard title="Holiday calendar" resolved={resolution.holidayCalendar} kind="holiday" />
             <PolicyCard title="Leave policy" resolved={resolution.leavePolicy} kind="leave" />
+            <PolicyCard title="WFH policy" resolved={resolution.remoteWorkPolicy} kind="remote" />
           </SimpleGrid>
 
           <Box borderWidth="1px" borderColor={borderColor} borderRadius="md" p={4}>

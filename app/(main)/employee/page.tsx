@@ -1,7 +1,8 @@
 "use client";
 
 import stores from "@/app/store/stores";
-import { getDefaultAuthenticatedRoute, isEmployeeRole } from "@/app/config/utils/roleAccess";
+import { getDefaultAuthenticatedRoute, isEmployeeDashboardRole } from "@/app/config/utils/roleAccess";
+import ManagerApprovalInbox from "@/app/component/approvals/ManagerApprovalInbox";
 import {
   Badge,
   Box,
@@ -179,7 +180,7 @@ const EmployeePage = observer(() => {
   const router = useRouter();
   const { user, sessionReady } = stores.auth;
   const role = String(stores.auth.role || user?.role || "");
-  const isEmployee = Boolean(user) && isEmployeeRole(role);
+  const isEmployee = Boolean(user) && isEmployeeDashboardRole(role);
   const accountStatus = String(user?.status || "PENDING").toUpperCase();
 
   useEffect(() => {
@@ -192,7 +193,7 @@ const EmployeePage = observer(() => {
       return;
     }
 
-    if (!isEmployeeRole(role)) {
+    if (!isEmployeeDashboardRole(role)) {
       router.replace(getDefaultAuthenticatedRoute(user));
     }
   }, [role, router, sessionReady, user]);
@@ -249,7 +250,7 @@ const EmployeePage = observer(() => {
                 Employee Workspace
               </Text>
               <Text mt={1} fontSize={{ base: "24px", md: "30px" }} fontWeight="900" color={strongText}>
-                Employee Self Service
+                My Dashboard
               </Text>
             </Box>
             <Button as={Link} href="/dashboard/user-profile" size="sm" borderRadius="8px" colorScheme="blue" leftIcon={<FiUser />}>
@@ -392,6 +393,8 @@ const EmployeePage = observer(() => {
 
           <GridItem>
             <Stack spacing={5}>
+              <ManagerApprovalInbox />
+
               <Box
                 bg={cardBg}
                 border="1px solid"

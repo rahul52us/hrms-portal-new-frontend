@@ -58,6 +58,7 @@ import {
   FiLink,
   FiPlus,
   FiSearch,
+  FiWifi,
 } from "react-icons/fi";
 import AttendancePolicyDrawer from "./components/AttendancePolicyDrawer";
 import HolidayCalendarDrawer from "./components/HolidayCalendarDrawer";
@@ -69,6 +70,7 @@ import WorkScheduleDrawer from "./components/WorkScheduleDrawer";
 import PolicyAssignmentsPanel from "./components/PolicyAssignmentsPanel";
 import PolicyAuditPanel from "./components/PolicyAuditPanel";
 import PolicyCoveragePanel from "./components/PolicyCoveragePanel";
+import RemoteWorkPolicyDrawer from "./components/RemoteWorkPolicyDrawer";
 
 type EditorState = {
   type: PolicyResourceType;
@@ -208,6 +210,9 @@ const WorkforcePoliciesWorkspace = observer(() => {
   const filteredCalendars = workforcePolicyStore.holidayCalendars.filter((item) =>
     `${item.name} ${item.code}`.toLowerCase().includes(search.toLowerCase())
   );
+  const filteredRemoteWork = workforcePolicyStore.remoteWorkPolicies.filter((item) =>
+    `${item.name} ${item.code}`.toLowerCase().includes(search.toLowerCase())
+  );
   const activeAssignments = workforcePolicyStore.assignments.filter(
     (assignment) => assignment.state === "active" || assignment.state === "scheduled"
   ).length;
@@ -245,9 +250,11 @@ const WorkforcePoliciesWorkspace = observer(() => {
         ? "attendance policies"
         : type === "work_schedule"
           ? "work schedules"
-          : "holiday calendars";
+          : type === "holiday_calendar"
+            ? "holiday calendars"
+            : "WFH policies";
     const createLabel =
-      type === "attendance_policy" ? "policy" : type === "work_schedule" ? "schedule" : "calendar";
+      type === "attendance_policy" ? "policy" : type === "work_schedule" ? "schedule" : type === "holiday_calendar" ? "calendar" : "WFH policy";
     if (workforcePolicyStore.loading) {
       return <Stack spacing={3}><Skeleton h="72px" /><Skeleton h="72px" /><Skeleton h="72px" /></Stack>;
     }
@@ -255,7 +262,7 @@ const WorkforcePoliciesWorkspace = observer(() => {
       return (
         <Center borderWidth="1px" borderStyle="dashed" borderColor={borderColor} borderRadius="md" py={12}>
           <Stack align="center" spacing={3}>
-            <Icon as={type === "attendance_policy" ? FiClock : type === "work_schedule" ? FiBriefcase : FiCalendar} boxSize={7} color="gray.400" />
+            <Icon as={type === "attendance_policy" ? FiClock : type === "work_schedule" ? FiBriefcase : type === "holiday_calendar" ? FiCalendar : FiWifi} boxSize={7} color="gray.400" />
             <Text color={muted}>No {emptyLabel} found.</Text>
             {canManage ? (
               <Button size="sm" leftIcon={<FiPlus />} onClick={() => openEditor(type, "create")}>Create first {createLabel}</Button>
@@ -328,7 +335,7 @@ const WorkforcePoliciesWorkspace = observer(() => {
             <Box>
               <Heading size={{ base: "md", md: "lg" }}>Workforce policies</Heading>
               <Text mt={1} fontSize="sm" color={muted}>
-                Effective-dated attendance policies, work schedules, holiday calendars, and assignments for {activeCompany?.company_name || "the selected company"}.
+                Effective-dated attendance, schedules, holidays, WFH rules, and assignments for {activeCompany?.company_name || "the selected company"}.
               </Text>
             </Box>
             <SimpleGrid columns={{ base: 2, md: 4 }} spacing={3} minW={{ lg: "620px" }}>
@@ -350,14 +357,14 @@ const WorkforcePoliciesWorkspace = observer(() => {
           <Box bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">
             <Tabs index={tabIndex} onChange={setTabIndex} colorScheme="blue" isLazy>
               <Flex direction={{ base: "column", md: "row" }} justify="space-between" gap={3} px={4} pt={4}>
-                <TabList overflowX="auto"><Tab whiteSpace="nowrap">Attendance policies</Tab><Tab whiteSpace="nowrap">Work schedules</Tab><Tab whiteSpace="nowrap">Holiday calendars</Tab><Tab whiteSpace="nowrap">Assignments</Tab><Tab whiteSpace="nowrap">Coverage</Tab><Tab whiteSpace="nowrap">Audit log</Tab></TabList>
+                <TabList overflowX="auto"><Tab whiteSpace="nowrap">Attendance policies</Tab><Tab whiteSpace="nowrap">Work schedules</Tab><Tab whiteSpace="nowrap">Holiday calendars</Tab><Tab whiteSpace="nowrap">WFH policies</Tab><Tab whiteSpace="nowrap">Assignments</Tab><Tab whiteSpace="nowrap">Coverage</Tab><Tab whiteSpace="nowrap">Audit log</Tab></TabList>
                 <HStack pb={{ base: 0, md: 2 }}>
-                  {tabIndex < 3 ? (
+                  {tabIndex < 4 ? (
                     <InputGroup size="sm" maxW="260px"><InputLeftElement><FiSearch /></InputLeftElement><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" /></InputGroup>
                   ) : null}
-                  {canManage && companyId && tabIndex <= 3 ? (
-                    <Button size="sm" colorScheme="blue" leftIcon={<FiPlus />} flexShrink={0} onClick={() => tabIndex === 0 ? openEditor("attendance_policy", "create") : tabIndex === 1 ? openEditor("work_schedule", "create") : tabIndex === 2 ? openEditor("holiday_calendar", "create") : openAssignment()}>
-                      {tabIndex === 0 ? "New policy" : tabIndex === 1 ? "New schedule" : tabIndex === 2 ? "New calendar" : "New assignment"}
+                  {canManage && companyId && tabIndex <= 4 ? (
+                    <Button size="sm" colorScheme="blue" leftIcon={<FiPlus />} flexShrink={0} onClick={() => tabIndex === 0 ? openEditor("attendance_policy", "create") : tabIndex === 1 ? openEditor("work_schedule", "create") : tabIndex === 2 ? openEditor("holiday_calendar", "create") : tabIndex === 3 ? openEditor("remote_work_policy", "create") : openAssignment()}>
+                      {tabIndex === 0 ? "New policy" : tabIndex === 1 ? "New schedule" : tabIndex === 2 ? "New calendar" : tabIndex === 3 ? "New WFH policy" : "New assignment"}
                     </Button>
                   ) : null}
                 </HStack>
@@ -366,6 +373,7 @@ const WorkforcePoliciesWorkspace = observer(() => {
                 <TabPanel><PolicyList type="attendance_policy" items={filteredAttendance} /></TabPanel>
                 <TabPanel><PolicyList type="work_schedule" items={filteredSchedules} /></TabPanel>
                 <TabPanel><PolicyList type="holiday_calendar" items={filteredCalendars} /></TabPanel>
+                <TabPanel><PolicyList type="remote_work_policy" items={filteredRemoteWork} /></TabPanel>
                 <TabPanel>
                   <PolicyAssignmentsPanel companyId={companyId} canManage={canManage} borderColor={borderColor} muted={muted} onEndAssignment={openAssignment} />
                 </TabPanel>
@@ -374,7 +382,7 @@ const WorkforcePoliciesWorkspace = observer(() => {
                     companyId={companyId}
                     borderColor={borderColor}
                     muted={muted}
-                    onManageAssignments={() => setTabIndex(3)}
+                    onManageAssignments={() => setTabIndex(4)}
                   />
                 </TabPanel>
                 <TabPanel><PolicyAuditPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel>
@@ -386,8 +394,9 @@ const WorkforcePoliciesWorkspace = observer(() => {
         <AttendancePolicyDrawer isOpen={editorDisclosure.isOpen && editor.type === "attendance_policy"} onClose={editorDisclosure.onClose} companyId={companyId} mode={editor.mode} resource={editor.resource} version={editor.version} onSaved={refresh} />
         <WorkScheduleDrawer isOpen={editorDisclosure.isOpen && editor.type === "work_schedule"} onClose={editorDisclosure.onClose} companyId={companyId} mode={editor.mode} resource={editor.resource} version={editor.version} onSaved={refresh} />
         <HolidayCalendarDrawer isOpen={editorDisclosure.isOpen && editor.type === "holiday_calendar"} onClose={editorDisclosure.onClose} companyId={companyId} mode={editor.mode} resource={editor.resource} version={editor.version} onSaved={refresh} />
+        <RemoteWorkPolicyDrawer isOpen={editorDisclosure.isOpen && editor.type === "remote_work_policy"} onClose={editorDisclosure.onClose} companyId={companyId} mode={editor.mode} resource={editor.resource} version={editor.version} onSaved={refresh} />
         <PolicyHistoryDrawer isOpen={historyDisclosure.isOpen} onClose={historyDisclosure.onClose} resourceType={history.type} resource={history.resource} />
-        <PolicyAssignmentDrawer isOpen={assignmentDisclosure.isOpen} onClose={assignmentDisclosure.onClose} companyId={companyId} attendancePolicies={workforcePolicyStore.attendancePolicies} workSchedules={workforcePolicyStore.workSchedules} holidayCalendars={workforcePolicyStore.holidayCalendars} leavePolicies={workforcePolicyStore.leavePolicies} scopeOptions={scopeOptions} assignment={endingAssignment} onSaved={refresh} />
+        <PolicyAssignmentDrawer isOpen={assignmentDisclosure.isOpen} onClose={assignmentDisclosure.onClose} companyId={companyId} attendancePolicies={workforcePolicyStore.attendancePolicies} workSchedules={workforcePolicyStore.workSchedules} holidayCalendars={workforcePolicyStore.holidayCalendars} leavePolicies={workforcePolicyStore.leavePolicies} remoteWorkPolicies={workforcePolicyStore.remoteWorkPolicies} scopeOptions={scopeOptions} assignment={endingAssignment} onSaved={refresh} />
       </Box>
     </PermissionGate>
   );

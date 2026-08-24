@@ -41,6 +41,7 @@ const getResourceTypeLabel = (type: string) => {
   if (type === "attendance_policy") return "Attendance";
   if (type === "work_schedule") return "Schedule";
   if (type === "holiday_calendar") return "Holiday";
+  if (type === "remote_work_policy") return "WFH";
   return "Leave";
 };
 
@@ -105,6 +106,7 @@ const PolicyAssignmentsPanel = observer(({
             <option value="work_schedule">Work schedules</option>
             <option value="holiday_calendar">Holiday calendars</option>
             <option value="leave_policy">Leave policies</option>
+            <option value="remote_work_policy">WFH policies</option>
           </Select>
         )}
         <Select
@@ -164,7 +166,7 @@ const PolicyAssignmentsPanel = observer(({
                 <Box minW={0}>
                   <HStack flexWrap="wrap">
                     <Text fontWeight="800">{getResourceName(assignment)}</Text>
-                    <Badge colorScheme={assignment.resourceType === "attendance_policy" ? "blue" : assignment.resourceType === "work_schedule" ? "cyan" : assignment.resourceType === "holiday_calendar" ? "purple" : "green"}>
+                    <Badge colorScheme={assignment.resourceType === "attendance_policy" ? "blue" : assignment.resourceType === "work_schedule" ? "cyan" : assignment.resourceType === "holiday_calendar" ? "purple" : assignment.resourceType === "remote_work_policy" ? "orange" : "green"}>
                       {getResourceTypeLabel(assignment.resourceType)}
                     </Badge>
                     <Badge colorScheme={assignment.state === "active" ? "green" : assignment.state === "scheduled" ? "orange" : "gray"}>

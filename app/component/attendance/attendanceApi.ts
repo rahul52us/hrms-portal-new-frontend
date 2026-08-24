@@ -46,6 +46,12 @@ export type TodayAttendance = {
     missingPolicies: string[];
     warnings: string[];
   };
+  remoteWorkAuthorization?: {
+    requestId: string;
+    portion: "full" | "first_half" | "second_half";
+    workMode: "remote" | "hybrid";
+    remoteWorkPolicyVersionNumber?: number;
+  } | null;
   actions: { canPunchIn: boolean; canPunchOut: boolean };
 };
 

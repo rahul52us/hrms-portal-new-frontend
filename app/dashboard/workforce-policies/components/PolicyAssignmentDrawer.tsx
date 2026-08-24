@@ -35,6 +35,7 @@ const ALL_POLICY_RESOURCE_TYPES: PolicyResourceType[] = [
   "work_schedule",
   "holiday_calendar",
   "leave_policy",
+  "remote_work_policy",
 ];
 
 export type AssignmentScopeOption = {
@@ -51,6 +52,7 @@ type Props = {
   workSchedules: WorkforcePolicyItem[];
   holidayCalendars: WorkforcePolicyItem[];
   leavePolicies?: WorkforcePolicyItem[];
+  remoteWorkPolicies?: WorkforcePolicyItem[];
   allowedResourceTypes?: PolicyResourceType[];
   initialResourceType?: PolicyResourceType;
   initialResourceId?: string;
@@ -71,6 +73,7 @@ export default function PolicyAssignmentDrawer({
   workSchedules,
   holidayCalendars,
   leavePolicies = [],
+  remoteWorkPolicies = [],
   allowedResourceTypes = ALL_POLICY_RESOURCE_TYPES,
   initialResourceType = "attendance_policy",
   initialResourceId = "",
@@ -110,7 +113,9 @@ export default function PolicyAssignmentDrawer({
         ? workSchedules
         : resourceType === "holiday_calendar"
           ? holidayCalendars
-          : leavePolicies;
+          : resourceType === "leave_policy"
+            ? leavePolicies
+            : remoteWorkPolicies;
   const availableResources = resources.filter((resource) => resource.latestPublishedVersion);
   const availableScopes = scopeOptions.filter((option) => option.type === scopeType);
   const validationError = useMemo(() => {
@@ -213,6 +218,9 @@ export default function PolicyAssignmentDrawer({
                     ) : null}
                     {allowedResourceTypes.includes("leave_policy") ? (
                       <option value="leave_policy">Leave policy</option>
+                    ) : null}
+                    {allowedResourceTypes.includes("remote_work_policy") ? (
+                      <option value="remote_work_policy">WFH policy</option>
                     ) : null}
                   </Select>
                 </FormControl>

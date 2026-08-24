@@ -6,7 +6,8 @@ export type PolicyResourceType =
   | "attendance_policy"
   | "work_schedule"
   | "holiday_calendar"
-  | "leave_policy";
+  | "leave_policy"
+  | "remote_work_policy";
 export type PolicyScopeType = "company" | "location" | "department" | "team" | "employee";
 
 export interface AttendanceRules {
@@ -29,6 +30,20 @@ export interface WorkScheduleRules {
   startTime: string;
   endTime: string;
   unpaidBreakMinutes: number;
+}
+
+export interface RemoteWorkRules {
+  approvalMode: "reporting_manager" | "hr" | "manager_then_hr" | "auto_approve";
+  allowedWeekdays: string[];
+  maxDaysPerWeek: number;
+  maxDaysPerMonth: number;
+  maxConsecutiveDays: number;
+  minimumNoticeDays: number;
+  maximumAdvanceDays: number;
+  allowHalfDay: boolean;
+  requireReason: boolean;
+  minimumReasonLength: number;
+  probationEligibility: "allowed" | "after_confirmation" | "not_allowed";
 }
 
 export interface LeaveTypeItem {
@@ -91,7 +106,7 @@ export interface PolicyVersion {
   effectiveFrom?: string | null;
   effectiveTo?: string | null;
   changeReason?: string;
-  rules?: AttendanceRules | WorkScheduleRules | LeavePolicyRule[];
+  rules?: AttendanceRules | WorkScheduleRules | RemoteWorkRules | LeavePolicyRule[];
   leaveYearStartMonth?: number;
   leaveYearStartDay?: number;
   timezone?: string;
@@ -149,6 +164,7 @@ export interface EmployeePolicyResolution {
   workSchedule: ResolvedPolicyResource | null;
   holidayCalendar: ResolvedPolicyResource | null;
   leavePolicy: ResolvedPolicyResource | null;
+  remoteWorkPolicy: ResolvedPolicyResource | null;
   warnings: string[];
 }
 
@@ -183,6 +199,7 @@ class WorkforcePolicyStore {
   holidayCalendars: WorkforcePolicyItem[] = [];
   leaveTypes: LeaveTypeItem[] = [];
   leavePolicies: WorkforcePolicyItem[] = [];
+  remoteWorkPolicies: WorkforcePolicyItem[] = [];
   assignments: WorkforcePolicyAssignment[] = [];
   assignmentsPagination: PaginationState = { ...EMPTY_PAGINATION };
   assignmentsLoading = false;
@@ -200,6 +217,7 @@ class WorkforcePolicyStore {
     schedule?: WorkforcePolicyItem;
     calendar?: WorkforcePolicyItem;
     leavePolicy?: WorkforcePolicyItem;
+    remoteWorkPolicy?: WorkforcePolicyItem;
     versions: PolicyVersion[];
   } | null = null;
   activeCompanyId = "";
@@ -220,6 +238,7 @@ class WorkforcePolicyStore {
     this.holidayCalendars = [];
     this.leaveTypes = [];
     this.leavePolicies = [];
+    this.remoteWorkPolicies = [];
     this.assignments = [];
     this.assignmentsPagination = { ...EMPTY_PAGINATION };
     this.auditLogs = [];
@@ -252,17 +271,19 @@ class WorkforcePolicyStore {
       this.holidayCalendars = [];
       this.leaveTypes = [];
       this.leavePolicies = [];
+      this.remoteWorkPolicies = [];
       this.assignments = [];
       this.assignmentsPagination = { ...EMPTY_PAGINATION };
     }
     this.activeCompanyId = companyId;
     try {
-      const [attendance, schedules, calendars, leaveTypes, leavePolicies, assignments] = await Promise.all([
+      const [attendance, schedules, calendars, leaveTypes, leavePolicies, remoteWorkPolicies, assignments] = await Promise.all([
         axios.get("/workforce-policies/attendance", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/work-schedules", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/holiday-calendars", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/leave-types", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/leave-policies", { params: { companyId, limit: 100 } }),
+        axios.get("/workforce-policies/remote-work-policies", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/assignments", { params: { companyId, limit: 100 } }),
       ]);
       runInAction(() => {
@@ -271,6 +292,7 @@ class WorkforcePolicyStore {
         this.holidayCalendars = calendars.data?.data || [];
         this.leaveTypes = leaveTypes.data?.data || [];
         this.leavePolicies = leavePolicies.data?.data || [];
+        this.remoteWorkPolicies = remoteWorkPolicies.data?.data || [];
         this.assignments = assignments.data?.data || [];
         this.assignmentsPagination = assignments.data?.pagination || { ...EMPTY_PAGINATION };
       });
@@ -411,8 +433,10 @@ class WorkforcePolicyStore {
           : resourceType === "work_schedule"
             ? `/workforce-policies/work-schedules/${resourceId}`
             : resourceType === "holiday_calendar"
-              ? `/workforce-policies/holiday-calendars/${resourceId}`
-              : `/workforce-policies/leave-policies/${resourceId}`;
+            ? `/workforce-policies/holiday-calendars/${resourceId}`
+              : resourceType === "leave_policy"
+                ? `/workforce-policies/leave-policies/${resourceId}`
+                : `/workforce-policies/remote-work-policies/${resourceId}`;
       const response = await axios.get(path, { params: { companyId } });
       runInAction(() => {
         if (requestSequence === this.detailRequestSequence) {
@@ -757,6 +781,50 @@ class WorkforcePolicyStore {
       runInAction(() => {
         this.submitting = false;
       });
+    }
+  };
+
+  createRemoteWorkPolicy = async (payload: any) => {
+    this.submitting = true;
+    try {
+      return (await axios.post("/workforce-policies/remote-work-policies", payload)).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to create WFH policy"));
+    } finally {
+      runInAction(() => { this.submitting = false; });
+    }
+  };
+
+  updateRemoteWorkDraft = async (policyId: string, versionId: string, payload: any) => {
+    this.submitting = true;
+    try {
+      return (await axios.put(`/workforce-policies/remote-work-policies/${policyId}/versions/${versionId}`, payload)).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to update WFH policy draft"));
+    } finally {
+      runInAction(() => { this.submitting = false; });
+    }
+  };
+
+  createRemoteWorkVersion = async (policyId: string, payload: any) => {
+    this.submitting = true;
+    try {
+      return (await axios.post(`/workforce-policies/remote-work-policies/${policyId}/versions`, payload)).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to create WFH policy version"));
+    } finally {
+      runInAction(() => { this.submitting = false; });
+    }
+  };
+
+  publishRemoteWorkVersion = async (policyId: string, versionId: string, payload: any) => {
+    this.submitting = true;
+    try {
+      return (await axios.post(`/workforce-policies/remote-work-policies/${policyId}/versions/${versionId}/publish`, payload)).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to publish WFH policy"));
+    } finally {
+      runInAction(() => { this.submitting = false; });
     }
   };
 

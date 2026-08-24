@@ -38,7 +38,12 @@ export function isLearnerRole(value: unknown) {
 
 export function isEmployeeRole(value: unknown) {
   const role = normalizeRole(value);
-  return role === "user";
+  return role === "user" || role === "manager" || /^l\d+-manager$/i.test(role);
+}
+
+export function isEmployeeDashboardRole(value: unknown) {
+  const role = normalizeRole(value);
+  return isEmployeeRole(role) || role === "departmenthead";
 }
 
 export function isManagerRole(value: unknown) {
@@ -61,7 +66,7 @@ export function getDefaultAuthenticatedRoute(user: any) {
     user?.effectiveRole || user?.activeMembership?.role || user?.role
   );
 
-  if (isEmployeeRole(role)) {
+  if (isEmployeeDashboardRole(role)) {
     return "/employee";
   }
 
@@ -69,7 +74,7 @@ export function getDefaultAuthenticatedRoute(user: any) {
     return "/dashboard/hr";
   }
 
-  if (role === "admin" || role === "departmenthead") {
+  if (role === "admin") {
     return "/dashboard/users";
   }
 

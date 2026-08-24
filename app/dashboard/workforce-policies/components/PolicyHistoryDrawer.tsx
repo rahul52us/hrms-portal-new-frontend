@@ -22,6 +22,7 @@ import {
   AttendanceRules,
   LeavePolicyRule,
   PolicyResourceType,
+  RemoteWorkRules,
   WorkforcePolicyItem,
   WorkScheduleRules,
   workforcePolicyStore,
@@ -157,6 +158,14 @@ const PolicyHistoryDrawer = observer(function PolicyHistoryDrawer({
                         </Text>
                       ))}
                     </Stack>
+                  ) : null}
+                  {resourceType === "remote_work_policy" && version.rules && !Array.isArray(version.rules) ? (
+                    <HStack mt={3} spacing={4} wrap="wrap" color="gray.600">
+                      <Text fontSize="xs">Approval: {(version.rules as RemoteWorkRules).approvalMode.replaceAll("_", " ")}</Text>
+                      <Text fontSize="xs">Weekly limit: {(version.rules as RemoteWorkRules).maxDaysPerWeek || "No limit"}</Text>
+                      <Text fontSize="xs">Monthly limit: {(version.rules as RemoteWorkRules).maxDaysPerMonth || "No limit"}</Text>
+                      <Text fontSize="xs">Notice: {(version.rules as RemoteWorkRules).minimumNoticeDays} days</Text>
+                    </HStack>
                   ) : null}
                 </Box>
               ))}
