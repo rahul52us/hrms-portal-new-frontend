@@ -61,6 +61,11 @@ const formatCredit = (value: number) =>
   new Intl.NumberFormat("en-IN", { maximumFractionDigits: 4 }).format(Number(value || 0));
 
 const leaveRuleSchedule = (rule: any) => {
+  if (rule.entitlementMode === "earned") {
+    return `earned comp-off; ${rule.compOffHalfDayMinutes || 240} min = 0.5 day, ${rule.compOffFullDayMinutes || 480} min = 1 day; valid ${rule.compOffValidityDays || 90} days`;
+  }
+  if (rule.entitlementMode === "manual") return "credited manually by HR";
+  if (rule.entitlementMode === "untracked" || rule.balanceTracked === false) return "balance not tracked";
   const components = Array.isArray(rule.creditComponents) ? rule.creditComponents : [];
   if (!components.length) {
     return rule.accrualFrequency === "none" ? "manual credits" : String(rule.accrualFrequency || "manual credits");
@@ -156,7 +161,9 @@ const PolicyCard = ({
             <Text><strong>Leave types:</strong> {leaveRules.map((rule: any) => rule.leaveTypeCodeSnapshot).filter(Boolean).join(", ") || "--"}</Text>
             {leaveRules.slice(0, 3).map((rule: any) => (
               <Text key={String(rule.leaveType?._id || rule.leaveType)} fontSize="xs" color={muted}>
-                {rule.leaveTypeCodeSnapshot}: {formatCredit(rule.annualEntitlement)}/year, {leaveRuleSchedule(rule)}
+                {rule.leaveTypeCodeSnapshot}: {rule.entitlementMode === "earned" || rule.entitlementMode === "manual" || rule.entitlementMode === "untracked" || rule.balanceTracked === false
+                  ? leaveRuleSchedule(rule)
+                  : `${formatCredit(rule.annualEntitlement)}/year, ${leaveRuleSchedule(rule)}`}
               </Text>
             ))}
           </>

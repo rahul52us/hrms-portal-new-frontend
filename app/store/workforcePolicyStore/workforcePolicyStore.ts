@@ -77,6 +77,7 @@ export interface LeavePolicyRule {
   leaveTypeNameSnapshot?: string;
   paid?: boolean;
   balanceTracked?: boolean;
+  entitlementMode: "fixed" | "earned" | "manual" | "untracked";
   annualEntitlement: number;
   accrualFrequency: "upfront" | "monthly" | "quarterly" | "none";
   accrualAmount: number;
@@ -97,6 +98,9 @@ export interface LeavePolicyRule {
   documentRequiredAfterDays?: number | null;
   probationEligibility: "allowed" | "after_confirmation" | "not_allowed";
   sandwichRuleEnabled: boolean;
+  compOffValidityDays: number;
+  compOffFullDayMinutes: number;
+  compOffHalfDayMinutes: number;
 }
 
 export interface PolicyVersion {

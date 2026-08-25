@@ -54,6 +54,7 @@ import LeavePolicyDrawer from "./components/LeavePolicyDrawer";
 import LeaveTypeDrawer from "./components/LeaveTypeDrawer";
 import LeaveRequestsPanel from "./components/LeaveRequestsPanel";
 import LeaveBalancesPanel from "./components/LeaveBalancesPanel";
+import CompOffClaimsPanel from "./components/CompOffClaimsPanel";
 
 const LEAVE_RESOURCE_TYPES = ["leave_policy"] as const;
 
@@ -343,6 +344,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
                   {canViewConfiguration ? <Tab whiteSpace="nowrap">Assignments</Tab> : null}
                   {canViewConfiguration ? <Tab whiteSpace="nowrap">Coverage</Tab> : null}
                   {canViewOperations ? <Tab whiteSpace="nowrap">Requests</Tab> : null}
+                  {canViewOperations ? <Tab whiteSpace="nowrap">Comp-off claims</Tab> : null}
                   {canViewOperations ? <Tab whiteSpace="nowrap">Balances</Tab> : null}
                 </TabList>
                 <HStack pb={{ md: 2 }}>
@@ -360,6 +362,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
                 {canViewConfiguration ? <TabPanel><PolicyAssignmentsPanel companyId={companyId} canManage={canManage} borderColor={borderColor} muted={muted} lockedResourceType="leave_policy" onEndAssignment={(assignment) => openAssignment(assignment)} /></TabPanel> : null}
                 {canViewConfiguration ? <TabPanel><LeaveCoveragePanel companyId={companyId} borderColor={borderColor} muted={muted} onManageAssignments={() => setTabIndex(2)} /></TabPanel> : null}
                 {canViewOperations ? <TabPanel><LeaveRequestsPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel> : null}
+                {canViewOperations ? <TabPanel><CompOffClaimsPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel> : null}
                 {canViewOperations ? <TabPanel><LeaveBalancesPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel> : null}
               </TabPanels>
             </Tabs>

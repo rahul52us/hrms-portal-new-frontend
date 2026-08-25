@@ -12,6 +12,11 @@ import {
   fetchRemoteWorkRequests,
 } from "@/app/component/remote-work/remoteWorkApi";
 import {
+  CompOffClaim,
+  actOnCompOffClaim,
+  fetchCompOffClaims,
+} from "@/app/component/comp-off/compOffApi";
+import {
   Badge,
   Box,
   Button,
@@ -39,7 +44,8 @@ import { FiCheck, FiClock, FiEye, FiRefreshCw, FiX } from "react-icons/fi";
 
 type ApprovalItem =
   | { kind: "leave"; request: LeaveRequest }
-  | { kind: "remote_work"; request: RemoteWorkRequest };
+  | { kind: "remote_work"; request: RemoteWorkRequest }
+  | { kind: "comp_off"; request: CompOffClaim };
 
 const formatDate = (value: string) => new Intl.DateTimeFormat("en-IN", {
   day: "2-digit",
@@ -57,9 +63,13 @@ function requestEmployee(item: ApprovalItem) {
 }
 
 function requestTitle(item: ApprovalItem) {
-  return item.kind === "leave"
-    ? `${item.request.leaveTypeNameSnapshot} (${item.request.leaveTypeCodeSnapshot})`
-    : "Work from home";
+  if (item.kind === "leave") {
+    return `${item.request.leaveTypeNameSnapshot} (${item.request.leaveTypeCodeSnapshot})`;
+  }
+  if (item.kind === "comp_off") {
+    return `${item.request.leaveType?.name || "Comp-off"} (${item.request.leaveType?.code || "CO"})`;
+  }
+  return "Work from home";
 }
 
 function requestUnits(item: ApprovalItem) {
@@ -69,8 +79,24 @@ function requestUnits(item: ApprovalItem) {
       : item.request.leaveUnit;
     return `${item.request.chargedUnits} ${unit}`;
   }
+  if (item.kind === "comp_off") {
+    return `${item.request.requestedUnits} ${item.request.requestedUnits === 1 ? "day" : "days"} credit`;
+  }
   return `${item.request.requestedUnits} ${item.request.requestedUnits === 1 ? "day" : "days"}`;
 }
+
+function requestDates(item: ApprovalItem) {
+  if (item.kind === "comp_off") {
+    return { from: item.request.attendanceDate, to: item.request.attendanceDate };
+  }
+  return { from: item.request.fromDate, to: item.request.toDate };
+}
+
+const kindLabel = (kind: ApprovalItem["kind"]) =>
+  kind === "leave" ? "Leave" : kind === "remote_work" ? "WFH" : "Comp-off";
+
+const kindColor = (kind: ApprovalItem["kind"]) =>
+  kind === "leave" ? "blue" : kind === "remote_work" ? "purple" : "teal";
 
 export default function ManagerApprovalInbox() {
   const toast = useToast();
@@ -80,6 +106,7 @@ export default function ManagerApprovalInbox() {
   const muted = useColorModeValue("gray.600", "gray.400");
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [remoteWorkRequests, setRemoteWorkRequests] = useState<RemoteWorkRequest[]>([]);
+  const [compOffClaims, setCompOffClaims] = useState<CompOffClaim[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -89,13 +116,19 @@ export default function ManagerApprovalInbox() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [leaveResult, remoteWorkResult] = await Promise.all([
+      const [leaveResult, remoteWorkResult, compOffResult] = await Promise.all([
         fetchLeaveRequests({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
         fetchRemoteWorkRequests({ scope: "approvals", page: 1, limit: 20 }),
+        fetchCompOffClaims({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
       ]);
       setLeaveRequests(leaveResult.items || []);
       setRemoteWorkRequests(remoteWorkResult.items || []);
-      setTotal(Number(leaveResult.pagination?.total || 0) + Number(remoteWorkResult.pagination?.total || 0));
+      setCompOffClaims(compOffResult.items || []);
+      setTotal(
+        Number(leaveResult.pagination?.total || 0) +
+        Number(remoteWorkResult.pagination?.total || 0) +
+        Number(compOffResult.pagination?.total || 0)
+      );
     } catch (error: any) {
       toast({
         title: getApiErrorMessage(error?.response?.data || error, "Could not load assigned approvals"),
@@ -113,9 +146,10 @@ export default function ManagerApprovalInbox() {
   const items = useMemo<ApprovalItem[]>(() => [
     ...leaveRequests.map((request) => ({ kind: "leave" as const, request })),
     ...remoteWorkRequests.map((request) => ({ kind: "remote_work" as const, request })),
+    ...compOffClaims.map((request) => ({ kind: "comp_off" as const, request })),
   ].sort((left, right) => (
     new Date(right.request.submittedAt).getTime() - new Date(left.request.submittedAt).getTime()
-  )), [leaveRequests, remoteWorkRequests]);
+  )), [compOffClaims, leaveRequests, remoteWorkRequests]);
 
   const open = (item: ApprovalItem) => {
     setSelected(item);
@@ -133,8 +167,10 @@ export default function ManagerApprovalInbox() {
     try {
       if (selected.kind === "leave") {
         await actOnLeaveRequest(selected.request._id, action, { comment: comment.trim() || undefined });
-      } else {
+      } else if (selected.kind === "remote_work") {
         await actOnRemoteWorkRequest(selected.request._id, action, { comment: comment.trim() || undefined });
+      } else {
+        await actOnCompOffClaim(selected.request._id, action, { comment: comment.trim() || undefined });
       }
       toast({ title: action === "approve" ? "Request approved" : "Request rejected", status: "success" });
       details.onClose();
@@ -171,7 +207,7 @@ export default function ManagerApprovalInbox() {
               <Heading size="md">Needs your approval</Heading>
               <Badge colorScheme="orange" borderRadius="full" px={2.5}>{total}</Badge>
             </HStack>
-            <Text mt={1} fontSize="sm" color={muted}>Leave and work-from-home requests assigned to you.</Text>
+            <Text mt={1} fontSize="sm" color={muted}>Leave, work-from-home, and comp-off requests assigned to you.</Text>
           </Box>
           <Button size="sm" variant="outline" leftIcon={<FiRefreshCw />} onClick={load}>Refresh</Button>
         </Flex>
@@ -195,14 +231,14 @@ export default function ManagerApprovalInbox() {
                   <HStack flexWrap="wrap">
                     <Text fontWeight="800">{employee.name}</Text>
                     {employee.code ? <Text fontSize="xs" color={muted}>{employee.code}</Text> : null}
-                    <Badge colorScheme={item.kind === "leave" ? "blue" : "purple"} textTransform="none">
-                      {item.kind === "leave" ? "Leave" : "WFH"}
+                    <Badge colorScheme={kindColor(item.kind)} textTransform="none">
+                      {kindLabel(item.kind)}
                     </Badge>
                   </HStack>
                   <Text mt={1} fontSize="sm" fontWeight="700">{requestTitle(item)}</Text>
                   <HStack mt={1} color={muted} fontSize="xs" flexWrap="wrap">
                     <FiClock />
-                    <Text>{formatDate(item.request.fromDate)}{item.request.fromDate !== item.request.toDate ? ` to ${formatDate(item.request.toDate)}` : ""}</Text>
+                    <Text>{formatDate(requestDates(item).from)}{requestDates(item).from !== requestDates(item).to ? ` to ${formatDate(requestDates(item).to)}` : ""}</Text>
                     <Text>|</Text>
                     <Text>{requestUnits(item)}</Text>
                   </HStack>
@@ -226,14 +262,15 @@ export default function ManagerApprovalInbox() {
                 <Box>
                   <HStack flexWrap="wrap">
                     <Heading size="md">{requestEmployee(selected).name}</Heading>
-                    <Badge colorScheme={selected.kind === "leave" ? "blue" : "purple"}>{selected.kind === "leave" ? "Leave" : "WFH"}</Badge>
+                    <Badge colorScheme={kindColor(selected.kind)}>{kindLabel(selected.kind)}</Badge>
                   </HStack>
                   <Text mt={1} color={muted} fontSize="sm">{requestEmployee(selected).code}</Text>
                 </Box>
                 <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}>
                   <Text fontWeight="800">{requestTitle(selected)}</Text>
-                  <Text mt={1}>{formatDate(selected.request.fromDate)}{selected.request.fromDate !== selected.request.toDate ? ` to ${formatDate(selected.request.toDate)}` : ""}</Text>
+                  <Text mt={1}>{formatDate(requestDates(selected).from)}{requestDates(selected).from !== requestDates(selected).to ? ` to ${formatDate(requestDates(selected).to)}` : ""}</Text>
                   <Text mt={1} color={muted} fontSize="sm">{requestUnits(selected)}</Text>
+                  {selected.kind === "comp_off" ? <Text mt={1} color={muted} fontSize="sm">{selected.request.workedMinutesSnapshot} worked minutes on {selected.request.dayTypeSnapshot.replace(/_/g, " ")}</Text> : null}
                 </Box>
                 <Box>
                   <Text fontSize="xs" color={muted}>Reason</Text>

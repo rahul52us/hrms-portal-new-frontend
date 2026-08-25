@@ -51,6 +51,10 @@ function formatCredit(value: number) {
 
 function leaveRuleSummary(rule: LeavePolicyRule) {
   if (rule.balanceTracked === false) return "No balance";
+  if (rule.entitlementMode === "earned") {
+    return `Earned comp-off / ${rule.compOffHalfDayMinutes} min = 0.5 day / ${rule.compOffFullDayMinutes} min = 1 day / valid ${rule.compOffValidityDays} days`;
+  }
+  if (rule.entitlementMode === "manual") return "Credited manually by HR";
   const components = Array.isArray(rule.creditComponents) ? rule.creditComponents : [];
   if (!components.length) {
     return `${formatCredit(rule.annualEntitlement)}/year / ${rule.accrualFrequency === "none" ? "manual credits" : rule.accrualFrequency}`;

@@ -2,6 +2,7 @@
 
 import MyLeaveWorkspace from "@/app/component/leave/MyLeaveWorkspace";
 import RemoteWorkWorkspace from "@/app/component/remote-work/RemoteWorkWorkspace";
+import CompOffWorkspace from "@/app/component/comp-off/CompOffWorkspace";
 import {
   Box,
   Tab,
@@ -31,6 +32,7 @@ export default function EmployeeRequestsWorkspace() {
         >
           <Tab whiteSpace="nowrap">Leave</Tab>
           <Tab whiteSpace="nowrap">Work from home</Tab>
+          <Tab whiteSpace="nowrap">Comp-off</Tab>
         </TabList>
         <TabPanels mt={5}>
           <TabPanel p={0}>
@@ -38,6 +40,9 @@ export default function EmployeeRequestsWorkspace() {
           </TabPanel>
           <TabPanel p={0}>
             <RemoteWorkWorkspace embedded />
+          </TabPanel>
+          <TabPanel p={0}>
+            <CompOffWorkspace embedded />
           </TabPanel>
         </TabPanels>
       </Tabs>

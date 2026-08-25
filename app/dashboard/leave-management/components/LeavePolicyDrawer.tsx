@@ -164,6 +164,12 @@ function accrualSummary(rule: LeavePolicyRule, leaveType?: LeaveTypeItem) {
   if (leaveType?.balanceTracked === false || rule.balanceTracked === false) {
     return "Balance is not tracked";
   }
+  if (rule.entitlementMode === "earned") {
+    return `Earned from off-day attendance / expires after ${rule.compOffValidityDays} days`;
+  }
+  if (rule.entitlementMode === "manual") {
+    return "Balance is credited manually by HR";
+  }
   const unit = leaveType?.unit;
   const entitlement = `${formatCreditNumber(rule.annualEntitlement)} ${leaveUnitLabel(unit, rule.annualEntitlement)}/year`;
   if (rule.creditComponents.length) {
@@ -187,6 +193,7 @@ function emptyRule(leaveType: LeaveTypeItem): LeavePolicyRule {
     leaveTypeNameSnapshot: leaveType.name,
     paid: leaveType.paid,
     balanceTracked: leaveType.balanceTracked,
+    entitlementMode: leaveType.balanceTracked ? "fixed" : "untracked",
     annualEntitlement: 0,
     accrualFrequency: leaveType.balanceTracked ? "upfront" : "none",
     accrualAmount: 0,
@@ -217,14 +224,22 @@ function emptyRule(leaveType: LeaveTypeItem): LeavePolicyRule {
     documentRequiredAfterDays: null,
     probationEligibility: "allowed",
     sandwichRuleEnabled: false,
+    compOffValidityDays: 90,
+    compOffFullDayMinutes: 480,
+    compOffHalfDayMinutes: 240,
   };
 }
 
 function normalizeSourceRule(rule: any): LeavePolicyRule {
+  const entitlementMode = String(
+    rule.entitlementMode || (rule.balanceTracked === false ? "untracked" : "fixed")
+  ) as LeavePolicyRule["entitlementMode"];
   const storedAnnualEntitlement = Number(rule.annualEntitlement || 0);
   const storedAccrualFrequency = rule.accrualFrequency || "upfront";
   const storedComponents = Array.isArray(rule.creditComponents) ? rule.creditComponents : [];
-  const creditComponents: LeaveCreditComponent[] = storedComponents.length
+  const creditComponents: LeaveCreditComponent[] = entitlementMode !== "fixed"
+    ? []
+    : storedComponents.length
     ? storedComponents.map((component: any) => ({
         componentId: String(component.componentId || createCreditComponentId()),
         frequency: component.frequency || "monthly",
@@ -245,7 +260,9 @@ function normalizeSourceRule(rule: any): LeavePolicyRule {
           prorateOnExit: rule.prorateOnExit !== false,
         }]
       : [];
-  const annualEntitlement = creditComponents.length
+  const annualEntitlement = entitlementMode === "earned" || entitlementMode === "untracked"
+    ? 0
+    : creditComponents.length
     ? scheduledAnnualCredit(creditComponents)
     : storedAnnualEntitlement;
   const accrualFrequency = creditComponents.length === 1
@@ -256,6 +273,7 @@ function normalizeSourceRule(rule: any): LeavePolicyRule {
   return {
     ...rule,
     leaveType: String(rule.leaveType?._id || rule.leaveType || ""),
+    entitlementMode,
     annualEntitlement,
     accrualFrequency,
     accrualAmount: creditComponents.length === 1
@@ -270,6 +288,9 @@ function normalizeSourceRule(rule: any): LeavePolicyRule {
     maximumRequestDays: rule.maximumRequestDays ?? null,
     minimumNoticeDays: Number(rule.minimumNoticeDays || 0),
     documentRequiredAfterDays: rule.documentRequiredAfterDays ?? null,
+    compOffValidityDays: Number(rule.compOffValidityDays || 90),
+    compOffFullDayMinutes: Number(rule.compOffFullDayMinutes || 480),
+    compOffHalfDayMinutes: Number(rule.compOffHalfDayMinutes || 240),
   };
 }
 
@@ -331,7 +352,7 @@ export default function LeavePolicyDrawer({
     const emptyEntitlementRule = rules.find((rule) => {
       const leaveType = leaveTypeById.get(rule.leaveType);
       const balanceTracked = leaveType?.balanceTracked ?? rule.balanceTracked !== false;
-      return balanceTracked && rule.annualEntitlement <= 0;
+      return balanceTracked && rule.entitlementMode === "fixed" && rule.annualEntitlement <= 0;
     });
     if (emptyEntitlementRule) {
       const leaveType = leaveTypeById.get(emptyEntitlementRule.leaveType);
@@ -340,8 +361,19 @@ export default function LeavePolicyDrawer({
     for (const rule of rules) {
       const leaveType = leaveTypeById.get(rule.leaveType);
       const code = leaveType?.code || rule.leaveTypeCodeSnapshot || "Leave type";
-      if (rule.creditComponents.some((component) => component.amount <= 0)) {
+      if (rule.entitlementMode === "fixed" && rule.creditComponents.some((component) => component.amount <= 0)) {
         return `${code} automatic credit amounts must be greater than zero.`;
+      }
+      if (rule.entitlementMode === "earned") {
+        if (rule.compOffValidityDays < 1 || rule.compOffValidityDays > 730) {
+          return `${code} credit validity must be between 1 and 730 days.`;
+        }
+        if (rule.compOffHalfDayMinutes < 1 || rule.compOffFullDayMinutes < 1) {
+          return `${code} earning thresholds must be greater than zero.`;
+        }
+        if (rule.compOffHalfDayMinutes > rule.compOffFullDayMinutes) {
+          return `${code} half-day threshold cannot exceed the full-day threshold.`;
+        }
       }
       if (rule.carryForwardEnabled && rule.maxCarryForward <= 0) {
         return `${code} maximum carry-forward must be greater than zero.`;
@@ -632,6 +664,49 @@ export default function LeavePolicyDrawer({
                         <AccordionPanel borderTopWidth="1px" py={5}>
                           <Stack spacing={5}>
                             {balanceTracked ? (
+                              <FormControl maxW={{ md: "360px" }}>
+                                <FormLabel fontSize="sm">How employees receive this balance</FormLabel>
+                                <Select
+                                  value={rule.entitlementMode}
+                                  onChange={(event) => {
+                                    const entitlementMode = event.target.value as LeavePolicyRule["entitlementMode"];
+                                    updateRule(index, entitlementMode === "fixed"
+                                      ? {
+                                          entitlementMode,
+                                          annualEntitlement: 0,
+                                          accrualFrequency: "upfront",
+                                          creditComponents: [{
+                                            componentId: createCreditComponentId(),
+                                            frequency: "upfront",
+                                            amount: 0,
+                                            upfrontTiming: "leave_year_start",
+                                            prorateOnJoining: true,
+                                            prorateOnExit: true,
+                                          }],
+                                        }
+                                      : {
+                                          entitlementMode,
+                                          annualEntitlement: 0,
+                                          accrualFrequency: "none",
+                                          accrualAmount: 0,
+                                          creditComponents: [],
+                                          carryForwardEnabled: false,
+                                          encashmentEnabled: false,
+                                          negativeBalanceAllowed: false,
+                                        });
+                                  }}
+                                >
+                                  <option value="fixed">Automatic annual allowance</option>
+                                  <option value="earned">Earned comp-off from attendance</option>
+                                  <option value="manual">Credited manually by HR</option>
+                                </Select>
+                                <Text mt={1} fontSize="xs" color="gray.500">
+                                  Comp-off credits are created only after eligible off-day work is approved.
+                                </Text>
+                              </FormControl>
+                            ) : null}
+
+                            {balanceTracked && rule.entitlementMode === "fixed" ? (
                               <Stack spacing={4}>
                                 <FormControl maxW={{ md: "280px" }}>
                                   <FormLabel fontSize="sm">
@@ -784,6 +859,53 @@ export default function LeavePolicyDrawer({
                                   )}
                                 </Box>
                               </Stack>
+                            ) : balanceTracked && rule.entitlementMode === "earned" ? (
+                              <Box borderWidth="1px" borderRadius="md" p={4}>
+                                <Text fontSize="sm" fontWeight="700">Comp-off earning rules</Text>
+                                <Text mt={1} fontSize="xs" color="gray.500">
+                                  Employees claim credit after completing attendance on a weekly off or mandatory holiday.
+                                </Text>
+                                <SimpleGrid mt={4} columns={{ base: 1, md: 3 }} spacing={4}>
+                                  <FormControl isRequired>
+                                    <FormLabel fontSize="sm">Credit valid for (days)</FormLabel>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      max={730}
+                                      value={rule.compOffValidityDays}
+                                      onChange={(event) => updateRule(index, { compOffValidityDays: Number(event.target.value || 0) })}
+                                    />
+                                    <Text mt={1} fontSize="xs" color="gray.500">Also expires at the leave-year end, whichever comes first.</Text>
+                                  </FormControl>
+                                  <FormControl isRequired>
+                                    <FormLabel fontSize="sm">Full-day credit after (minutes)</FormLabel>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      max={1440}
+                                      value={rule.compOffFullDayMinutes}
+                                      onChange={(event) => updateRule(index, { compOffFullDayMinutes: Number(event.target.value || 0) })}
+                                    />
+                                    <Text mt={1} fontSize="xs" color="gray.500">Example: 480 minutes gives 1 day.</Text>
+                                  </FormControl>
+                                  <FormControl isRequired>
+                                    <FormLabel fontSize="sm">Half-day credit after (minutes)</FormLabel>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      max={1440}
+                                      value={rule.compOffHalfDayMinutes}
+                                      onChange={(event) => updateRule(index, { compOffHalfDayMinutes: Number(event.target.value || 0) })}
+                                    />
+                                    <Text mt={1} fontSize="xs" color="gray.500">Example: 240 minutes gives 0.5 day.</Text>
+                                  </FormControl>
+                                </SimpleGrid>
+                              </Box>
+                            ) : balanceTracked && rule.entitlementMode === "manual" ? (
+                              <Alert status="info" borderRadius="md">
+                                <AlertIcon />
+                                <AlertDescription>HR must post opening balances or manual adjustments. No automatic credits are created.</AlertDescription>
+                              </Alert>
                             ) : (
                               <Alert status="info" borderRadius="md">
                                 <AlertIcon />
@@ -862,7 +984,7 @@ export default function LeavePolicyDrawer({
                               <Checkbox isChecked={rule.sandwichRuleEnabled} onChange={(event) => updateRule(index, { sandwichRuleEnabled: event.target.checked })}>Count sandwich days</Checkbox>
                             </SimpleGrid>
 
-                            {balanceTracked ? (
+                            {balanceTracked && rule.entitlementMode === "fixed" ? (
                               <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
                                 <Box borderWidth="1px" borderRadius="md" p={3}>
                                   <Checkbox isChecked={rule.carryForwardEnabled} onChange={(event) => updateRule(index, { carryForwardEnabled: event.target.checked })}>Carry forward unused balance</Checkbox>
