@@ -1,6 +1,7 @@
 "use client";
 
 import axios from "axios";
+import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
 import {
   Alert,
   AlertDescription,
@@ -9,13 +10,6 @@ import {
   Button,
   Checkbox,
   CheckboxGroup,
-  Drawer,
-  DrawerBody,
-  DrawerCloseButton,
-  DrawerContent,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerOverlay,
   Flex,
   FormControl,
   FormHelperText,
@@ -214,101 +208,96 @@ export default function ApprovalWorkflowDrawer({
   };
 
   return (
-    <Drawer isOpen={isOpen} placement="right" onClose={onClose} size="xl">
-      <DrawerOverlay />
-      <DrawerContent>
-        <DrawerCloseButton />
-        <DrawerHeader borderBottomWidth="1px">
-          <Text fontSize="lg" fontWeight="800">
-            {mode === "create" ? "New approval workflow" : mode === "new_version" ? `New version of ${workflow?.name}` : `Edit ${workflow?.name} draft`}
-          </Text>
-          <Text mt={1} fontSize="sm" fontWeight="400" color="gray.500">
-            Levels run in order. Request effects are applied only after the final level approves.
-          </Text>
-        </DrawerHeader>
-        <DrawerBody py={5}>
-          <Stack spacing={6}>
-            {mode !== "create" ? (
-              <Alert status="info" borderRadius="md"><AlertIcon /><AlertDescription fontSize="sm">Published versions remain attached to historical requests.</AlertDescription></Alert>
-            ) : null}
-            <Box>
-              <Text mb={3} fontSize="sm" fontWeight="800">Workflow identity</Text>
-              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                <FormControl isRequired isDisabled={mode !== "create"}><FormLabel>Name</FormLabel><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Manager then HR" /></FormControl>
-                <FormControl isRequired isDisabled={mode !== "create"}><FormLabel>Code</FormLabel><Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="MGR-HR" /></FormControl>
-              </SimpleGrid>
-              {mode === "create" ? <FormControl mt={4}><FormLabel>Description</FormLabel><Textarea value={description} onChange={(event) => setDescription(event.target.value)} /></FormControl> : null}
-            </Box>
-            <FormControl isDisabled={mode !== "create"}>
-              <FormLabel>Used for</FormLabel>
-              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={3}>
-                {REQUEST_TYPES.map((item) => (
-                  <Checkbox
-                    key={item.value}
-                    id={`approval-workflow-request-type-${item.value}`}
-                    name={`approval-workflow-request-type-${item.value}`}
-                    isChecked={applicableTo.includes(item.value)}
-                    isDisabled={mode !== "create"}
-                    onChange={(event) => toggleRequestType(item.value, event.target.checked)}
-                  >
-                    {item.label}
-                  </Checkbox>
-                ))}
-              </SimpleGrid>
-            </FormControl>
-            <FormControl display="flex" justifyContent="space-between" alignItems="center">
-              <Box><FormLabel mb={0}>Auto approve</FormLabel><FormHelperText mt={0}>Use only when the request needs no human decision.</FormHelperText></Box>
-              <Switch isChecked={autoApprove} onChange={(event) => setAutoApprove(event.target.checked)} />
-            </FormControl>
-            {!autoApprove ? (
-              <Box>
-                <Flex mb={3} justify="space-between" align="center">
-                  <Box><Text fontSize="sm" fontWeight="800">Approval levels</Text><Text fontSize="xs" color="gray.500">An approver cannot approve their own request.</Text></Box>
-                  <Button size="sm" leftIcon={<FiPlus />} onClick={() => setSteps((current) => [...current, emptyStep(current.length)])}>Add level</Button>
-                </Flex>
-                <Stack spacing={3}>
-                  {steps.map((step, index) => (
-                    <Box key={`${step.order}-${index}`} borderWidth="1px" borderRadius="md" p={4}>
-                      <Flex justify="space-between" align="center" mb={4}>
-                        <Text fontWeight="800">Level {index + 1}</Text>
-                        <HStack spacing={1}>
-                          <IconButton size="xs" variant="ghost" aria-label="Move level up" icon={<FiArrowUp />} isDisabled={index === 0} onClick={() => moveStep(index, -1)} />
-                          <IconButton size="xs" variant="ghost" aria-label="Move level down" icon={<FiArrowDown />} isDisabled={index === steps.length - 1} onClick={() => moveStep(index, 1)} />
-                          <IconButton size="xs" variant="ghost" colorScheme="red" aria-label="Remove level" icon={<FiTrash2 />} onClick={() => setSteps((current) => normalizeSteps(current.filter((_, itemIndex) => itemIndex !== index)))} />
-                        </HStack>
-                      </Flex>
-                      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                        <FormControl isRequired><FormLabel>Level name</FormLabel><Input value={step.name} onChange={(event) => updateStep(index, { name: event.target.value })} placeholder="Manager approval" /></FormControl>
-                        <FormControl isRequired><FormLabel>Approver source</FormLabel><Select value={step.approverType} onChange={(event) => updateStep(index, { approverType: event.target.value as ApprovalStepType, approverUserIds: [] })}>{STEP_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</Select></FormControl>
-                      </SimpleGrid>
-                      {step.approverType === "specific_users" ? (
-                        <Box mt={4}>
-                          <FormControl><FormLabel>Find users</FormLabel><Input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Search by name, username, or code" /></FormControl>
-                          <CheckboxGroup value={step.approverUserIds as string[]} onChange={(values) => updateStep(index, { approverUserIds: values as string[] })}>
-                            <Stack mt={2} maxH="180px" overflowY="auto" borderWidth="1px" borderRadius="md" p={3}>
-                              {userOptions.length ? userOptions.map((user) => <Checkbox key={user._id} value={user._id}>{user.name || user.username} <Text as="span" fontSize="xs" color="gray.500">{user.code || user.role}</Text></Checkbox>) : <Text fontSize="sm" color="gray.500">No matching users.</Text>}
-                            </Stack>
-                          </CheckboxGroup>
-                        </Box>
-                      ) : null}
-                      <SimpleGrid mt={4} columns={{ base: 1, md: 2 }} spacing={4}>
-                        <FormControl><FormLabel>When multiple approvers resolve</FormLabel><Select value={step.approvalRule} onChange={(event) => updateStep(index, { approvalRule: event.target.value as "any" | "all" })}><option value="any">Any one can approve</option><option value="all">All must approve</option></Select></FormControl>
-                        {step.approverType !== "hr" ? <FormControl display="flex" alignItems="center" pt={{ md: 8 }}><Checkbox isChecked={step.fallbackToHr} onChange={(event) => updateStep(index, { fallbackToHr: event.target.checked })}>Use scoped HR when this approver is missing</Checkbox></FormControl> : null}
-                      </SimpleGrid>
-                    </Box>
-                  ))}
-                </Stack>
-              </Box>
-            ) : null}
-            <FormControl isRequired={mode !== "create"}><FormLabel>Change reason</FormLabel><Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} placeholder="Why this approval flow is changing" /></FormControl>
-          </Stack>
-        </DrawerBody>
-        <DrawerFooter borderTopWidth="1px" gap={3}>
+    <DashboardDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      titlePrefix={mode === "create" ? "New" : mode === "new_version" ? "New version of" : "Edit"}
+      titleSuffix={mode === "create" ? "approval workflow" : `${workflow?.name || "workflow"}${mode === 'edit_draft' ? ' draft' : ''}`}
+      subtitle="Levels run in order. Request effects are applied only after the final level approves."
+      maxW={{ base: "100%", md: "70%" }}
+      footerContent={
+        <Flex w="full" justify="flex-end" gap={3}>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button variant="outline" onClick={() => save(false)} isLoading={workforcePolicyStore.submitting}>Save draft</Button>
           <Button colorScheme="blue" onClick={() => save(true)} isLoading={workforcePolicyStore.submitting} isDisabled={Boolean(validationError)}>Save and publish</Button>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+        </Flex>
+      }
+    >
+      <Stack spacing={6} maxW="900px" mx="auto">
+        {mode !== "create" ? (
+          <Alert status="info" borderRadius="md"><AlertIcon /><AlertDescription fontSize="sm">Published versions remain attached to historical requests.</AlertDescription></Alert>
+        ) : null}
+        <Box>
+          <Text mb={3} fontSize="sm" fontWeight="800">Workflow identity</Text>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+            <FormControl isRequired isDisabled={mode !== "create"}><FormLabel>Name</FormLabel><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Manager then HR" /></FormControl>
+            <FormControl isRequired isDisabled={mode !== "create"}><FormLabel>Code</FormLabel><Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="MGR-HR" /></FormControl>
+          </SimpleGrid>
+          {mode === "create" ? <FormControl mt={4}><FormLabel>Description</FormLabel><Textarea value={description} onChange={(event) => setDescription(event.target.value)} /></FormControl> : null}
+        </Box>
+        <FormControl isDisabled={mode !== "create"}>
+          <FormLabel>Used for</FormLabel>
+          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={3}>
+            {REQUEST_TYPES.map((item) => (
+              <Checkbox
+                key={item.value}
+                id={`approval-workflow-request-type-${item.value}`}
+                name={`approval-workflow-request-type-${item.value}`}
+                isChecked={applicableTo.includes(item.value)}
+                isDisabled={mode !== "create"}
+                onChange={(event) => toggleRequestType(item.value, event.target.checked)}
+              >
+                {item.label}
+              </Checkbox>
+            ))}
+          </SimpleGrid>
+        </FormControl>
+        <FormControl display="flex" justifyContent="space-between" alignItems="center">
+          <Box><FormLabel mb={0}>Auto approve</FormLabel><FormHelperText mt={0}>Use only when the request needs no human decision.</FormHelperText></Box>
+          <Switch isChecked={autoApprove} onChange={(event) => setAutoApprove(event.target.checked)} />
+        </FormControl>
+        {!autoApprove ? (
+          <Box>
+            <Flex mb={3} justify="space-between" align="center">
+              <Box><Text fontSize="sm" fontWeight="800">Approval levels</Text><Text fontSize="xs" color="gray.500">An approver cannot approve their own request.</Text></Box>
+              <Button size="sm" leftIcon={<FiPlus />} onClick={() => setSteps((current) => [...current, emptyStep(current.length)])}>Add level</Button>
+            </Flex>
+            <Stack spacing={3}>
+              {steps.map((step, index) => (
+                <Box key={`${step.order}-${index}`} borderWidth="1px" borderRadius="md" p={4}>
+                  <Flex justify="space-between" align="center" mb={4}>
+                    <Text fontWeight="800">Level {index + 1}</Text>
+                    <HStack spacing={1}>
+                      <IconButton size="xs" variant="ghost" aria-label="Move level up" icon={<FiArrowUp />} isDisabled={index === 0} onClick={() => moveStep(index, -1)} />
+                      <IconButton size="xs" variant="ghost" aria-label="Move level down" icon={<FiArrowDown />} isDisabled={index === steps.length - 1} onClick={() => moveStep(index, 1)} />
+                      <IconButton size="xs" variant="ghost" colorScheme="red" aria-label="Remove level" icon={<FiTrash2 />} onClick={() => setSteps((current) => normalizeSteps(current.filter((_, itemIndex) => itemIndex !== index)))} />
+                    </HStack>
+                  </Flex>
+                  <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                    <FormControl isRequired><FormLabel>Level name</FormLabel><Input value={step.name} onChange={(event) => updateStep(index, { name: event.target.value })} placeholder="Manager approval" /></FormControl>
+                    <FormControl isRequired><FormLabel>Approver source</FormLabel><Select value={step.approverType} onChange={(event) => updateStep(index, { approverType: event.target.value as ApprovalStepType, approverUserIds: [] })}>{STEP_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</Select></FormControl>
+                  </SimpleGrid>
+                  {step.approverType === "specific_users" ? (
+                    <Box mt={4}>
+                      <FormControl><FormLabel>Find users</FormLabel><Input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Search by name, username, or code" /></FormControl>
+                      <CheckboxGroup value={step.approverUserIds as string[]} onChange={(values) => updateStep(index, { approverUserIds: values as string[] })}>
+                        <Stack mt={2} maxH="180px" overflowY="auto" borderWidth="1px" borderRadius="md" p={3}>
+                          {userOptions.length ? userOptions.map((user) => <Checkbox key={user._id} value={user._id}>{user.name || user.username} <Text as="span" fontSize="xs" color="gray.500">{user.code || user.role}</Text></Checkbox>) : <Text fontSize="sm" color="gray.500">No matching users.</Text>}
+                        </Stack>
+                      </CheckboxGroup>
+                    </Box>
+                  ) : null}
+                  <SimpleGrid mt={4} columns={{ base: 1, md: 2 }} spacing={4}>
+                    <FormControl><FormLabel>When multiple approvers resolve</FormLabel><Select value={step.approvalRule} onChange={(event) => updateStep(index, { approvalRule: event.target.value as "any" | "all" })}><option value="any">Any one can approve</option><option value="all">All must approve</option></Select></FormControl>
+                    {step.approverType !== "hr" ? <FormControl display="flex" alignItems="center" pt={{ md: 8 }}><Checkbox isChecked={step.fallbackToHr} onChange={(event) => updateStep(index, { fallbackToHr: event.target.checked })}>Use scoped HR when this approver is missing</Checkbox></FormControl> : null}
+                  </SimpleGrid>
+                </Box>
+              ))}
+            </Stack>
+          </Box>
+        ) : null}
+        <FormControl isRequired={mode !== "create"}><FormLabel>Change reason</FormLabel><Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} placeholder="Why this approval flow is changing" /></FormControl>
+      </Stack>
+    </DashboardDrawer>
   );
 }

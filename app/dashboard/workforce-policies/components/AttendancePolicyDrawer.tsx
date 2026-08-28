@@ -1,18 +1,14 @@
 "use client";
 
+import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
 import {
   Alert,
   AlertDescription,
   AlertIcon,
   Box,
   Button,
-  Drawer,
-  DrawerBody,
-  DrawerCloseButton,
-  DrawerContent,
-  DrawerFooter,
-  DrawerHeader,
   DrawerOverlay,
+  Flex,
   FormControl,
   FormLabel,
   HStack,
@@ -182,104 +178,99 @@ export default function AttendancePolicyDrawer({
   };
 
   return (
-    <Drawer isOpen={isOpen} placement="right" onClose={onClose} size="xl">
-      <DrawerOverlay />
-      <DrawerContent>
-        <DrawerCloseButton />
-        <DrawerHeader borderBottomWidth="1px">
-          <Text fontSize="lg" fontWeight="800">{title}</Text>
-          <Text mt={1} fontSize="sm" fontWeight="400" color="gray.500">
-            Published versions preserve the attendance-evaluation rules used for historical records.
-          </Text>
-        </DrawerHeader>
+    <DashboardDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      titlePrefix={mode === "create" ? "New" : mode === "new_version" ? "New version of" : "Edit"}
+      titleSuffix={mode === "create" ? "attendance policy" : `${resource?.name || "policy"}${mode === 'edit_draft' ? ' draft' : ''}`}
+      subtitle="Published versions preserve the attendance-evaluation rules used for historical records."
+      maxW={{ base: "100%", md: "70%" }}
+      footerContent={
+        <Flex w="full" justify="flex-end" gap={3}>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={() => save(false)} isLoading={workforcePolicyStore.submitting}>Save draft</Button>
+          <Button colorScheme="blue" onClick={() => save(true)} isLoading={workforcePolicyStore.submitting} isDisabled={Boolean(validationError)}>Save and publish</Button>
+        </Flex>
+      }
+    >
+      <Stack spacing={6} maxW="900px" mx="auto">
+        {mode !== "create" ? (
+          <Alert status="info" borderRadius="md">
+            <AlertIcon />
+            <AlertDescription fontSize="sm">
+              This draft will become version {version?.versionNumber || (resource?.latestVersionNumber || 0) + 1}.
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
-        <DrawerBody py={5}>
-          <Stack spacing={6}>
-            {mode !== "create" ? (
-              <Alert status="info" borderRadius="md">
-                <AlertIcon />
-                <AlertDescription fontSize="sm">
-                  This draft will become version {version?.versionNumber || (resource?.latestVersionNumber || 0) + 1}.
-                </AlertDescription>
-              </Alert>
-            ) : null}
-
-            <Box>
-              <Text mb={3} fontSize="sm" fontWeight="800">Policy identity</Text>
-              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                <FormControl isRequired isDisabled={mode !== "create"}>
-                  <FormLabel fontSize="sm">Name</FormLabel>
-                  <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="General attendance policy" />
-                </FormControl>
-                <FormControl isRequired isDisabled={mode !== "create"}>
-                  <FormLabel fontSize="sm">Code</FormLabel>
-                  <Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="ATT-GENERAL" />
-                </FormControl>
-              </SimpleGrid>
-              {mode === "create" ? (
-                <FormControl mt={4}>
-                  <FormLabel fontSize="sm">Description</FormLabel>
-                  <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} />
-                </FormControl>
-              ) : null}
-            </Box>
-
-            <Box>
-              <Text mb={3} fontSize="sm" fontWeight="800">Validity</Text>
-              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                <FormControl isRequired>
-                  <FormLabel fontSize="sm">Effective from</FormLabel>
-                  <Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} />
-                </FormControl>
-              </SimpleGrid>
-            </Box>
-
-            <Box>
-              <Text mb={3} fontSize="sm" fontWeight="800">Attendance thresholds</Text>
-              <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4}>
-                <FormControl><FormLabel fontSize="sm">Late grace (minutes)</FormLabel><NumberInput min={0} value={rules.gracePeriodMinutesLate} onChange={(_, value) => setRule("gracePeriodMinutesLate", value || 0)}><NumberInputField /></NumberInput></FormControl>
-                <FormControl><FormLabel fontSize="sm">Early-exit grace</FormLabel><NumberInput min={0} value={rules.gracePeriodMinutesEarly} onChange={(_, value) => setRule("gracePeriodMinutesEarly", value || 0)}><NumberInputField /></NumberInput></FormControl>
-                <FormControl><FormLabel fontSize="sm">Full-day minutes</FormLabel><NumberInput min={1} value={rules.minimumFullDayMinutes} onChange={(_, value) => setRule("minimumFullDayMinutes", value || 0)}><NumberInputField /></NumberInput></FormControl>
-                <FormControl><FormLabel fontSize="sm">Half-day minutes</FormLabel><NumberInput min={1} value={rules.minimumHalfDayMinutes} onChange={(_, value) => setRule("minimumHalfDayMinutes", value || 0)}><NumberInputField /></NumberInput></FormControl>
-              </SimpleGrid>
-            </Box>
-
-            <Box>
-              <Text mb={3} fontSize="sm" fontWeight="800">Punch evaluation</Text>
-              <Stack spacing={3}>
-                <HStack justify="space-between"><Text fontSize="sm">Require punch-out</Text><Switch isChecked={rules.requirePunchOut} onChange={(event) => setRule("requirePunchOut", event.target.checked)} /></HStack>
-                <HStack justify="space-between"><Text fontSize="sm">Allow multiple punch sessions</Text><Switch isChecked={rules.allowMultiplePunches} onChange={(event) => setRule("allowMultiplePunches", event.target.checked)} /></HStack>
-                <FormControl>
-                  <FormLabel fontSize="sm">Missing punch treatment</FormLabel>
-                  <Select value={rules.missingPunchTreatment} onChange={(event) => setRule("missingPunchTreatment", event.target.value)}>
-                    <option value="flag_incomplete">Flag for regularization</option>
-                    <option value="half_day">Mark half day</option>
-                    <option value="absent">Mark absent</option>
-                  </Select>
-                </FormControl>
-                <HStack justify="space-between"><Text fontSize="sm">Calculate overtime</Text><Switch isChecked={rules.overtimeEnabled} onChange={(event) => setRule("overtimeEnabled", event.target.checked)} /></HStack>
-                {rules.overtimeEnabled ? (
-                  <FormControl>
-                    <FormLabel fontSize="sm">Overtime starts after worked minutes</FormLabel>
-                    <NumberInput min={0} value={rules.overtimeStartsAfterMinutes} onChange={(_, value) => setRule("overtimeStartsAfterMinutes", value || 0)}><NumberInputField /></NumberInput>
-                  </FormControl>
-                ) : null}
-              </Stack>
-            </Box>
-
-            <FormControl isRequired={mode !== "create"}>
-              <FormLabel fontSize="sm">Change reason</FormLabel>
-              <Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} rows={2} placeholder="Why these rules are effective from this date" />
+        <Box>
+          <Text mb={3} fontSize="sm" fontWeight="800">Policy identity</Text>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+            <FormControl isRequired isDisabled={mode !== "create"}>
+              <FormLabel fontSize="sm">Name</FormLabel>
+              <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="General attendance policy" />
             </FormControl>
-          </Stack>
-        </DrawerBody>
+            <FormControl isRequired isDisabled={mode !== "create"}>
+              <FormLabel fontSize="sm">Code</FormLabel>
+              <Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="ATT-GENERAL" />
+            </FormControl>
+          </SimpleGrid>
+          {mode === "create" ? (
+            <FormControl mt={4}>
+              <FormLabel fontSize="sm">Description</FormLabel>
+              <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} />
+            </FormControl>
+          ) : null}
+        </Box>
 
-        <DrawerFooter borderTopWidth="1px" gap={3} flexDirection={{ base: "column-reverse", sm: "row" }}>
-          <Button w={{ base: "full", sm: "auto" }} variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button w={{ base: "full", sm: "auto" }} variant="outline" onClick={() => save(false)} isLoading={workforcePolicyStore.submitting}>Save draft</Button>
-          <Button w={{ base: "full", sm: "auto" }} colorScheme="blue" onClick={() => save(true)} isLoading={workforcePolicyStore.submitting} isDisabled={Boolean(validationError)}>Save and publish</Button>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+        <Box>
+          <Text mb={3} fontSize="sm" fontWeight="800">Validity</Text>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm">Effective from</FormLabel>
+              <Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} />
+            </FormControl>
+          </SimpleGrid>
+        </Box>
+
+        <Box>
+          <Text mb={3} fontSize="sm" fontWeight="800">Attendance thresholds</Text>
+          <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4}>
+            <FormControl><FormLabel fontSize="sm">Late grace (minutes)</FormLabel><NumberInput min={0} value={rules.gracePeriodMinutesLate} onChange={(_, value) => setRule("gracePeriodMinutesLate", value || 0)}><NumberInputField /></NumberInput></FormControl>
+            <FormControl><FormLabel fontSize="sm">Early-exit grace</FormLabel><NumberInput min={0} value={rules.gracePeriodMinutesEarly} onChange={(_, value) => setRule("gracePeriodMinutesEarly", value || 0)}><NumberInputField /></NumberInput></FormControl>
+            <FormControl><FormLabel fontSize="sm">Full-day minutes</FormLabel><NumberInput min={1} value={rules.minimumFullDayMinutes} onChange={(_, value) => setRule("minimumFullDayMinutes", value || 0)}><NumberInputField /></NumberInput></FormControl>
+            <FormControl><FormLabel fontSize="sm">Half-day minutes</FormLabel><NumberInput min={1} value={rules.minimumHalfDayMinutes} onChange={(_, value) => setRule("minimumHalfDayMinutes", value || 0)}><NumberInputField /></NumberInput></FormControl>
+          </SimpleGrid>
+        </Box>
+
+        <Box>
+          <Text mb={3} fontSize="sm" fontWeight="800">Punch evaluation</Text>
+          <Stack spacing={3}>
+            <HStack justify="space-between"><Text fontSize="sm">Require punch-out</Text><Switch isChecked={rules.requirePunchOut} onChange={(event) => setRule("requirePunchOut", event.target.checked)} /></HStack>
+            <HStack justify="space-between"><Text fontSize="sm">Allow multiple punch sessions</Text><Switch isChecked={rules.allowMultiplePunches} onChange={(event) => setRule("allowMultiplePunches", event.target.checked)} /></HStack>
+            <FormControl>
+              <FormLabel fontSize="sm">Missing punch treatment</FormLabel>
+              <Select value={rules.missingPunchTreatment} onChange={(event) => setRule("missingPunchTreatment", event.target.value)}>
+                <option value="flag_incomplete">Flag for regularization</option>
+                <option value="half_day">Mark half day</option>
+                <option value="absent">Mark absent</option>
+              </Select>
+            </FormControl>
+            <HStack justify="space-between"><Text fontSize="sm">Calculate overtime</Text><Switch isChecked={rules.overtimeEnabled} onChange={(event) => setRule("overtimeEnabled", event.target.checked)} /></HStack>
+            {rules.overtimeEnabled ? (
+              <FormControl>
+                <FormLabel fontSize="sm">Overtime starts after worked minutes</FormLabel>
+                <NumberInput min={0} value={rules.overtimeStartsAfterMinutes} onChange={(_, value) => setRule("overtimeStartsAfterMinutes", value || 0)}><NumberInputField /></NumberInput>
+              </FormControl>
+            ) : null}
+          </Stack>
+        </Box>
+
+        <FormControl isRequired={mode !== "create"}>
+          <FormLabel fontSize="sm">Change reason</FormLabel>
+          <Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} rows={2} placeholder="Why these rules are effective from this date" />
+        </FormControl>
+      </Stack>
+    </DashboardDrawer>
   );
 }

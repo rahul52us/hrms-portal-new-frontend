@@ -1,16 +1,11 @@
 "use client";
 
+import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
 import {
   Box,
   Button,
   Checkbox,
-  Drawer,
-  DrawerBody,
-  DrawerCloseButton,
-  DrawerContent,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerOverlay,
+  Flex,
   FormControl,
   FormHelperText,
   FormLabel,
@@ -228,138 +223,133 @@ export default function WorkScheduleDrawer({
   };
 
   return (
-    <Drawer isOpen={isOpen} placement="right" onClose={onClose} size="xl">
-      <DrawerOverlay />
-      <DrawerContent>
-        <DrawerCloseButton />
-        <DrawerHeader borderBottomWidth="1px">
-          <Text fontSize="lg" fontWeight="800">{title}</Text>
-          <Text mt={1} fontSize="sm" fontWeight="400" color="gray.500">
-            Work schedule versions preserve the expected days and hours used for historical attendance.
-          </Text>
-        </DrawerHeader>
-
-        <DrawerBody py={5}>
-          <Stack spacing={6}>
-            <Box>
-              <Text mb={3} fontSize="sm" fontWeight="800">Schedule identity</Text>
-              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                <FormControl isRequired isDisabled={mode !== "create"}>
-                  <FormLabel fontSize="sm">Name</FormLabel>
-                  <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="General office schedule" />
-                </FormControl>
-                <FormControl isRequired isDisabled={mode !== "create"}>
-                  <FormLabel fontSize="sm">Code</FormLabel>
-                  <Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="SCH-GENERAL" />
-                </FormControl>
-              </SimpleGrid>
-              {mode === "create" ? (
-                <FormControl mt={4}>
-                  <FormLabel fontSize="sm">Description</FormLabel>
-                  <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} />
-                </FormControl>
-              ) : null}
-            </Box>
-
-            <Box>
-              <Text mb={3} fontSize="sm" fontWeight="800">Validity and timezone</Text>
-              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                <FormControl isRequired>
-                  <FormLabel fontSize="sm">Effective from</FormLabel>
-                  <Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} />
-                </FormControl>
-                <FormControl isRequired>
-                  <FormLabel fontSize="sm">Timezone</FormLabel>
-                  <Input value={rules.timezone} onChange={(event) => setRule("timezone", event.target.value)} placeholder="Asia/Kolkata" />
-                </FormControl>
-              </SimpleGrid>
-            </Box>
-
-            <Box>
-              <Text mb={3} fontSize="sm" fontWeight="800">Weekly pattern</Text>
-              <FormControl>
-                <FormLabel fontSize="sm">Regular working days</FormLabel>
-                <SimpleGrid columns={{ base: 2, md: 3 }} spacing={2}>
-                  {REGULAR_WORK_DAYS.map((day) => (
-                    <Checkbox
-                      key={day}
-                      id={`schedule-working-day-${day.toLowerCase()}`}
-                      name="scheduleWorkingDays"
-                      value={day}
-                      isChecked={rules.workingDays.includes(day)}
-                      onChange={(event) => toggleWorkingDay(day, event.target.checked)}
-                    >
-                      {day}
-                    </Checkbox>
-                  ))}
-                </SimpleGrid>
-                <FormHelperText>Saturday is controlled separately below.</FormHelperText>
-              </FormControl>
-              <FormControl mt={4}>
-                <FormLabel fontSize="sm">Saturday rule</FormLabel>
-                <Select value={rules.saturdayRule} onChange={(event) => setRule("saturdayRule", event.target.value)}>
-                  <option value="working">Every Saturday working</option>
-                  <option value="all_off">Every Saturday off</option>
-                  <option value="first_and_third_off">First and third Saturday off</option>
-                  <option value="second_and_fourth_off">Even Saturdays off (2nd and 4th)</option>
-                  <option value="custom_weeks_off">Custom Saturday weeks off</option>
-                </Select>
-              </FormControl>
-              {rules.saturdayRule === "custom_weeks_off" ? (
-                <FormControl mt={4}>
-                  <FormLabel fontSize="sm">Saturday weeks that are off</FormLabel>
-                  <HStack spacing={5} wrap="wrap">
-                    {[1, 2, 3, 4, 5].map((week) => (
-                      <Checkbox
-                        key={week}
-                        id={`schedule-saturday-week-${week}`}
-                        name="scheduleCustomSaturdayOffWeeks"
-                        value={String(week)}
-                        isChecked={rules.customSaturdayOffWeeks.includes(week)}
-                        onChange={(event) => toggleSaturdayWeek(week, event.target.checked)}
-                      >
-                        Week {week}
-                      </Checkbox>
-                    ))}
-                  </HStack>
-                </FormControl>
-              ) : null}
-            </Box>
-
-            <Box>
-              <Text mb={3} fontSize="sm" fontWeight="800">Scheduled hours</Text>
-              <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={4}>
-                <FormControl isRequired>
-                  <FormLabel fontSize="sm">Start time</FormLabel>
-                  <Input type="time" value={rules.startTime} onChange={(event) => setRule("startTime", event.target.value)} />
-                </FormControl>
-                <FormControl isRequired>
-                  <FormLabel fontSize="sm">End time</FormLabel>
-                  <Input type="time" value={rules.endTime} onChange={(event) => setRule("endTime", event.target.value)} />
-                  {spansNextDay ? <FormHelperText>Ends on the following day.</FormHelperText> : null}
-                </FormControl>
-                <FormControl>
-                  <FormLabel fontSize="sm">Unpaid break (minutes)</FormLabel>
-                  <NumberInput min={0} value={rules.unpaidBreakMinutes} onChange={(_, value) => setRule("unpaidBreakMinutes", value || 0)}>
-                    <NumberInputField />
-                  </NumberInput>
-                </FormControl>
-              </SimpleGrid>
-            </Box>
-
-            <FormControl isRequired={mode !== "create"}>
-              <FormLabel fontSize="sm">Change reason</FormLabel>
-              <Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} rows={2} placeholder="Why these scheduled hours apply from this date" />
+    <DashboardDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      titlePrefix={mode === "create" ? "New" : mode === "new_version" ? "New version of" : "Edit"}
+      titleSuffix={mode === "create" ? "work schedule" : `${resource?.name || "schedule"}${mode === 'edit_draft' ? ' draft' : ''}`}
+      subtitle="Work schedule versions preserve the expected days and hours used for historical attendance."
+      maxW={{ base: "100%", md: "70%" }}
+      footerContent={
+        <Flex w="full" justify="flex-end" gap={3}>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={() => save(false)} isLoading={workforcePolicyStore.submitting}>Save draft</Button>
+          <Button colorScheme="blue" onClick={() => save(true)} isLoading={workforcePolicyStore.submitting} isDisabled={Boolean(validationError)}>Save and publish</Button>
+        </Flex>
+      }
+    >
+      <Stack spacing={6} maxW="900px" mx="auto">
+        <Box>
+          <Text mb={3} fontSize="sm" fontWeight="800">Schedule identity</Text>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+            <FormControl isRequired isDisabled={mode !== "create"}>
+              <FormLabel fontSize="sm">Name</FormLabel>
+              <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="General office schedule" />
             </FormControl>
-          </Stack>
-        </DrawerBody>
+            <FormControl isRequired isDisabled={mode !== "create"}>
+              <FormLabel fontSize="sm">Code</FormLabel>
+              <Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="SCH-GENERAL" />
+            </FormControl>
+          </SimpleGrid>
+          {mode === "create" ? (
+            <FormControl mt={4}>
+              <FormLabel fontSize="sm">Description</FormLabel>
+              <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} />
+            </FormControl>
+          ) : null}
+        </Box>
 
-        <DrawerFooter borderTopWidth="1px" gap={3} flexDirection={{ base: "column-reverse", sm: "row" }}>
-          <Button w={{ base: "full", sm: "auto" }} variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button w={{ base: "full", sm: "auto" }} variant="outline" onClick={() => save(false)} isLoading={workforcePolicyStore.submitting}>Save draft</Button>
-          <Button w={{ base: "full", sm: "auto" }} colorScheme="blue" onClick={() => save(true)} isLoading={workforcePolicyStore.submitting} isDisabled={Boolean(validationError)}>Save and publish</Button>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+        <Box>
+          <Text mb={3} fontSize="sm" fontWeight="800">Validity and timezone</Text>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm">Effective from</FormLabel>
+              <Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} />
+            </FormControl>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm">Timezone</FormLabel>
+              <Input value={rules.timezone} onChange={(event) => setRule("timezone", event.target.value)} placeholder="Asia/Kolkata" />
+            </FormControl>
+          </SimpleGrid>
+        </Box>
+
+        <Box>
+          <Text mb={3} fontSize="sm" fontWeight="800">Weekly pattern</Text>
+          <FormControl>
+            <FormLabel fontSize="sm">Regular working days</FormLabel>
+            <SimpleGrid columns={{ base: 2, md: 3 }} spacing={2}>
+              {REGULAR_WORK_DAYS.map((day) => (
+                <Checkbox
+                  key={day}
+                  id={`schedule-working-day-${day.toLowerCase()}`}
+                  name="scheduleWorkingDays"
+                  value={day}
+                  isChecked={rules.workingDays.includes(day)}
+                  onChange={(event) => toggleWorkingDay(day, event.target.checked)}
+                >
+                  {day}
+                </Checkbox>
+              ))}
+            </SimpleGrid>
+            <FormHelperText>Saturday is controlled separately below.</FormHelperText>
+          </FormControl>
+          <FormControl mt={4}>
+            <FormLabel fontSize="sm">Saturday rule</FormLabel>
+            <Select value={rules.saturdayRule} onChange={(event) => setRule("saturdayRule", event.target.value)}>
+              <option value="working">Every Saturday working</option>
+              <option value="all_off">Every Saturday off</option>
+              <option value="first_and_third_off">First and third Saturday off</option>
+              <option value="second_and_fourth_off">Even Saturdays off (2nd and 4th)</option>
+              <option value="custom_weeks_off">Custom Saturday weeks off</option>
+            </Select>
+          </FormControl>
+          {rules.saturdayRule === "custom_weeks_off" ? (
+            <FormControl mt={4}>
+              <FormLabel fontSize="sm">Saturday weeks that are off</FormLabel>
+              <HStack spacing={5} wrap="wrap">
+                {[1, 2, 3, 4, 5].map((week) => (
+                  <Checkbox
+                    key={week}
+                    id={`schedule-saturday-week-${week}`}
+                    name="scheduleCustomSaturdayOffWeeks"
+                    value={String(week)}
+                    isChecked={rules.customSaturdayOffWeeks.includes(week)}
+                    onChange={(event) => toggleSaturdayWeek(week, event.target.checked)}
+                  >
+                    Week {week}
+                  </Checkbox>
+                ))}
+              </HStack>
+            </FormControl>
+          ) : null}
+        </Box>
+
+        <Box>
+          <Text mb={3} fontSize="sm" fontWeight="800">Scheduled hours</Text>
+          <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={4}>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm">Start time</FormLabel>
+              <Input type="time" value={rules.startTime} onChange={(event) => setRule("startTime", event.target.value)} />
+            </FormControl>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm">End time</FormLabel>
+              <Input type="time" value={rules.endTime} onChange={(event) => setRule("endTime", event.target.value)} />
+              {spansNextDay ? <FormHelperText>Ends on the following day.</FormHelperText> : null}
+            </FormControl>
+            <FormControl>
+              <FormLabel fontSize="sm">Unpaid break (minutes)</FormLabel>
+              <NumberInput min={0} value={rules.unpaidBreakMinutes} onChange={(_, value) => setRule("unpaidBreakMinutes", value || 0)}>
+                <NumberInputField />
+              </NumberInput>
+            </FormControl>
+          </SimpleGrid>
+        </Box>
+
+        <FormControl isRequired={mode !== "create"}>
+          <FormLabel fontSize="sm">Change reason</FormLabel>
+          <Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} rows={2} placeholder="Why these scheduled hours apply from this date" />
+        </FormControl>
+      </Stack>
+    </DashboardDrawer>
   );
 }

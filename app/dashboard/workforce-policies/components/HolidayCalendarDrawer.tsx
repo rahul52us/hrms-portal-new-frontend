@@ -1,16 +1,11 @@
 "use client";
 
+import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
 import {
   Box,
   Button,
   Checkbox,
-  Drawer,
-  DrawerBody,
-  DrawerCloseButton,
-  DrawerContent,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerOverlay,
+  Flex,
   FormControl,
   FormLabel,
   HStack,
@@ -196,111 +191,106 @@ export default function HolidayCalendarDrawer({
   };
 
   return (
-    <Drawer isOpen={isOpen} placement="right" onClose={onClose} size="xl">
-      <DrawerOverlay />
-      <DrawerContent>
-        <DrawerCloseButton />
-        <DrawerHeader borderBottomWidth="1px">
-          <Text fontSize="lg" fontWeight="800">{title}</Text>
-          <Text mt={1} fontSize="sm" fontWeight="400" color="gray.500">
-            Calendar versions preserve the holidays that applied to earlier attendance dates.
-          </Text>
-        </DrawerHeader>
+    <DashboardDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      titlePrefix={mode === "create" ? "New" : mode === "new_version" ? "New version of" : "Edit"}
+      titleSuffix={mode === "create" ? "holiday calendar" : `${resource?.name || "calendar"}${mode === 'edit_draft' ? ' draft' : ''}`}
+      subtitle="Calendar versions preserve the holidays that applied to earlier attendance dates."
+      maxW={{ base: "100%", md: "70%" }}
+      footerContent={
+        <Flex w="full" justify="flex-end" gap={3}>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={() => save(false)} isLoading={workforcePolicyStore.submitting}>Save draft</Button>
+          <Button colorScheme="blue" onClick={() => save(true)} isLoading={workforcePolicyStore.submitting} isDisabled={Boolean(validationError)}>Save and publish</Button>
+        </Flex>
+      }
+    >
+      <Stack spacing={6} maxW="900px" mx="auto">
+        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+          <FormControl isRequired isDisabled={mode !== "create"}>
+            <FormLabel fontSize="sm">Calendar name</FormLabel>
+            <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="India holiday calendar" />
+          </FormControl>
+          <FormControl isRequired isDisabled={mode !== "create"}>
+            <FormLabel fontSize="sm">Code</FormLabel>
+            <Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="HOL-INDIA" />
+          </FormControl>
+        </SimpleGrid>
+        {mode === "create" ? (
+          <FormControl>
+            <FormLabel fontSize="sm">Description</FormLabel>
+            <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} />
+          </FormControl>
+        ) : null}
+        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+          <FormControl isRequired>
+            <FormLabel fontSize="sm">Effective from</FormLabel>
+            <Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} />
+          </FormControl>
+          <FormControl isRequired>
+            <FormLabel fontSize="sm">Timezone</FormLabel>
+            <Input value={timezone} onChange={(event) => setTimezone(event.target.value)} />
+          </FormControl>
+        </SimpleGrid>
 
-        <DrawerBody py={5}>
-          <Stack spacing={6}>
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-              <FormControl isRequired isDisabled={mode !== "create"}>
-                <FormLabel fontSize="sm">Calendar name</FormLabel>
-                <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="India holiday calendar" />
-              </FormControl>
-              <FormControl isRequired isDisabled={mode !== "create"}>
-                <FormLabel fontSize="sm">Code</FormLabel>
-                <Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="HOL-INDIA" />
-              </FormControl>
-            </SimpleGrid>
-            {mode === "create" ? (
-              <FormControl>
-                <FormLabel fontSize="sm">Description</FormLabel>
-                <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} />
-              </FormControl>
-            ) : null}
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-              <FormControl isRequired>
-                <FormLabel fontSize="sm">Effective from</FormLabel>
-                <Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} />
-              </FormControl>
-              <FormControl isRequired>
-                <FormLabel fontSize="sm">Timezone</FormLabel>
-                <Input value={timezone} onChange={(event) => setTimezone(event.target.value)} />
-              </FormControl>
-            </SimpleGrid>
-
+        <Box>
+          <HStack mb={3} justify="space-between">
             <Box>
-              <HStack mb={3} justify="space-between">
-                <Box>
-                  <Text fontSize="sm" fontWeight="800">Holidays</Text>
-                  <Text fontSize="xs" color="gray.500">Dates are stored in this calendar version.</Text>
-                </Box>
-                <Button size="sm" leftIcon={<FiPlus />} onClick={() => setHolidays((current) => [...current, blankHoliday()])}>
-                  Add holiday
-                </Button>
-              </HStack>
-              <Stack spacing={3}>
-                {holidays.length === 0 ? (
-                  <Box borderWidth="1px" borderStyle="dashed" borderRadius="md" p={5} textAlign="center">
-                    <Text fontSize="sm" color="gray.500">No holidays added to this version.</Text>
-                  </Box>
-                ) : null}
-                {holidays.map((holiday) => (
-                  <Box key={holiday.id} borderWidth="1px" borderRadius="md" p={3}>
-                    <SimpleGrid columns={{ base: 1, md: 3 }} spacing={3}>
-                      <FormControl isRequired>
-                        <FormLabel fontSize="xs">Date</FormLabel>
-                        <Input type="date" size="sm" value={holiday.date} onChange={(event) => updateHoliday(holiday.id, "date", event.target.value)} />
-                      </FormControl>
-                      <FormControl isRequired>
-                        <FormLabel fontSize="xs">Holiday name</FormLabel>
-                        <Input size="sm" value={holiday.name} onChange={(event) => updateHoliday(holiday.id, "name", event.target.value)} />
-                      </FormControl>
-                      <FormControl>
-                        <FormLabel fontSize="xs">Type</FormLabel>
-                        <Select size="sm" value={holiday.type} onChange={(event) => updateHoliday(holiday.id, "type", event.target.value)}>
-                          <option value="mandatory">Mandatory</option>
-                          <option value="optional">Optional</option>
-                        </Select>
-                      </FormControl>
-                    </SimpleGrid>
-                    <Stack mt={3} direction={{ base: "column", md: "row" }} align={{ base: "stretch", md: "end" }}>
-                      <FormControl>
-                        <FormLabel fontSize="xs">Description</FormLabel>
-                        <Input size="sm" value={holiday.description} onChange={(event) => updateHoliday(holiday.id, "description", event.target.value)} />
-                      </FormControl>
-                      <Checkbox pb={2} isChecked={holiday.isHalfDay} onChange={(event) => updateHoliday(holiday.id, "isHalfDay", event.target.checked)} whiteSpace="nowrap">
-                        Half day
-                      </Checkbox>
-                      <Tooltip label="Remove holiday">
-                        <IconButton aria-label="Remove holiday" icon={<FiTrash2 />} size="sm" colorScheme="red" variant="ghost" onClick={() => setHolidays((current) => current.filter((item) => item.id !== holiday.id))} />
-                      </Tooltip>
-                    </Stack>
-                  </Box>
-                ))}
-              </Stack>
+              <Text fontSize="sm" fontWeight="800">Holidays</Text>
+              <Text fontSize="xs" color="gray.500">Dates are stored in this calendar version.</Text>
             </Box>
-
-            <FormControl isRequired={mode !== "create"}>
-              <FormLabel fontSize="sm">Change reason</FormLabel>
-              <Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} rows={2} />
-            </FormControl>
+            <Button size="sm" leftIcon={<FiPlus />} onClick={() => setHolidays((current) => [...current, blankHoliday()])}>
+              Add holiday
+            </Button>
+          </HStack>
+          <Stack spacing={3}>
+            {holidays.length === 0 ? (
+              <Box borderWidth="1px" borderStyle="dashed" borderRadius="md" p={5} textAlign="center">
+                <Text fontSize="sm" color="gray.500">No holidays added to this version.</Text>
+              </Box>
+            ) : null}
+            {holidays.map((holiday) => (
+              <Box key={holiday.id} borderWidth="1px" borderRadius="md" p={3}>
+                <SimpleGrid columns={{ base: 1, md: 3 }} spacing={3}>
+                  <FormControl isRequired>
+                    <FormLabel fontSize="xs">Date</FormLabel>
+                    <Input type="date" size="sm" value={holiday.date} onChange={(event) => updateHoliday(holiday.id, "date", event.target.value)} />
+                  </FormControl>
+                  <FormControl isRequired>
+                    <FormLabel fontSize="xs">Holiday name</FormLabel>
+                    <Input size="sm" value={holiday.name} onChange={(event) => updateHoliday(holiday.id, "name", event.target.value)} />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel fontSize="xs">Type</FormLabel>
+                    <Select size="sm" value={holiday.type} onChange={(event) => updateHoliday(holiday.id, "type", event.target.value)}>
+                      <option value="mandatory">Mandatory</option>
+                      <option value="optional">Optional</option>
+                    </Select>
+                  </FormControl>
+                </SimpleGrid>
+                <Stack mt={3} direction={{ base: "column", md: "row" }} align={{ base: "stretch", md: "end" }}>
+                  <FormControl>
+                    <FormLabel fontSize="xs">Description</FormLabel>
+                    <Input size="sm" value={holiday.description} onChange={(event) => updateHoliday(holiday.id, "description", event.target.value)} />
+                  </FormControl>
+                  <Checkbox pb={2} isChecked={holiday.isHalfDay} onChange={(event) => updateHoliday(holiday.id, "isHalfDay", event.target.checked)} whiteSpace="nowrap">
+                    Half day
+                  </Checkbox>
+                  <Tooltip label="Remove holiday">
+                    <IconButton aria-label="Remove holiday" icon={<FiTrash2 />} size="sm" colorScheme="red" variant="ghost" onClick={() => setHolidays((current) => current.filter((item) => item.id !== holiday.id))} />
+                  </Tooltip>
+                </Stack>
+              </Box>
+            ))}
           </Stack>
-        </DrawerBody>
+        </Box>
 
-        <DrawerFooter borderTopWidth="1px" gap={3} flexDirection={{ base: "column-reverse", sm: "row" }}>
-          <Button w={{ base: "full", sm: "auto" }} variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button w={{ base: "full", sm: "auto" }} variant="outline" onClick={() => save(false)} isLoading={workforcePolicyStore.submitting}>Save draft</Button>
-          <Button w={{ base: "full", sm: "auto" }} colorScheme="blue" onClick={() => save(true)} isLoading={workforcePolicyStore.submitting} isDisabled={Boolean(validationError)}>Save and publish</Button>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+        <FormControl isRequired={mode !== "create"}>
+          <FormLabel fontSize="sm">Change reason</FormLabel>
+          <Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} rows={2} />
+        </FormControl>
+      </Stack>
+    </DashboardDrawer>
   );
 }

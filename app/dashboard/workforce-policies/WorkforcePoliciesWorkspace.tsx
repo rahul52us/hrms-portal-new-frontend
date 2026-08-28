@@ -288,12 +288,17 @@ const WorkforcePoliciesWorkspace = observer(() => {
     }
     if (!items.length) {
       return (
-        <Center borderWidth="1px" borderStyle="dashed" borderColor={borderColor} borderRadius="md" py={12}>
-          <Stack align="center" spacing={3}>
-            <Icon as={type === "attendance_policy" ? FiClock : type === "work_schedule" ? FiBriefcase : type === "holiday_calendar" ? FiCalendar : FiWifi} boxSize={7} color="gray.400" />
-            <Text color={muted}>No {emptyLabel} found.</Text>
+        <Center borderWidth="1px" borderStyle="dashed" borderColor={borderColor} borderRadius="xl" py={16} bg={useColorModeValue("white", "gray.800")} mb={4}>
+          <Stack align="center" spacing={4}>
+            <Center bg={useColorModeValue("gray.50", "gray.700")} w={16} h={16} borderRadius="full">
+              <Icon as={type === "attendance_policy" ? FiClock : type === "work_schedule" ? FiBriefcase : type === "holiday_calendar" ? FiCalendar : FiWifi} boxSize={8} color="gray.400" />
+            </Center>
+            <Stack spacing={1} align="center">
+              <Text fontWeight="600" fontSize="lg">No {emptyLabel} found</Text>
+              <Text color={muted} fontSize="sm">Get started by creating a new {createLabel}</Text>
+            </Stack>
             {canManage ? (
-              <Button size="sm" leftIcon={<FiPlus />} onClick={() => openEditor(type, "create")}>Create first {createLabel}</Button>
+              <Button mt={2} colorScheme="blue" size="sm" leftIcon={<FiPlus />} onClick={() => openEditor(type, "create")}>Create {createLabel}</Button>
             ) : null}
           </Stack>
         </Center>
@@ -359,21 +364,27 @@ const WorkforcePoliciesWorkspace = observer(() => {
     >
       <Box minH="100dvh" bg={pageBg} px={{ base: 3, md: 6 }} py={{ base: 4, md: 6 }}>
         <Stack spacing={5} maxW="1500px" mx="auto">
-          <Flex direction={{ base: "column", lg: "row" }} justify="space-between" align={{ base: "stretch", lg: "end" }} gap={4}>
+          <Stack spacing={6}>
             <Box>
-              <Heading size={{ base: "md", md: "lg" }}>Workforce policies</Heading>
-              <Text mt={1} fontSize="sm" color={muted}>
+              <Heading size={{ base: "md", md: "lg" }} fontWeight="bold" letterSpacing="tight">Workforce policies</Heading>
+              <Text mt={1} fontSize="md" color={muted}>
                 Effective-dated attendance, schedules, holidays, WFH rules, approval flows, and assignments for {activeCompany?.company_name || "the selected company"}.
               </Text>
             </Box>
-            <SimpleGrid columns={{ base: 2, md: 4 }} spacing={3} minW={{ lg: "620px" }}>
+            <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4} w="full">
               {[{ label: "Policies", value: workforcePolicyStore.attendancePolicies.length, icon: FiClock }, { label: "Schedules", value: workforcePolicyStore.workSchedules.length, icon: FiBriefcase }, { label: "Approval flows", value: workforcePolicyStore.approvalWorkflows.length, icon: FiCheckSquare }, { label: "Active scope", value: activeAssignments, icon: FiLink }].map((stat) => (
-                <HStack key={stat.label} bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="md" p={3} minW={0}>
-                  <Icon as={stat.icon} color="blue.500" flexShrink={0} /><Box minW={0}><Text fontSize="xs" color={muted} noOfLines={1}>{stat.label}</Text><Text fontWeight="800">{stat.value}</Text></Box>
+                <HStack key={stat.label} bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={4} minW={0} shadow="sm">
+                  <Center bg={useColorModeValue("blue.50", "blue.900")} color="blue.500" w={12} h={12} borderRadius="lg" flexShrink={0}>
+                    <Icon as={stat.icon} boxSize={5} />
+                  </Center>
+                  <Box minW={0} ml={3}>
+                    <Text fontSize="sm" color={muted} noOfLines={1} fontWeight="medium">{stat.label}</Text>
+                    <Text fontWeight="bold" fontSize="2xl" lineHeight="1">{stat.value}</Text>
+                  </Box>
                 </HStack>
               ))}
             </SimpleGrid>
-          </Flex>
+          </Stack>
 
           {!companyId ? (
             <Alert status="warning" borderRadius="md"><AlertIcon /><AlertDescription>Select a company before managing workforce policies.</AlertDescription></Alert>
@@ -382,22 +393,36 @@ const WorkforcePoliciesWorkspace = observer(() => {
             <Alert status="error" borderRadius="md"><AlertIcon /><AlertDescription>{workforcePolicyStore.error}</AlertDescription></Alert>
           ) : null}
 
-          <Box bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">
+          <Box bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="xl" overflow="hidden" shadow="sm">
             <Tabs index={tabIndex} onChange={setTabIndex} colorScheme="blue" isLazy>
-              <Flex direction={{ base: "column", md: "row" }} justify="space-between" gap={3} px={4} pt={4}>
-                <TabList overflowX="auto"><Tab whiteSpace="nowrap">Attendance policies</Tab><Tab whiteSpace="nowrap">Work schedules</Tab><Tab whiteSpace="nowrap">Holiday calendars</Tab><Tab whiteSpace="nowrap">WFH policies</Tab><Tab whiteSpace="nowrap">Approval flows</Tab><Tab whiteSpace="nowrap">Assignments</Tab><Tab whiteSpace="nowrap">Coverage</Tab><Tab whiteSpace="nowrap">Audit log</Tab></TabList>
-                <HStack pb={{ base: 0, md: 2 }}>
+              <Box px={5} pt={4} borderBottomWidth="1px" borderColor={borderColor}>
+                <TabList overflowX="auto" borderBottom="none" sx={{ '&::-webkit-scrollbar': { display: 'none' }, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>Attendance policies</Tab>
+                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>Work schedules</Tab>
+                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>Holiday calendars</Tab>
+                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>WFH policies</Tab>
+                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>Approval flows</Tab>
+                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>Assignments</Tab>
+                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>Coverage</Tab>
+                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>Audit log</Tab>
+                </TabList>
+              </Box>
+              
+              <Flex px={5} py={3} borderBottomWidth="1px" borderColor={borderColor} bg={useColorModeValue("gray.50", "gray.800")} justify="space-between" align="center" display={(tabIndex < 4 || (canManage && companyId && tabIndex <= 5)) ? "flex" : "none"}>
+                <Box>
                   {tabIndex < 4 ? (
-                    <InputGroup size="sm" maxW="260px"><InputLeftElement><FiSearch /></InputLeftElement><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" /></InputGroup>
-                  ) : null}
+                    <InputGroup size="sm" w={{ base: "full", md: "280px" }}><InputLeftElement><FiSearch color="gray.400" /></InputLeftElement><Input bg={surface} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search..." /></InputGroup>
+                  ) : <Box />}
+                </Box>
+                <HStack>
                   {canManage && companyId && tabIndex <= 5 ? (
-                    <Button size="sm" colorScheme="blue" leftIcon={<FiPlus />} flexShrink={0} onClick={() => tabIndex === 0 ? openEditor("attendance_policy", "create") : tabIndex === 1 ? openEditor("work_schedule", "create") : tabIndex === 2 ? openEditor("holiday_calendar", "create") : tabIndex === 3 ? openEditor("remote_work_policy", "create") : tabIndex === 4 ? openApprovalEditor("create") : openAssignment()}>
+                    <Button size="sm" colorScheme="blue" leftIcon={<FiPlus />} onClick={() => tabIndex === 0 ? openEditor("attendance_policy", "create") : tabIndex === 1 ? openEditor("work_schedule", "create") : tabIndex === 2 ? openEditor("holiday_calendar", "create") : tabIndex === 3 ? openEditor("remote_work_policy", "create") : tabIndex === 4 ? openApprovalEditor("create") : openAssignment()}>
                       {tabIndex === 0 ? "New policy" : tabIndex === 1 ? "New schedule" : tabIndex === 2 ? "New calendar" : tabIndex === 3 ? "New WFH policy" : tabIndex === 4 ? "New approval flow" : "New assignment"}
                     </Button>
                   ) : null}
                 </HStack>
               </Flex>
-              <TabPanels>
+              <TabPanels p={2}>
                 <TabPanel><PolicyList type="attendance_policy" items={filteredAttendance} /></TabPanel>
                 <TabPanel><PolicyList type="work_schedule" items={filteredSchedules} /></TabPanel>
                 <TabPanel><PolicyList type="holiday_calendar" items={filteredCalendars} /></TabPanel>
