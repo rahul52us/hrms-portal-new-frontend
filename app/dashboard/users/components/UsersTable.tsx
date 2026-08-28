@@ -41,6 +41,8 @@ import {
 } from "react-icons/fi";
 import CustomTable from "../../../component/config/component/CustomTable/CustomTable";
 import { FiEdit2, FiTrash2, FiEye, FiFileText, FiUserPlus } from "react-icons/fi";
+import { observer } from "mobx-react-lite";
+import stores from "@/app/store/stores";
 
 type Props = {
   users: any[];
@@ -116,7 +118,7 @@ const getOfficeLocationPlace = (user: any) => {
     .join(", ");
 };
 
-const UsersTable = ({
+const UsersTable = observer(({
   users,
   loading,
   pagination,
@@ -149,6 +151,7 @@ const UsersTable = ({
   setUserSourceTab,
   isPublicEnrolledUser,
 }: Props) => {
+  const { departmentStore } = stores;
 
   const cardBg = useColorModeValue("white", "gray.800");
   const borderColorLight = useColorModeValue("gray.100", "gray.700");
@@ -205,12 +208,14 @@ const UsersTable = ({
           const officeLocation = getOfficeLocationDisplay(user);
           const place = getOfficeLocationPlace(user);
 
+          let departmentName = user.department?.departmentName || (typeof user.department === "string" ? user.department : "--");
+
           return (
             <VStack align="start" spacing={0.5}>
               <HStack spacing={1} fontSize="sm">
                 <Icon as={FiBriefcase} boxSize={3} color="purple.500" />
                 <Text fontWeight="medium" color={departmentTextColor}>
-                  {user.department?.departmentName || (typeof user.department === "string" ? user.department : "--")}
+                  {departmentName}
                 </Text>
               </HStack>
               {user.team ? (
@@ -721,6 +726,6 @@ const UsersTable = ({
         )}
     </VStack>
   );
-};
+});
 
 export default UsersTable;
