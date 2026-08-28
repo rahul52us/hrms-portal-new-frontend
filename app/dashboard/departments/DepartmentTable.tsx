@@ -4,6 +4,7 @@ import {
   departmentStore,
 } from "@/app/store/departmentStore/departmentStore";
 import stores from "@/app/store/stores";
+import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
 import { AddIcon, ChevronRightIcon } from "@chakra-ui/icons";
 import {
   Badge,
@@ -1173,30 +1174,19 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
         </ModalContent>
       </Modal>
 
-      <Drawer
+      <DashboardDrawer
         isOpen={isTeamsOpen}
-        placement="right"
-        size="lg"
         onClose={() => {
           setTeamsDept(null);
           resetTeamForm();
           onTeamsClose();
         }}
+        titlePrefix="Teams in"
+        titleSuffix={teamsDept?.departmentName || "Department"}
+        subtitle="Optional teams inside this department"
+        maxW={{ base: "100%", md: "60%", lg: "40%" }}
       >
-        <DrawerOverlay backdropFilter="blur(8px)" bg="blackAlpha.300" />
-        <DrawerContent bg={modalBg} borderLeftRadius={{ base: "none", md: "2xl" }} shadow="2xl">
-          <DrawerCloseButton color={modalCloseBtnColor} top={4} right={4} />
-          <DrawerHeader borderBottomWidth="1px" borderColor={borderColor} pr={12}>
-            <VStack align="start" spacing={1}>
-              <Text>Teams in {teamsDept?.departmentName || "Department"}</Text>
-              <Text fontSize="sm" fontWeight="500" color={mutedTextColor}>
-                Optional teams inside this department
-              </Text>
-            </VStack>
-          </DrawerHeader>
-
-          <DrawerBody py={5}>
-            <VStack align="stretch" spacing={5}>
+        <VStack align="stretch" spacing={5}>
               {canManageDepartments ? (
                 <Box p={4} borderWidth="1px" borderColor={borderColor} borderRadius="xl" bg={softBg}>
                   <Text fontWeight="800" color={textColor} mb={3}>
@@ -1322,32 +1312,49 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
                 </VStack>
               )}
             </VStack>
-          </DrawerBody>
-        </DrawerContent>
-      </Drawer>
+      </DashboardDrawer>
 
-      <Drawer
+      <DashboardDrawer
         isOpen={isEmployeesOpen}
-        placement="right"
-        size="xl"
         onClose={() => {
           setEmployeesDept(null);
           setDepartmentEmployees([]);
           onEmployeesClose();
         }}
+        titlePrefix="Employees in"
+        titleSuffix={employeesDept?.departmentName || "Department"}
+        subtitle={`${departmentEmployeesPagination.total || 0} employees found`}
+        maxW={{ base: "100%", md: "80%", xl: "60%" }}
+        footerContent={
+          <Flex w="full" justify="space-between" align="center" gap={3}>
+            <Text fontSize="sm" color={mutedTextColor}>
+              Page {departmentEmployeesPage} of {departmentEmployeesPagination.totalPages || 1}
+            </Text>
+            <HStack>
+              <Button
+                size="sm"
+                variant="outline"
+                isDisabled={departmentEmployeesPage <= 1 || isDepartmentEmployeesLoading}
+                onClick={() => fetchDepartmentEmployees(employeesDept, departmentEmployeesPage - 1)}
+              >
+                Prev
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                isDisabled={
+                  departmentEmployeesPage >= (departmentEmployeesPagination.totalPages || 1) ||
+                  isDepartmentEmployeesLoading
+                }
+                onClick={() => fetchDepartmentEmployees(employeesDept, departmentEmployeesPage + 1)}
+              >
+                Next
+              </Button>
+            </HStack>
+          </Flex>
+        }
       >
-        <DrawerOverlay backdropFilter="blur(8px)" bg="blackAlpha.300" />
-        <DrawerContent bg={modalBg} borderLeftRadius={{ base: "none", md: "2xl" }} shadow="2xl">
-          <DrawerCloseButton color={modalCloseBtnColor} top={4} right={4} />
-          <DrawerHeader borderBottomWidth="1px" borderColor={borderColor} pr={12}>
-            <VStack align="start" spacing={1}>
-              <Text>Employees in {employeesDept?.departmentName || "Department"}</Text>
-              <Text fontSize="sm" fontWeight="500" color={mutedTextColor}>
-                {departmentEmployeesPagination.total || 0} employees found
-              </Text>
-            </VStack>
-          </DrawerHeader>
-          <DrawerBody py={5}>
+        <Box py={5}>
             {isDepartmentEmployeesLoading ? (
               <Flex justify="center" py={10}>
                 <Spinner color="blue.500" />
@@ -1398,35 +1405,9 @@ const DepartmentTable = ({ companyId, companyName }: DepartmentTableProps) => {
                 </Table>
               </Box>
             )}
-          </DrawerBody>
-          <DrawerFooter borderTopWidth="1px" borderColor={borderColor} justifyContent="space-between" gap={3}>
-            <Text fontSize="sm" color={mutedTextColor}>
-              Page {departmentEmployeesPage} of {departmentEmployeesPagination.totalPages || 1}
-            </Text>
-            <HStack>
-              <Button
-                size="sm"
-                variant="outline"
-                isDisabled={departmentEmployeesPage <= 1 || isDepartmentEmployeesLoading}
-                onClick={() => fetchDepartmentEmployees(employeesDept, departmentEmployeesPage - 1)}
-              >
-                Prev
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                isDisabled={
-                  departmentEmployeesPage >= (departmentEmployeesPagination.totalPages || 1) ||
-                  isDepartmentEmployeesLoading
-                }
-                onClick={() => fetchDepartmentEmployees(employeesDept, departmentEmployeesPage + 1)}
-              >
-                Next
-              </Button>
-            </HStack>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+        </Box>
+
+      </DashboardDrawer>
 
       <Modal
         isOpen={isArchiveOpen}
