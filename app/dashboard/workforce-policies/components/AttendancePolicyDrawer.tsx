@@ -22,6 +22,7 @@ import {
   Text,
   Textarea,
   useToast,
+  useColorModeValue,
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -177,6 +178,10 @@ export default function AttendancePolicyDrawer({
     }
   };
 
+  const cardBg = useColorModeValue("white", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.700");
+  const inputBg = useColorModeValue("gray.50", "gray.900");
+
   return (
     <DashboardDrawer
       isOpen={isOpen}
@@ -193,7 +198,7 @@ export default function AttendancePolicyDrawer({
         </Flex>
       }
     >
-      <Stack spacing={6} maxW="900px" mx="auto">
+      <Stack spacing={6}>
         {mode !== "create" ? (
           <Alert status="info" borderRadius="md">
             <AlertIcon />
@@ -203,73 +208,75 @@ export default function AttendancePolicyDrawer({
           </Alert>
         ) : null}
 
-        <Box>
-          <Text mb={3} fontSize="sm" fontWeight="800">Policy identity</Text>
-          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <Text mb={4} fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Policy identity</Text>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
             <FormControl isRequired isDisabled={mode !== "create"}>
-              <FormLabel fontSize="sm">Name</FormLabel>
-              <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="General attendance policy" />
+              <FormLabel fontSize="sm" fontWeight="600">Name</FormLabel>
+              <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="General attendance policy" bg={inputBg} />
             </FormControl>
             <FormControl isRequired isDisabled={mode !== "create"}>
-              <FormLabel fontSize="sm">Code</FormLabel>
-              <Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="ATT-GENERAL" />
+              <FormLabel fontSize="sm" fontWeight="600">Code</FormLabel>
+              <Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="ATT-GENERAL" bg={inputBg} />
             </FormControl>
           </SimpleGrid>
           {mode === "create" ? (
-            <FormControl mt={4}>
-              <FormLabel fontSize="sm">Description</FormLabel>
-              <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} />
+            <FormControl mt={5}>
+              <FormLabel fontSize="sm" fontWeight="600">Description</FormLabel>
+              <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} bg={inputBg} />
             </FormControl>
           ) : null}
         </Box>
 
-        <Box>
-          <Text mb={3} fontSize="sm" fontWeight="800">Validity</Text>
-          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <Text mb={4} fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Validity</Text>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
             <FormControl isRequired>
-              <FormLabel fontSize="sm">Effective from</FormLabel>
-              <Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} />
+              <FormLabel fontSize="sm" fontWeight="600">Effective from</FormLabel>
+              <Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} bg={inputBg} />
             </FormControl>
           </SimpleGrid>
         </Box>
 
-        <Box>
-          <Text mb={3} fontSize="sm" fontWeight="800">Attendance thresholds</Text>
-          <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4}>
-            <FormControl><FormLabel fontSize="sm">Late grace (minutes)</FormLabel><NumberInput min={0} value={rules.gracePeriodMinutesLate} onChange={(_, value) => setRule("gracePeriodMinutesLate", value || 0)}><NumberInputField /></NumberInput></FormControl>
-            <FormControl><FormLabel fontSize="sm">Early-exit grace</FormLabel><NumberInput min={0} value={rules.gracePeriodMinutesEarly} onChange={(_, value) => setRule("gracePeriodMinutesEarly", value || 0)}><NumberInputField /></NumberInput></FormControl>
-            <FormControl><FormLabel fontSize="sm">Full-day minutes</FormLabel><NumberInput min={1} value={rules.minimumFullDayMinutes} onChange={(_, value) => setRule("minimumFullDayMinutes", value || 0)}><NumberInputField /></NumberInput></FormControl>
-            <FormControl><FormLabel fontSize="sm">Half-day minutes</FormLabel><NumberInput min={1} value={rules.minimumHalfDayMinutes} onChange={(_, value) => setRule("minimumHalfDayMinutes", value || 0)}><NumberInputField /></NumberInput></FormControl>
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <Text mb={4} fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Attendance thresholds</Text>
+          <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={5}>
+            <FormControl><FormLabel fontSize="sm" fontWeight="600">Late grace (minutes)</FormLabel><NumberInput min={0} value={rules.gracePeriodMinutesLate} onChange={(_, value) => setRule("gracePeriodMinutesLate", value || 0)}><NumberInputField bg={inputBg} /></NumberInput></FormControl>
+            <FormControl><FormLabel fontSize="sm" fontWeight="600">Early-exit grace</FormLabel><NumberInput min={0} value={rules.gracePeriodMinutesEarly} onChange={(_, value) => setRule("gracePeriodMinutesEarly", value || 0)}><NumberInputField bg={inputBg} /></NumberInput></FormControl>
+            <FormControl><FormLabel fontSize="sm" fontWeight="600">Full-day minutes</FormLabel><NumberInput min={1} value={rules.minimumFullDayMinutes} onChange={(_, value) => setRule("minimumFullDayMinutes", value || 0)}><NumberInputField bg={inputBg} /></NumberInput></FormControl>
+            <FormControl><FormLabel fontSize="sm" fontWeight="600">Half-day minutes</FormLabel><NumberInput min={1} value={rules.minimumHalfDayMinutes} onChange={(_, value) => setRule("minimumHalfDayMinutes", value || 0)}><NumberInputField bg={inputBg} /></NumberInput></FormControl>
           </SimpleGrid>
         </Box>
 
-        <Box>
-          <Text mb={3} fontSize="sm" fontWeight="800">Punch evaluation</Text>
-          <Stack spacing={3}>
-            <HStack justify="space-between"><Text fontSize="sm">Require punch-out</Text><Switch isChecked={rules.requirePunchOut} onChange={(event) => setRule("requirePunchOut", event.target.checked)} /></HStack>
-            <HStack justify="space-between"><Text fontSize="sm">Allow multiple punch sessions</Text><Switch isChecked={rules.allowMultiplePunches} onChange={(event) => setRule("allowMultiplePunches", event.target.checked)} /></HStack>
-            <FormControl>
-              <FormLabel fontSize="sm">Missing punch treatment</FormLabel>
-              <Select value={rules.missingPunchTreatment} onChange={(event) => setRule("missingPunchTreatment", event.target.value)}>
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <Text mb={4} fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Punch evaluation</Text>
+          <Stack spacing={4}>
+            <HStack justify="space-between"><Text fontSize="sm" fontWeight="600">Require punch-out</Text><Switch isChecked={rules.requirePunchOut} onChange={(event) => setRule("requirePunchOut", event.target.checked)} colorScheme="blue" /></HStack>
+            <HStack justify="space-between"><Text fontSize="sm" fontWeight="600">Allow multiple punch sessions</Text><Switch isChecked={rules.allowMultiplePunches} onChange={(event) => setRule("allowMultiplePunches", event.target.checked)} colorScheme="blue" /></HStack>
+            <FormControl mt={2}>
+              <FormLabel fontSize="sm" fontWeight="600">Missing punch treatment</FormLabel>
+              <Select value={rules.missingPunchTreatment} onChange={(event) => setRule("missingPunchTreatment", event.target.value)} bg={inputBg}>
                 <option value="flag_incomplete">Flag for regularization</option>
                 <option value="half_day">Mark half day</option>
                 <option value="absent">Mark absent</option>
               </Select>
             </FormControl>
-            <HStack justify="space-between"><Text fontSize="sm">Calculate overtime</Text><Switch isChecked={rules.overtimeEnabled} onChange={(event) => setRule("overtimeEnabled", event.target.checked)} /></HStack>
+            <HStack justify="space-between" mt={2}><Text fontSize="sm" fontWeight="600">Calculate overtime</Text><Switch isChecked={rules.overtimeEnabled} onChange={(event) => setRule("overtimeEnabled", event.target.checked)} colorScheme="blue" /></HStack>
             {rules.overtimeEnabled ? (
               <FormControl>
-                <FormLabel fontSize="sm">Overtime starts after worked minutes</FormLabel>
-                <NumberInput min={0} value={rules.overtimeStartsAfterMinutes} onChange={(_, value) => setRule("overtimeStartsAfterMinutes", value || 0)}><NumberInputField /></NumberInput>
+                <FormLabel fontSize="sm" fontWeight="600">Overtime starts after worked minutes</FormLabel>
+                <NumberInput min={0} value={rules.overtimeStartsAfterMinutes} onChange={(_, value) => setRule("overtimeStartsAfterMinutes", value || 0)}><NumberInputField bg={inputBg} /></NumberInput>
               </FormControl>
             ) : null}
           </Stack>
         </Box>
 
-        <FormControl isRequired={mode !== "create"}>
-          <FormLabel fontSize="sm">Change reason</FormLabel>
-          <Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} rows={2} placeholder="Why these rules are effective from this date" />
-        </FormControl>
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <FormControl isRequired={mode !== "create"}>
+            <FormLabel fontSize="sm" fontWeight="600">Change reason</FormLabel>
+            <Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} rows={2} placeholder="Why these rules are effective from this date" bg={inputBg} />
+          </FormControl>
+        </Box>
       </Stack>
     </DashboardDrawer>
   );

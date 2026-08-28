@@ -22,6 +22,7 @@ import {
   Text,
   Textarea,
   useToast,
+  useColorModeValue,
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -138,13 +139,17 @@ export default function RemoteWorkPolicyDrawer({ isOpen, onClose, companyId, mod
     }
   };
 
+  const cardBg = useColorModeValue("white", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.700");
+  const inputBg = useColorModeValue("gray.50", "gray.900");
+
   return (
     <DashboardDrawer
       isOpen={isOpen}
       onClose={onClose}
       titlePrefix={mode === "create" ? "New" : mode === "new_version" ? "New version of" : "Edit"}
-      titleSuffix={mode === "create" ? "WFH policy" : `${resource?.name}${mode === 'edit_draft' ? ' draft' : ''}`}
-      subtitle="Controls eligibility and approval. Approved WFH still requires normal attendance punches."
+      titleSuffix={mode === "create" ? "remote work policy" : `${resource?.name || "policy"}${mode === 'edit_draft' ? ' draft' : ''}`}
+      subtitle="Published versions remain immutable for historical requests."
       maxW={{ base: "100%", md: "70%" }}
       footerContent={
         <Flex w="full" justify="flex-end" gap={3}>
@@ -154,61 +159,77 @@ export default function RemoteWorkPolicyDrawer({ isOpen, onClose, companyId, mod
         </Flex>
       }
     >
-      <Stack spacing={6} maxW="900px" mx="auto">
+      <Stack spacing={6}>
         {mode !== "create" ? <Alert status="info" borderRadius="md"><AlertIcon /><AlertDescription fontSize="sm">Published versions remain immutable for historical requests.</AlertDescription></Alert> : null}
-        <Box>
-          <Text mb={3} fontWeight="800" fontSize="sm">Policy identity</Text>
-          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-            <FormControl isRequired isDisabled={mode !== "create"}><FormLabel>Name</FormLabel><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="General WFH policy" /></FormControl>
-            <FormControl isRequired isDisabled={mode !== "create"}><FormLabel>Code</FormLabel><Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="WFH-GENERAL" /></FormControl>
+        
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <Text mb={4} fontWeight="800" fontSize="sm" color="blue.600" textTransform="uppercase" letterSpacing="wide">Policy identity</Text>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
+            <FormControl isRequired isDisabled={mode !== "create"}><FormLabel fontSize="sm" fontWeight="600">Name</FormLabel><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="General WFH policy" bg={inputBg} /></FormControl>
+            <FormControl isRequired isDisabled={mode !== "create"}><FormLabel fontSize="sm" fontWeight="600">Code</FormLabel><Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="WFH-GENERAL" bg={inputBg} /></FormControl>
           </SimpleGrid>
-          {mode === "create" ? <FormControl mt={4}><FormLabel>Description</FormLabel><Textarea value={description} onChange={(event) => setDescription(event.target.value)} /></FormControl> : null}
+          {mode === "create" ? <FormControl mt={5}><FormLabel fontSize="sm" fontWeight="600">Description</FormLabel><Textarea value={description} onChange={(event) => setDescription(event.target.value)} bg={inputBg} /></FormControl> : null}
         </Box>
-        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-          <FormControl isRequired><FormLabel>Effective from</FormLabel><Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} /></FormControl>
-          <FormControl isRequired>
-            <FormLabel>Approval workflow</FormLabel>
-            <Select
-              value={rules.approvalWorkflowVersion || ""}
-              placeholder="Select published workflow"
-              onChange={(event) => {
-                const selected = approvalOptions.find((item) => item.latestPublishedVersion?._id === event.target.value);
-                setRules((current) => ({
-                  ...current,
-                  approvalWorkflow: selected?._id || null,
-                  approvalWorkflowVersion: selected?.latestPublishedVersion?._id || null,
-                  approvalWorkflowVersionNumber: selected?.latestPublishedVersion?.versionNumber || null,
-                }));
-              }}
-            >
-              {approvalOptions.map((item) => <option key={item._id} value={item.latestPublishedVersion!._id}>{item.name} (v{item.latestPublishedVersion!.versionNumber})</option>)}
-            </Select>
-            <FormHelperText>Configure levels in Workforce policies &gt; Approval flows.</FormHelperText>
+
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <Text mb={4} fontWeight="800" fontSize="sm" color="blue.600" textTransform="uppercase" letterSpacing="wide">Workflow & Validity</Text>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
+            <FormControl isRequired><FormLabel fontSize="sm" fontWeight="600">Effective from</FormLabel><Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} bg={inputBg} /></FormControl>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm" fontWeight="600">Approval workflow</FormLabel>
+              <Select
+                value={rules.approvalWorkflowVersion || ""}
+                placeholder="Select published workflow"
+                bg={inputBg}
+                onChange={(event) => {
+                  const selected = approvalOptions.find((item) => item.latestPublishedVersion?._id === event.target.value);
+                  setRules((current) => ({
+                    ...current,
+                    approvalWorkflow: selected?._id || null,
+                    approvalWorkflowVersion: selected?.latestPublishedVersion?._id || null,
+                    approvalWorkflowVersionNumber: selected?.latestPublishedVersion?.versionNumber || null,
+                  }));
+                }}
+              >
+                {approvalOptions.map((item) => <option key={item._id} value={item.latestPublishedVersion!._id}>{item.name} (v{item.latestPublishedVersion!.versionNumber})</option>)}
+              </Select>
+              <FormHelperText mt={2}>Configure levels in Workforce policies &gt; Approval flows.</FormHelperText>
+            </FormControl>
+          </SimpleGrid>
+        </Box>
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <FormControl mb={5}>
+            <FormLabel fontSize="sm" fontWeight="600">Allowed weekdays</FormLabel>
+            <CheckboxGroup value={rules.allowedWeekdays} onChange={(values) => setRule("allowedWeekdays", values as string[])}>
+              <SimpleGrid columns={{ base: 2, md: 4 }} spacing={3} mt={2}>{WEEKDAYS.map((day) => <Checkbox key={day} value={day}>{day}</Checkbox>)}</SimpleGrid>
+            </CheckboxGroup>
           </FormControl>
-        </SimpleGrid>
-        <FormControl>
-          <FormLabel>Allowed weekdays</FormLabel>
-          <CheckboxGroup value={rules.allowedWeekdays} onChange={(values) => setRule("allowedWeekdays", values as string[])}>
-            <SimpleGrid columns={{ base: 2, md: 4 }} spacing={3}>{WEEKDAYS.map((day) => <Checkbox key={day} value={day}>{day}</Checkbox>)}</SimpleGrid>
-          </CheckboxGroup>
-        </FormControl>
-        <Box>
-          <Text mb={3} fontWeight="800" fontSize="sm">Usage limits</Text>
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
-            <FormControl><FormLabel>Days per week</FormLabel><Input type="number" min={0} max={7} value={numberValue("maxDaysPerWeek")} placeholder="No limit" onChange={(event) => numberChange("maxDaysPerWeek", event.target.value)} /><FormHelperText>Blank means no limit.</FormHelperText></FormControl>
-            <FormControl><FormLabel>Days per month</FormLabel><Input type="number" min={0} max={31} value={numberValue("maxDaysPerMonth")} placeholder="No limit" onChange={(event) => numberChange("maxDaysPerMonth", event.target.value)} /></FormControl>
-            <FormControl><FormLabel>Consecutive days</FormLabel><Input type="number" min={0} max={31} value={numberValue("maxConsecutiveDays")} placeholder="No limit" onChange={(event) => numberChange("maxConsecutiveDays", event.target.value)} /></FormControl>
-            <FormControl><FormLabel>Minimum notice days</FormLabel><Input type="number" min={0} value={numberValue("minimumNoticeDays")} placeholder="Same day" onChange={(event) => numberChange("minimumNoticeDays", event.target.value)} /></FormControl>
-            <FormControl><FormLabel>Maximum advance days</FormLabel><Input type="number" min={0} value={numberValue("maximumAdvanceDays")} placeholder="No limit" onChange={(event) => numberChange("maximumAdvanceDays", event.target.value)} /></FormControl>
-            <FormControl><FormLabel>Probation eligibility</FormLabel><Select value={rules.probationEligibility} onChange={(event) => setRule("probationEligibility", event.target.value as RemoteWorkRules["probationEligibility"])}><option value="allowed">Allowed</option><option value="after_confirmation">After confirmation</option><option value="not_allowed">Not allowed</option></Select></FormControl>
+          
+          <Box h="1px" bg={borderColor} my={5} mx={-5} />
+
+          <Text mb={4} fontWeight="800" fontSize="sm" color="blue.600" textTransform="uppercase" letterSpacing="wide">Usage limits</Text>
+          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={5}>
+            <FormControl><FormLabel fontSize="sm" fontWeight="600">Days per week</FormLabel><Input type="number" min={0} max={7} value={numberValue("maxDaysPerWeek")} placeholder="No limit" onChange={(event) => numberChange("maxDaysPerWeek", event.target.value)} bg={inputBg} /><FormHelperText mt={2}>Blank means no limit.</FormHelperText></FormControl>
+            <FormControl><FormLabel fontSize="sm" fontWeight="600">Days per month</FormLabel><Input type="number" min={0} max={31} value={numberValue("maxDaysPerMonth")} placeholder="No limit" onChange={(event) => numberChange("maxDaysPerMonth", event.target.value)} bg={inputBg} /></FormControl>
+            <FormControl><FormLabel fontSize="sm" fontWeight="600">Consecutive days</FormLabel><Input type="number" min={0} max={31} value={numberValue("maxConsecutiveDays")} placeholder="No limit" onChange={(event) => numberChange("maxConsecutiveDays", event.target.value)} bg={inputBg} /></FormControl>
+            <FormControl><FormLabel fontSize="sm" fontWeight="600">Minimum notice days</FormLabel><Input type="number" min={0} value={numberValue("minimumNoticeDays")} placeholder="Same day" onChange={(event) => numberChange("minimumNoticeDays", event.target.value)} bg={inputBg} /></FormControl>
+            <FormControl><FormLabel fontSize="sm" fontWeight="600">Maximum advance days</FormLabel><Input type="number" min={0} value={numberValue("maximumAdvanceDays")} placeholder="No limit" onChange={(event) => numberChange("maximumAdvanceDays", event.target.value)} bg={inputBg} /></FormControl>
+            <FormControl><FormLabel fontSize="sm" fontWeight="600">Probation eligibility</FormLabel><Select value={rules.probationEligibility} onChange={(event) => setRule("probationEligibility", event.target.value as RemoteWorkRules["probationEligibility"])} bg={inputBg}><option value="allowed">Allowed</option><option value="after_confirmation">After confirmation</option><option value="not_allowed">Not allowed</option></Select></FormControl>
           </SimpleGrid>
         </Box>
-        <Stack spacing={4}>
-          <FormControl display="flex" justifyContent="space-between" alignItems="center"><Box><FormLabel mb={0}>Allow half-day WFH</FormLabel><FormHelperText mt={0}>Half day appears as hybrid work mode.</FormHelperText></Box><Switch isChecked={rules.allowHalfDay} onChange={(event) => setRule("allowHalfDay", event.target.checked)} /></FormControl>
-          <FormControl display="flex" justifyContent="space-between" alignItems="center"><Box><FormLabel mb={0}>Require a reason</FormLabel><FormHelperText mt={0}>Employees must explain the remote-work need.</FormHelperText></Box><Switch isChecked={rules.requireReason} onChange={(event) => { setRule("requireReason", event.target.checked); if (!event.target.checked) setRule("minimumReasonLength", 0); }} /></FormControl>
-          {rules.requireReason ? <FormControl><FormLabel>Minimum reason characters</FormLabel><Input type="number" min={1} max={500} value={numberValue("minimumReasonLength")} placeholder="10" onChange={(event) => numberChange("minimumReasonLength", event.target.value)} /></FormControl> : null}
-        </Stack>
-        <FormControl isRequired={mode !== "create"}><FormLabel>Change reason</FormLabel><Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} placeholder="Why these rules take effect on this date" /></FormControl>
+
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <Text mb={4} fontWeight="800" fontSize="sm" color="blue.600" textTransform="uppercase" letterSpacing="wide">Additional Rules</Text>
+          <Stack spacing={4}>
+            <FormControl display="flex" justifyContent="space-between" alignItems="center"><Box><FormLabel mb={0} fontWeight="600">Allow half-day WFH</FormLabel><FormHelperText mt={0}>Half day appears as hybrid work mode.</FormHelperText></Box><Switch isChecked={rules.allowHalfDay} onChange={(event) => setRule("allowHalfDay", event.target.checked)} colorScheme="blue" /></FormControl>
+            <FormControl display="flex" justifyContent="space-between" alignItems="center"><Box><FormLabel mb={0} fontWeight="600">Require a reason</FormLabel><FormHelperText mt={0}>Employees must explain the remote-work need.</FormHelperText></Box><Switch isChecked={rules.requireReason} onChange={(event) => { setRule("requireReason", event.target.checked); if (!event.target.checked) setRule("minimumReasonLength", 0); }} colorScheme="blue" /></FormControl>
+            {rules.requireReason ? <FormControl><FormLabel fontSize="sm" fontWeight="600">Minimum reason characters</FormLabel><Input type="number" min={1} max={500} value={numberValue("minimumReasonLength")} placeholder="10" onChange={(event) => numberChange("minimumReasonLength", event.target.value)} bg={inputBg} /></FormControl> : null}
+          </Stack>
+        </Box>
+
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <FormControl isRequired={mode !== "create"}><FormLabel fontSize="sm" fontWeight="600">Change reason</FormLabel><Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} placeholder="Why these rules take effect on this date" bg={inputBg} /></FormControl>
+        </Box>
       </Stack>
     </DashboardDrawer>
   );

@@ -14,6 +14,8 @@ import {
   HStack,
   Icon,
   Input,
+  InputGroup,
+  InputLeftElement,
   Skeleton,
   Stack,
   Text,
@@ -27,7 +29,7 @@ import {
 } from "@/app/store/workforcePolicyStore/workforcePolicyStore";
 import { observer } from "mobx-react-lite";
 import { FormEvent, useEffect, useState } from "react";
-import { FiAlertCircle, FiCheckCircle, FiSettings } from "react-icons/fi";
+import { FiAlertCircle, FiCheckCircle, FiSettings, FiSearch, FiCalendar } from "react-icons/fi";
 
 const POLICY_LABELS: Record<PolicyResourceType, string> = {
   attendance_policy: "Attendance policy",
@@ -71,9 +73,9 @@ const CoverageValue = ({
   const value = resolvedLabel(resolved);
   const assignedIconBg = useColorModeValue("green.50", "green.900");
   const assignedIconColor = useColorModeValue("green.600", "green.200");
-  const missingIconBg = useColorModeValue("orange.50", "orange.900");
-  const missingIconColor = useColorModeValue("orange.600", "orange.200");
-  const missingTextColor = useColorModeValue("orange.700", "orange.200");
+  const missingIconBg = useColorModeValue("red.100", "red.900");
+  const missingIconColor = useColorModeValue("red.600", "red.200");
+  const missingTextColor = useColorModeValue("red.700", "red.200");
 
   return (
     <Box minW={0}>
@@ -154,6 +156,8 @@ const EmployeeCoverageRow = ({
       }}
       borderTopWidth="1px"
       borderColor={borderColor}
+      _hover={{ bg: useColorModeValue("gray.50", "whiteAlpha.50") }}
+      transition="background 0.2s"
     >
       <Flex p={4} minW={0} align="start" justify="space-between" gap={3}>
         <Box minW={0}>
@@ -187,6 +191,8 @@ const EmployeeCoverageRow = ({
           borderTopWidth={{ base: "1px", lg: "0" }}
           borderLeftWidth={{ base: "0", lg: "1px" }}
           borderColor={borderColor}
+          bg={!resolved ? useColorModeValue("red.50", "rgba(229, 62, 62, 0.1)") : "transparent"}
+          transition="background 0.2s"
         >
           <CoverageValue label={label} resolved={resolved} muted={muted} />
         </Box>
@@ -200,6 +206,7 @@ const EmployeeCoverageRow = ({
         align="start"
         borderLeftWidth="1px"
         borderColor={borderColor}
+        bg={item.complete ? "transparent" : useColorModeValue("orange.50", "rgba(221, 107, 32, 0.1)")}
       >
         <Badge
           colorScheme={item.complete ? "green" : "orange"}
@@ -249,59 +256,44 @@ const PolicyCoveragePanel = observer(({
   const pagination = workforcePolicyStore.coveragePagination;
   const summary = workforcePolicyStore.coverageSummary;
   const tableHeadBg = useColorModeValue("gray.50", "whiteAlpha.100");
+  const surface = useColorModeValue("white", "gray.800");
 
   return (
-    <Stack spacing={4}>
-      <Flex
-        as="form"
-        onSubmit={submitSearch}
-        direction={{ base: "column", md: "row" }}
-        align={{ base: "stretch", md: "end" }}
-        gap={3}
-      >
-        <FormControl maxW={{ md: "220px" }}>
-          <FormLabel fontSize="sm" mb={1.5}>Effective date</FormLabel>
-          <Input type="date" value={asOfDate} onChange={(event) => { setAsOfDate(event.target.value); setPage(1); }} />
-        </FormControl>
-        <FormControl flex="1">
-          <FormLabel fontSize="sm" mb={1.5}>Find employee</FormLabel>
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, email, code, department or team" />
-        </FormControl>
-        <Button type="submit" colorScheme="blue">Search</Button>
-      </Flex>
-
-      <Flex
-        p={4}
-        gap={4}
-        direction={{ base: "column", md: "row" }}
-        align={{ base: "stretch", md: "center" }}
-        justify="space-between"
-        borderWidth="1px"
-        borderColor={borderColor}
-        borderRadius="md"
-      >
+    <Stack spacing={5}>
+      <Flex justify="space-between" align={{ base: "start", lg: "end" }} direction={{ base: "column", lg: "row" }} gap={4}>
         <Box>
-          <Text fontWeight="800">Coverage result</Text>
-          <Text mt={0.5} fontSize="sm" color={muted}>
+          <Text fontWeight="800" fontSize="lg">Coverage result</Text>
+          <Text mt={1} fontSize="sm" color={muted}>
             Checks attendance, schedule, holiday, leave, and WFH policies effective on the selected date.
           </Text>
         </Box>
-        <Flex align={{ base: "stretch", sm: "center" }} direction={{ base: "column", sm: "row" }} gap={2} flexShrink={0}>
-          <HStack spacing={2}>
-            <Badge borderRadius="full" px={3} py={1.5} colorScheme="gray" textTransform="none">
-              {summary.employeesOnPage} checked
-            </Badge>
-            <Badge borderRadius="full" px={3} py={1.5} colorScheme="green" textTransform="none">
-              {summary.completeOnPage} ready
-            </Badge>
-            <Badge borderRadius="full" px={3} py={1.5} colorScheme="orange" textTransform="none">
-              {summary.incompleteOnPage} need setup
-            </Badge>
-          </HStack>
-          <Button size="sm" variant="outline" leftIcon={<FiSettings />} onClick={onManageAssignments}>
-            Manage assignments
-          </Button>
+        <Flex as="form" onSubmit={submitSearch} align="center" gap={3} w={{ base: "full", lg: "auto" }}>
+          <Input 
+            type="date" 
+            size="sm" 
+            w="160px"
+            value={asOfDate} 
+            onChange={(e) => { setAsOfDate(e.target.value); setPage(1); }} 
+            borderRadius="md" 
+            bg={surface} 
+          />
+          <InputGroup size="sm" w={{ base: "full", lg: "250px" }}>
+            <InputLeftElement pointerEvents="none"><FiSearch color="gray.400" /></InputLeftElement>
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search employee..." borderRadius="md" bg={surface} />
+          </InputGroup>
+          <Button size="sm" type="submit" colorScheme="blue" borderRadius="md" px={6}>Search</Button>
         </Flex>
+      </Flex>
+      
+      <Flex justify="space-between" align="center" direction={{ base: "column", sm: "row" }} gap={3}>
+         <HStack spacing={2}>
+            <Badge borderRadius="full" px={3} py={1.5} colorScheme="gray" textTransform="none">{summary.employeesOnPage} checked</Badge>
+            <Badge borderRadius="full" px={3} py={1.5} colorScheme="green" textTransform="none">{summary.completeOnPage} ready</Badge>
+            <Badge borderRadius="full" px={3} py={1.5} colorScheme="orange" textTransform="none">{summary.incompleteOnPage} need setup</Badge>
+         </HStack>
+         <Button size="sm" variant="outline" leftIcon={<FiSettings />} onClick={onManageAssignments} borderRadius="md" bg={surface}>
+           Manage assignments
+         </Button>
       </Flex>
 
       {workforcePolicyStore.coverageError ? (
@@ -315,7 +307,7 @@ const PolicyCoveragePanel = observer(({
           <Text color={muted}>No employees match this search.</Text>
         </Box>
       ) : (
-        <Box borderWidth="1px" borderColor={borderColor} borderRadius="md" overflowX="auto">
+        <Box borderWidth="1px" borderColor={borderColor} borderRadius="lg" overflow="hidden" shadow="sm">
           <Grid
             display={{ base: "none", lg: "grid" }}
             minW="1050px"

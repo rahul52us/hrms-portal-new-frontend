@@ -24,6 +24,7 @@ import {
   Text,
   Textarea,
   useToast,
+  useColorModeValue,
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 import { FiArrowDown, FiArrowUp, FiPlus, FiTrash2 } from "react-icons/fi";
@@ -207,6 +208,9 @@ export default function ApprovalWorkflowDrawer({
     }
   };
 
+  const cardBg = useColorModeValue("white", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.700");
+
   return (
     <DashboardDrawer
       isOpen={isOpen}
@@ -223,48 +227,53 @@ export default function ApprovalWorkflowDrawer({
         </Flex>
       }
     >
-      <Stack spacing={6} maxW="900px" mx="auto">
+      <Stack spacing={6}>
         {mode !== "create" ? (
           <Alert status="info" borderRadius="md"><AlertIcon /><AlertDescription fontSize="sm">Published versions remain attached to historical requests.</AlertDescription></Alert>
         ) : null}
-        <Box>
-          <Text mb={3} fontSize="sm" fontWeight="800">Workflow identity</Text>
-          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-            <FormControl isRequired isDisabled={mode !== "create"}><FormLabel>Name</FormLabel><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Manager then HR" /></FormControl>
-            <FormControl isRequired isDisabled={mode !== "create"}><FormLabel>Code</FormLabel><Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="MGR-HR" /></FormControl>
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <Text mb={4} fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Workflow identity</Text>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
+            <FormControl isRequired isDisabled={mode !== "create"}><FormLabel>Name</FormLabel><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Manager then HR" bg={useColorModeValue("gray.50", "gray.900")} /></FormControl>
+            <FormControl isRequired isDisabled={mode !== "create"}><FormLabel>Code</FormLabel><Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="MGR-HR" bg={useColorModeValue("gray.50", "gray.900")} /></FormControl>
           </SimpleGrid>
-          {mode === "create" ? <FormControl mt={4}><FormLabel>Description</FormLabel><Textarea value={description} onChange={(event) => setDescription(event.target.value)} /></FormControl> : null}
+          {mode === "create" ? <FormControl mt={5}><FormLabel>Description</FormLabel><Textarea value={description} onChange={(event) => setDescription(event.target.value)} bg={useColorModeValue("gray.50", "gray.900")} /></FormControl> : null}
         </Box>
-        <FormControl isDisabled={mode !== "create"}>
-          <FormLabel>Used for</FormLabel>
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={3}>
-            {REQUEST_TYPES.map((item) => (
-              <Checkbox
-                key={item.value}
-                id={`approval-workflow-request-type-${item.value}`}
-                name={`approval-workflow-request-type-${item.value}`}
-                isChecked={applicableTo.includes(item.value)}
-                isDisabled={mode !== "create"}
-                onChange={(event) => toggleRequestType(item.value, event.target.checked)}
-              >
-                {item.label}
-              </Checkbox>
-            ))}
-          </SimpleGrid>
-        </FormControl>
-        <FormControl display="flex" justifyContent="space-between" alignItems="center">
-          <Box><FormLabel mb={0}>Auto approve</FormLabel><FormHelperText mt={0}>Use only when the request needs no human decision.</FormHelperText></Box>
-          <Switch isChecked={autoApprove} onChange={(event) => setAutoApprove(event.target.checked)} />
-        </FormControl>
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <FormControl isDisabled={mode !== "create"} mb={6}>
+            <FormLabel fontWeight="800">Used for</FormLabel>
+            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={3} mt={3}>
+              {REQUEST_TYPES.map((item) => (
+                <Checkbox
+                  key={item.value}
+                  id={`approval-workflow-request-type-${item.value}`}
+                  name={`approval-workflow-request-type-${item.value}`}
+                  isChecked={applicableTo.includes(item.value)}
+                  isDisabled={mode !== "create"}
+                  onChange={(event) => toggleRequestType(item.value, event.target.checked)}
+                >
+                  {item.label}
+                </Checkbox>
+              ))}
+            </SimpleGrid>
+          </FormControl>
+          
+          <Box h="1px" bg={borderColor} my={5} mx={-5} />
+
+          <FormControl display="flex" justifyContent="space-between" alignItems="center">
+            <Box><FormLabel mb={0} fontWeight="800">Auto approve</FormLabel><FormHelperText mt={0}>Use only when the request needs no human decision.</FormHelperText></Box>
+            <Switch isChecked={autoApprove} onChange={(event) => setAutoApprove(event.target.checked)} colorScheme="blue" size="lg" />
+          </FormControl>
+        </Box>
         {!autoApprove ? (
-          <Box>
-            <Flex mb={3} justify="space-between" align="center">
-              <Box><Text fontSize="sm" fontWeight="800">Approval levels</Text><Text fontSize="xs" color="gray.500">An approver cannot approve their own request.</Text></Box>
-              <Button size="sm" leftIcon={<FiPlus />} onClick={() => setSteps((current) => [...current, emptyStep(current.length)])}>Add level</Button>
+          <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+            <Flex mb={5} justify="space-between" align="center">
+              <Box><Text fontSize="md" fontWeight="800">Approval levels</Text><Text fontSize="xs" color="gray.500" mt={1}>An approver cannot approve their own request.</Text></Box>
+              <Button size="sm" leftIcon={<FiPlus />} onClick={() => setSteps((current) => [...current, emptyStep(current.length)])} colorScheme="blue" variant="outline">Add level</Button>
             </Flex>
-            <Stack spacing={3}>
+            <Stack spacing={4}>
               {steps.map((step, index) => (
-                <Box key={`${step.order}-${index}`} borderWidth="1px" borderRadius="md" p={4}>
+                <Box key={`${step.order}-${index}`} borderWidth="1px" borderColor={useColorModeValue("gray.200", "gray.700")} borderRadius="lg" p={5} bg={useColorModeValue("gray.50", "gray.900")}>
                   <Flex justify="space-between" align="center" mb={4}>
                     <Text fontWeight="800">Level {index + 1}</Text>
                     <HStack spacing={1}>
@@ -296,7 +305,9 @@ export default function ApprovalWorkflowDrawer({
             </Stack>
           </Box>
         ) : null}
-        <FormControl isRequired={mode !== "create"}><FormLabel>Change reason</FormLabel><Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} placeholder="Why this approval flow is changing" /></FormControl>
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <FormControl isRequired={mode !== "create"}><FormLabel fontWeight="800">Change reason</FormLabel><Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} placeholder="Why this approval flow is changing" bg={useColorModeValue("gray.50", "gray.900")} /></FormControl>
+        </Box>
       </Stack>
     </DashboardDrawer>
   );

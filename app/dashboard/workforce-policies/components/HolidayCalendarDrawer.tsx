@@ -18,6 +18,7 @@ import {
   Textarea,
   Tooltip,
   useToast,
+  useColorModeValue,
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 import { FiPlus, FiTrash2 } from "react-icons/fi";
@@ -190,6 +191,10 @@ export default function HolidayCalendarDrawer({
     }
   };
 
+  const cardBg = useColorModeValue("white", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.700");
+  const inputBg = useColorModeValue("gray.50", "gray.900");
+
   return (
     <DashboardDrawer
       isOpen={isOpen}
@@ -206,41 +211,48 @@ export default function HolidayCalendarDrawer({
         </Flex>
       }
     >
-      <Stack spacing={6} maxW="900px" mx="auto">
-        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-          <FormControl isRequired isDisabled={mode !== "create"}>
-            <FormLabel fontSize="sm">Calendar name</FormLabel>
-            <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="India holiday calendar" />
-          </FormControl>
-          <FormControl isRequired isDisabled={mode !== "create"}>
-            <FormLabel fontSize="sm">Code</FormLabel>
-            <Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="HOL-INDIA" />
-          </FormControl>
-        </SimpleGrid>
-        {mode === "create" ? (
-          <FormControl>
-            <FormLabel fontSize="sm">Description</FormLabel>
-            <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} />
-          </FormControl>
-        ) : null}
-        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-          <FormControl isRequired>
-            <FormLabel fontSize="sm">Effective from</FormLabel>
-            <Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} />
-          </FormControl>
-          <FormControl isRequired>
-            <FormLabel fontSize="sm">Timezone</FormLabel>
-            <Input value={timezone} onChange={(event) => setTimezone(event.target.value)} />
-          </FormControl>
-        </SimpleGrid>
+      <Stack spacing={6}>
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <Text mb={4} fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Calendar identity</Text>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
+            <FormControl isRequired isDisabled={mode !== "create"}>
+              <FormLabel fontSize="sm" fontWeight="600">Calendar name</FormLabel>
+              <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="India holiday calendar" bg={inputBg} />
+            </FormControl>
+            <FormControl isRequired isDisabled={mode !== "create"}>
+              <FormLabel fontSize="sm" fontWeight="600">Code</FormLabel>
+              <Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="HOL-INDIA" bg={inputBg} />
+            </FormControl>
+          </SimpleGrid>
+          {mode === "create" ? (
+            <FormControl mt={5}>
+              <FormLabel fontSize="sm" fontWeight="600">Description</FormLabel>
+              <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} bg={inputBg} />
+            </FormControl>
+          ) : null}
+        </Box>
 
-        <Box>
-          <HStack mb={3} justify="space-between">
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <Text mb={4} fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Validity and timezone</Text>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm" fontWeight="600">Effective from</FormLabel>
+              <Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} bg={inputBg} />
+            </FormControl>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm" fontWeight="600">Timezone</FormLabel>
+              <Input value={timezone} onChange={(event) => setTimezone(event.target.value)} bg={inputBg} />
+            </FormControl>
+          </SimpleGrid>
+        </Box>
+
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <HStack mb={5} justify="space-between">
             <Box>
-              <Text fontSize="sm" fontWeight="800">Holidays</Text>
-              <Text fontSize="xs" color="gray.500">Dates are stored in this calendar version.</Text>
+              <Text fontSize="md" fontWeight="800">Holidays</Text>
+              <Text fontSize="xs" color="gray.500" mt={1}>Dates are stored in this calendar version.</Text>
             </Box>
-            <Button size="sm" leftIcon={<FiPlus />} onClick={() => setHolidays((current) => [...current, blankHoliday()])}>
+            <Button size="sm" leftIcon={<FiPlus />} onClick={() => setHolidays((current) => [...current, blankHoliday()])} colorScheme="blue" variant="outline">
               Add holiday
             </Button>
           </HStack>
@@ -251,7 +263,7 @@ export default function HolidayCalendarDrawer({
               </Box>
             ) : null}
             {holidays.map((holiday) => (
-              <Box key={holiday.id} borderWidth="1px" borderRadius="md" p={3}>
+              <Box key={holiday.id} borderWidth="1px" borderColor={useColorModeValue("gray.200", "gray.700")} borderRadius="lg" p={4} bg={useColorModeValue("gray.50", "gray.900")}>
                 <SimpleGrid columns={{ base: 1, md: 3 }} spacing={3}>
                   <FormControl isRequired>
                     <FormLabel fontSize="xs">Date</FormLabel>
@@ -263,16 +275,16 @@ export default function HolidayCalendarDrawer({
                   </FormControl>
                   <FormControl>
                     <FormLabel fontSize="xs">Type</FormLabel>
-                    <Select size="sm" value={holiday.type} onChange={(event) => updateHoliday(holiday.id, "type", event.target.value)}>
+                    <Select size="sm" value={holiday.type} onChange={(event) => updateHoliday(holiday.id, "type", event.target.value)} bg={useColorModeValue("white", "gray.800")}>
                       <option value="mandatory">Mandatory</option>
                       <option value="optional">Optional</option>
                     </Select>
                   </FormControl>
                 </SimpleGrid>
-                <Stack mt={3} direction={{ base: "column", md: "row" }} align={{ base: "stretch", md: "end" }}>
+                <Stack mt={4} direction={{ base: "column", md: "row" }} align={{ base: "stretch", md: "end" }} spacing={4}>
                   <FormControl>
                     <FormLabel fontSize="xs">Description</FormLabel>
-                    <Input size="sm" value={holiday.description} onChange={(event) => updateHoliday(holiday.id, "description", event.target.value)} />
+                    <Input size="sm" value={holiday.description} onChange={(event) => updateHoliday(holiday.id, "description", event.target.value)} bg={useColorModeValue("white", "gray.800")} />
                   </FormControl>
                   <Checkbox pb={2} isChecked={holiday.isHalfDay} onChange={(event) => updateHoliday(holiday.id, "isHalfDay", event.target.checked)} whiteSpace="nowrap">
                     Half day
@@ -286,10 +298,12 @@ export default function HolidayCalendarDrawer({
           </Stack>
         </Box>
 
-        <FormControl isRequired={mode !== "create"}>
-          <FormLabel fontSize="sm">Change reason</FormLabel>
-          <Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} rows={2} />
-        </FormControl>
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <FormControl isRequired={mode !== "create"}>
+            <FormLabel fontSize="sm" fontWeight="600">Change reason</FormLabel>
+            <Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} rows={2} bg={inputBg} />
+          </FormControl>
+        </Box>
       </Stack>
     </DashboardDrawer>
   );

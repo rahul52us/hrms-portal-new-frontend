@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import PermissionGate from "@/app/component/common/PermissionGate";
+import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
 import { hasPermission, PERMISSION_KEYS } from "@/app/config/utils/permissions";
 import { departmentStore } from "@/app/store/departmentStore/departmentStore";
 import { locationStore } from "@/app/store/locationStore/locationStore";
@@ -362,15 +363,19 @@ const WorkforcePoliciesWorkspace = observer(() => {
       description="This account does not have permission to view workforce configurations."
       fallbackHref="/dashboard/profile"
     >
-      <Box minH="100dvh" bg={pageBg} px={{ base: 3, md: 6 }} py={{ base: 4, md: 6 }}>
+      <Box minH="100dvh">
         <Stack spacing={5} maxW="1500px" mx="auto">
           <Stack spacing={6}>
-            <Box>
-              <Heading size={{ base: "md", md: "lg" }} fontWeight="bold" letterSpacing="tight">Workforce policies</Heading>
-              <Text mt={1} fontSize="md" color={muted}>
-                Effective-dated attendance, schedules, holidays, WFH rules, approval flows, and assignments for {activeCompany?.company_name || "the selected company"}.
-              </Text>
-            </Box>
+            <PageBanner
+              titlePrefix="WORKFORCE"
+              titleHighlight="POLICIES"
+              subtitle={`EFFECTIVE-DATED POLICIES FOR ${activeCompany?.company_name?.toUpperCase() || "YOUR COMPANY"}`}
+              icon={FiBriefcase}
+              statLabel={`${activeAssignments} ACTIVE SCOPE`}
+              statIcon={FiLink}
+              showBackButton={true}
+              colorScheme="blue"
+            />
             <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4} w="full">
               {[{ label: "Policies", value: workforcePolicyStore.attendancePolicies.length, icon: FiClock }, { label: "Schedules", value: workforcePolicyStore.workSchedules.length, icon: FiBriefcase }, { label: "Approval flows", value: workforcePolicyStore.approvalWorkflows.length, icon: FiCheckSquare }, { label: "Active scope", value: activeAssignments, icon: FiLink }].map((stat) => (
                 <HStack key={stat.label} bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={4} minW={0} shadow="sm">
@@ -394,20 +399,50 @@ const WorkforcePoliciesWorkspace = observer(() => {
           ) : null}
 
           <Box bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="xl" overflow="hidden" shadow="sm">
-            <Tabs index={tabIndex} onChange={setTabIndex} colorScheme="blue" isLazy>
-              <Box px={5} pt={4} borderBottomWidth="1px" borderColor={borderColor}>
-                <TabList overflowX="auto" borderBottom="none" sx={{ '&::-webkit-scrollbar': { display: 'none' }, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
-                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>Attendance policies</Tab>
-                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>Work schedules</Tab>
-                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>Holiday calendars</Tab>
-                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>WFH policies</Tab>
-                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>Approval flows</Tab>
-                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>Assignments</Tab>
-                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>Coverage</Tab>
-                  <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} _selected={{ color: "blue.500", borderColor: "blue.500", fontWeight: "600" }}>Audit log</Tab>
+            <Tabs index={tabIndex} onChange={setTabIndex} variant="unstyled" isLazy>
+              <Box px={5} pt={5} pb={3} borderBottomWidth="1px" borderColor={borderColor} overflowX="auto" sx={{ '&::-webkit-scrollbar': { display: 'none' }, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+                <TabList
+                  borderBottom="none"
+                  bg={useColorModeValue("gray.100", "gray.900")}
+                  p={1}
+                  borderRadius="xl"
+                  display="inline-flex"
+                >
+                  {[
+                    "Attendance policies",
+                    "Work schedules",
+                    "Holiday calendars",
+                    "WFH policies",
+                    "Approval flows",
+                    "Assignments",
+                    "Coverage",
+                    "Audit log"
+                  ].map((tabLabel, idx) => (
+                    <Tab
+                      key={idx}
+                      whiteSpace="nowrap"
+                      fontWeight="medium"
+                      color={muted}
+                      fontSize="sm"
+                      px={5}
+                      py={2}
+                      borderRadius="lg"
+                      _selected={{
+                        color: useColorModeValue("blue.700", "blue.200"),
+                        bg: useColorModeValue("white", "gray.700"),
+                        shadow: "sm",
+                        fontWeight: "700"
+                      }}
+                      _hover={{
+                        color: useColorModeValue("gray.900", "white")
+                      }}
+                    >
+                      {tabLabel}
+                    </Tab>
+                  ))}
                 </TabList>
               </Box>
-              
+
               <Flex px={5} py={3} borderBottomWidth="1px" borderColor={borderColor} bg={useColorModeValue("gray.50", "gray.800")} justify="space-between" align="center" display={(tabIndex < 4 || (canManage && companyId && tabIndex <= 5)) ? "flex" : "none"}>
                 <Box>
                   {tabIndex < 4 ? (
