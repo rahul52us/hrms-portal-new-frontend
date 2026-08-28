@@ -37,7 +37,7 @@ import {
 } from "@chakra-ui/react";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
-import { FiEdit2, FiMapPin, FiPlus, FiSearch, FiTrash2 } from "react-icons/fi";
+import { FiEdit2, FiMapPin, FiPlus, FiSearch, FiTrash2, FiAlertCircle } from "react-icons/fi";
 import LocationModal from "./LocationModal";
 
 type LocationTableProps = {
@@ -327,20 +327,41 @@ const LocationTable = ({ companyId, companyName }: LocationTableProps) => {
       />
 
       <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} isCentered size={{ base: "xs", md: "md" }}>
-        <ModalOverlay backdropFilter="blur(8px)" />
-        <ModalContent mx={4} borderRadius="2xl">
-          <ModalHeader>Delete Location</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Text>
-              Delete {deleteLocation?.name || "this location"}? Locations assigned to employees cannot be deleted.
-            </Text>
+        <ModalOverlay backdropFilter="blur(8px)" bg="blackAlpha.300" />
+        <ModalContent mx={4} borderRadius="2xl" bg={cardBg}>
+          <ModalHeader>
+            <HStack>
+              <Icon as={FiTrash2} color="red.500" />
+              <Text>Delete Location</Text>
+            </HStack>
+          </ModalHeader>
+          <ModalCloseButton top={4} right={4} />
+          <ModalBody pb={6}>
+            <VStack align="stretch" spacing={4}>
+              <Box>
+                <Text fontSize="sm" color={muted}>
+                  Location Name
+                </Text>
+                <Text fontWeight="800">
+                  {deleteLocation?.name || "this location"}
+                </Text>
+              </Box>
+
+              <Box p={3} borderRadius="xl" bg={errorBg} borderWidth="1px" borderColor={useColorModeValue("red.200", "red.800")}>
+                <HStack align="start">
+                  <Icon as={FiAlertCircle} color={errorText} mt={0.5} />
+                  <Text fontSize="sm" color={errorText}>
+                    Locations assigned to employees cannot be deleted. If you proceed, this action cannot be undone.
+                  </Text>
+                </HStack>
+              </Box>
+            </VStack>
           </ModalBody>
           <ModalFooter gap={3}>
-            <Button variant="ghost" onClick={onDeleteClose}>
+            <Button variant="ghost" onClick={onDeleteClose} isDisabled={locationStore.isSubmitting}>
               Cancel
             </Button>
-            <Button colorScheme="red" onClick={confirmDelete} isLoading={locationStore.isSubmitting}>
+            <Button colorScheme="red" onClick={confirmDelete} isLoading={locationStore.isSubmitting} leftIcon={<Icon as={FiTrash2} />}>
               Delete
             </Button>
           </ModalFooter>
