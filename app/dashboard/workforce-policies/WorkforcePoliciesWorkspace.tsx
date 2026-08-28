@@ -7,6 +7,8 @@ import { departmentStore } from "@/app/store/departmentStore/departmentStore";
 import { locationStore } from "@/app/store/locationStore/locationStore";
 import stores from "@/app/store/stores";
 import {
+  ApprovalWorkflowItem,
+  ApprovalWorkflowVersion,
   PolicyResourceType,
   PolicyVersion,
   WorkforcePolicyAssignment,
@@ -52,6 +54,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   FiCalendar,
   FiBriefcase,
+  FiCheckSquare,
   FiClock,
   FiEdit2,
   FiGitBranch,
@@ -71,6 +74,9 @@ import PolicyAssignmentsPanel from "./components/PolicyAssignmentsPanel";
 import PolicyAuditPanel from "./components/PolicyAuditPanel";
 import PolicyCoveragePanel from "./components/PolicyCoveragePanel";
 import RemoteWorkPolicyDrawer from "./components/RemoteWorkPolicyDrawer";
+import ApprovalWorkflowsPanel from "./components/ApprovalWorkflowsPanel";
+import ApprovalWorkflowDrawer from "./components/ApprovalWorkflowDrawer";
+import ApprovalWorkflowHistoryDrawer from "./components/ApprovalWorkflowHistoryDrawer";
 
 type EditorState = {
   type: PolicyResourceType;
@@ -111,7 +117,15 @@ const WorkforcePoliciesWorkspace = observer(() => {
     resource: WorkforcePolicyItem | null;
   }>({ type: "attendance_policy", resource: null });
   const [endingAssignment, setEndingAssignment] = useState<WorkforcePolicyAssignment | null>(null);
+  const [approvalEditor, setApprovalEditor] = useState<{
+    mode: "create" | "edit_draft" | "new_version";
+    workflow: ApprovalWorkflowItem | null;
+    version: ApprovalWorkflowVersion | null;
+  }>({ mode: "create", workflow: null, version: null });
+  const [approvalHistory, setApprovalHistory] = useState<ApprovalWorkflowItem | null>(null);
   const editorDisclosure = useDisclosure();
+  const approvalEditorDisclosure = useDisclosure();
+  const approvalHistoryDisclosure = useDisclosure();
   const historyDisclosure = useDisclosure();
   const assignmentDisclosure = useDisclosure();
 
@@ -238,6 +252,20 @@ const WorkforcePoliciesWorkspace = observer(() => {
     assignmentDisclosure.onOpen();
   };
 
+  const openApprovalEditor = (
+    mode: "create" | "edit_draft" | "new_version",
+    workflow: ApprovalWorkflowItem | null = null,
+    version: ApprovalWorkflowVersion | null = null
+  ) => {
+    setApprovalEditor({ mode, workflow, version });
+    approvalEditorDisclosure.onOpen();
+  };
+
+  const openApprovalHistory = (workflow: ApprovalWorkflowItem) => {
+    setApprovalHistory(workflow);
+    approvalHistoryDisclosure.onOpen();
+  };
+
   const PolicyList = ({
     type,
     items,
@@ -335,11 +363,11 @@ const WorkforcePoliciesWorkspace = observer(() => {
             <Box>
               <Heading size={{ base: "md", md: "lg" }}>Workforce policies</Heading>
               <Text mt={1} fontSize="sm" color={muted}>
-                Effective-dated attendance, schedules, holidays, WFH rules, and assignments for {activeCompany?.company_name || "the selected company"}.
+                Effective-dated attendance, schedules, holidays, WFH rules, approval flows, and assignments for {activeCompany?.company_name || "the selected company"}.
               </Text>
             </Box>
             <SimpleGrid columns={{ base: 2, md: 4 }} spacing={3} minW={{ lg: "620px" }}>
-              {[{ label: "Policies", value: workforcePolicyStore.attendancePolicies.length, icon: FiClock }, { label: "Schedules", value: workforcePolicyStore.workSchedules.length, icon: FiBriefcase }, { label: "Calendars", value: workforcePolicyStore.holidayCalendars.length, icon: FiCalendar }, { label: "Active scope", value: activeAssignments, icon: FiLink }].map((stat) => (
+              {[{ label: "Policies", value: workforcePolicyStore.attendancePolicies.length, icon: FiClock }, { label: "Schedules", value: workforcePolicyStore.workSchedules.length, icon: FiBriefcase }, { label: "Approval flows", value: workforcePolicyStore.approvalWorkflows.length, icon: FiCheckSquare }, { label: "Active scope", value: activeAssignments, icon: FiLink }].map((stat) => (
                 <HStack key={stat.label} bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="md" p={3} minW={0}>
                   <Icon as={stat.icon} color="blue.500" flexShrink={0} /><Box minW={0}><Text fontSize="xs" color={muted} noOfLines={1}>{stat.label}</Text><Text fontWeight="800">{stat.value}</Text></Box>
                 </HStack>
@@ -357,14 +385,14 @@ const WorkforcePoliciesWorkspace = observer(() => {
           <Box bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">
             <Tabs index={tabIndex} onChange={setTabIndex} colorScheme="blue" isLazy>
               <Flex direction={{ base: "column", md: "row" }} justify="space-between" gap={3} px={4} pt={4}>
-                <TabList overflowX="auto"><Tab whiteSpace="nowrap">Attendance policies</Tab><Tab whiteSpace="nowrap">Work schedules</Tab><Tab whiteSpace="nowrap">Holiday calendars</Tab><Tab whiteSpace="nowrap">WFH policies</Tab><Tab whiteSpace="nowrap">Assignments</Tab><Tab whiteSpace="nowrap">Coverage</Tab><Tab whiteSpace="nowrap">Audit log</Tab></TabList>
+                <TabList overflowX="auto"><Tab whiteSpace="nowrap">Attendance policies</Tab><Tab whiteSpace="nowrap">Work schedules</Tab><Tab whiteSpace="nowrap">Holiday calendars</Tab><Tab whiteSpace="nowrap">WFH policies</Tab><Tab whiteSpace="nowrap">Approval flows</Tab><Tab whiteSpace="nowrap">Assignments</Tab><Tab whiteSpace="nowrap">Coverage</Tab><Tab whiteSpace="nowrap">Audit log</Tab></TabList>
                 <HStack pb={{ base: 0, md: 2 }}>
                   {tabIndex < 4 ? (
                     <InputGroup size="sm" maxW="260px"><InputLeftElement><FiSearch /></InputLeftElement><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" /></InputGroup>
                   ) : null}
-                  {canManage && companyId && tabIndex <= 4 ? (
-                    <Button size="sm" colorScheme="blue" leftIcon={<FiPlus />} flexShrink={0} onClick={() => tabIndex === 0 ? openEditor("attendance_policy", "create") : tabIndex === 1 ? openEditor("work_schedule", "create") : tabIndex === 2 ? openEditor("holiday_calendar", "create") : tabIndex === 3 ? openEditor("remote_work_policy", "create") : openAssignment()}>
-                      {tabIndex === 0 ? "New policy" : tabIndex === 1 ? "New schedule" : tabIndex === 2 ? "New calendar" : tabIndex === 3 ? "New WFH policy" : "New assignment"}
+                  {canManage && companyId && tabIndex <= 5 ? (
+                    <Button size="sm" colorScheme="blue" leftIcon={<FiPlus />} flexShrink={0} onClick={() => tabIndex === 0 ? openEditor("attendance_policy", "create") : tabIndex === 1 ? openEditor("work_schedule", "create") : tabIndex === 2 ? openEditor("holiday_calendar", "create") : tabIndex === 3 ? openEditor("remote_work_policy", "create") : tabIndex === 4 ? openApprovalEditor("create") : openAssignment()}>
+                      {tabIndex === 0 ? "New policy" : tabIndex === 1 ? "New schedule" : tabIndex === 2 ? "New calendar" : tabIndex === 3 ? "New WFH policy" : tabIndex === 4 ? "New approval flow" : "New assignment"}
                     </Button>
                   ) : null}
                 </HStack>
@@ -375,6 +403,9 @@ const WorkforcePoliciesWorkspace = observer(() => {
                 <TabPanel><PolicyList type="holiday_calendar" items={filteredCalendars} /></TabPanel>
                 <TabPanel><PolicyList type="remote_work_policy" items={filteredRemoteWork} /></TabPanel>
                 <TabPanel>
+                  <ApprovalWorkflowsPanel canManage={canManage} borderColor={borderColor} muted={muted} tableHeadBg={tableHeadBg} onEdit={openApprovalEditor} onHistory={openApprovalHistory} />
+                </TabPanel>
+                <TabPanel>
                   <PolicyAssignmentsPanel companyId={companyId} canManage={canManage} borderColor={borderColor} muted={muted} onEndAssignment={openAssignment} />
                 </TabPanel>
                 <TabPanel>
@@ -382,7 +413,7 @@ const WorkforcePoliciesWorkspace = observer(() => {
                     companyId={companyId}
                     borderColor={borderColor}
                     muted={muted}
-                    onManageAssignments={() => setTabIndex(4)}
+                    onManageAssignments={() => setTabIndex(5)}
                   />
                 </TabPanel>
                 <TabPanel><PolicyAuditPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel>
@@ -395,6 +426,8 @@ const WorkforcePoliciesWorkspace = observer(() => {
         <WorkScheduleDrawer isOpen={editorDisclosure.isOpen && editor.type === "work_schedule"} onClose={editorDisclosure.onClose} companyId={companyId} mode={editor.mode} resource={editor.resource} version={editor.version} onSaved={refresh} />
         <HolidayCalendarDrawer isOpen={editorDisclosure.isOpen && editor.type === "holiday_calendar"} onClose={editorDisclosure.onClose} companyId={companyId} mode={editor.mode} resource={editor.resource} version={editor.version} onSaved={refresh} />
         <RemoteWorkPolicyDrawer isOpen={editorDisclosure.isOpen && editor.type === "remote_work_policy"} onClose={editorDisclosure.onClose} companyId={companyId} mode={editor.mode} resource={editor.resource} version={editor.version} onSaved={refresh} />
+        <ApprovalWorkflowDrawer isOpen={approvalEditorDisclosure.isOpen} onClose={approvalEditorDisclosure.onClose} companyId={companyId} mode={approvalEditor.mode} workflow={approvalEditor.workflow} version={approvalEditor.version} onSaved={refresh} />
+        <ApprovalWorkflowHistoryDrawer isOpen={approvalHistoryDisclosure.isOpen} onClose={approvalHistoryDisclosure.onClose} companyId={companyId} workflow={approvalHistory} canManage={canManage} onSaved={refresh} />
         <PolicyHistoryDrawer isOpen={historyDisclosure.isOpen} onClose={historyDisclosure.onClose} resourceType={history.type} resource={history.resource} />
         <PolicyAssignmentDrawer isOpen={assignmentDisclosure.isOpen} onClose={assignmentDisclosure.onClose} companyId={companyId} attendancePolicies={workforcePolicyStore.attendancePolicies} workSchedules={workforcePolicyStore.workSchedules} holidayCalendars={workforcePolicyStore.holidayCalendars} leavePolicies={workforcePolicyStore.leavePolicies} remoteWorkPolicies={workforcePolicyStore.remoteWorkPolicies} scopeOptions={scopeOptions} assignment={endingAssignment} onSaved={refresh} />
       </Box>

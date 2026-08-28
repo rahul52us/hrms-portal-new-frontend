@@ -76,6 +76,8 @@ const PolicyAuditPanel = observer(({
         <option value="remote_work_policy">WFH policies</option>
         <option value="remote_work_version">WFH policy versions</option>
         <option value="leave_version">Leave versions</option>
+        <option value="approval_workflow">Approval workflows</option>
+        <option value="approval_workflow_version">Approval workflow versions</option>
         <option value="assignment">Assignments</option>
       </Select>
 

@@ -14,6 +14,8 @@ export type CompOffClaim = {
   reason: string;
   status: "submitted" | "approved" | "rejected" | "withdrawn" | "revoked";
   approver?: any;
+  currentApprovers?: any[];
+  approvalInstance?: any;
   approverNameSnapshot?: string;
   policyScopeNameSnapshot?: string;
   history?: any[];

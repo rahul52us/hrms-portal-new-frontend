@@ -38,6 +38,9 @@ import {
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DEFAULT_RULES: RemoteWorkRules = {
   approvalMode: "reporting_manager",
+  approvalWorkflow: null,
+  approvalWorkflowVersion: null,
+  approvalWorkflowVersionNumber: null,
   allowedWeekdays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
   maxDaysPerWeek: 0,
   maxDaysPerMonth: 0,
@@ -70,6 +73,9 @@ export default function RemoteWorkPolicyDrawer({ isOpen, onClose, companyId, mod
   const [effectiveFrom, setEffectiveFrom] = useState("");
   const [changeReason, setChangeReason] = useState("");
   const [rules, setRules] = useState<RemoteWorkRules>(DEFAULT_RULES);
+  const approvalOptions = workforcePolicyStore.approvalWorkflows.filter(
+    (workflow) => workflow.status === "active" && workflow.applicableTo.includes("remote_work_request") && workflow.latestPublishedVersion
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -86,6 +92,7 @@ export default function RemoteWorkPolicyDrawer({ isOpen, onClose, companyId, mod
     if (mode === "create" && (!name.trim() || !code.trim())) return "Policy name and code are required.";
     if (!effectiveFrom) return "Effective-from date is required before publishing.";
     if (!rules.allowedWeekdays.length) return "Select at least one allowed weekday.";
+    if (!rules.approvalWorkflow || !rules.approvalWorkflowVersion) return "Select a published approval workflow.";
     if (rules.requireReason && rules.minimumReasonLength < 1) return "Set a minimum reason length.";
     if (mode !== "create" && changeReason.trim().length < 3) return "Describe why this version is changing.";
     return "";
@@ -157,7 +164,25 @@ export default function RemoteWorkPolicyDrawer({ isOpen, onClose, companyId, mod
             </Box>
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
               <FormControl isRequired><FormLabel>Effective from</FormLabel><Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} /></FormControl>
-              <FormControl><FormLabel>Approval flow</FormLabel><Select value={rules.approvalMode} onChange={(event) => setRule("approvalMode", event.target.value as RemoteWorkRules["approvalMode"])}><option value="reporting_manager">Reporting manager</option><option value="hr">HR</option><option value="manager_then_hr">Manager, then HR</option><option value="auto_approve">Auto approve</option></Select></FormControl>
+              <FormControl isRequired>
+                <FormLabel>Approval workflow</FormLabel>
+                <Select
+                  value={rules.approvalWorkflowVersion || ""}
+                  placeholder="Select published workflow"
+                  onChange={(event) => {
+                    const selected = approvalOptions.find((item) => item.latestPublishedVersion?._id === event.target.value);
+                    setRules((current) => ({
+                      ...current,
+                      approvalWorkflow: selected?._id || null,
+                      approvalWorkflowVersion: selected?.latestPublishedVersion?._id || null,
+                      approvalWorkflowVersionNumber: selected?.latestPublishedVersion?.versionNumber || null,
+                    }));
+                  }}
+                >
+                  {approvalOptions.map((item) => <option key={item._id} value={item.latestPublishedVersion!._id}>{item.name} (v{item.latestPublishedVersion!.versionNumber})</option>)}
+                </Select>
+                <FormHelperText>Configure levels in Workforce policies &gt; Approval flows.</FormHelperText>
+              </FormControl>
             </SimpleGrid>
             <FormControl>
               <FormLabel>Allowed weekdays</FormLabel>

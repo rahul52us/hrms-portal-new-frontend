@@ -34,6 +34,9 @@ export interface WorkScheduleRules {
 
 export interface RemoteWorkRules {
   approvalMode: "reporting_manager" | "hr" | "manager_then_hr" | "auto_approve";
+  approvalWorkflow?: string | null;
+  approvalWorkflowVersion?: string | null;
+  approvalWorkflowVersionNumber?: number | null;
   allowedWeekdays: string[];
   maxDaysPerWeek: number;
   maxDaysPerMonth: number;
@@ -101,6 +104,52 @@ export interface LeavePolicyRule {
   compOffValidityDays: number;
   compOffFullDayMinutes: number;
   compOffHalfDayMinutes: number;
+  requestApprovalWorkflow?: string | null;
+  requestApprovalWorkflowVersion?: string | null;
+  requestApprovalWorkflowVersionNumber?: number | null;
+  compOffClaimApprovalWorkflow?: string | null;
+  compOffClaimApprovalWorkflowVersion?: string | null;
+  compOffClaimApprovalWorkflowVersionNumber?: number | null;
+}
+
+export type ApprovalRequestType = "leave_request" | "remote_work_request" | "comp_off_claim";
+export type ApprovalStepType =
+  | "reporting_manager"
+  | "manager_manager"
+  | "department_head"
+  | "hr"
+  | "specific_users";
+
+export interface ApprovalWorkflowStep {
+  order: number;
+  name: string;
+  approverType: ApprovalStepType;
+  approvalRule: "any" | "all";
+  approverUserIds: Array<string | { _id: string; name?: string; username?: string; role?: string }>;
+  fallbackToHr: boolean;
+}
+
+export interface ApprovalWorkflowVersion {
+  _id: string;
+  versionNumber: number;
+  status: PolicyVersionStatus;
+  autoApprove: boolean;
+  steps: ApprovalWorkflowStep[];
+  changeReason?: string;
+  publishedAt?: string | null;
+}
+
+export interface ApprovalWorkflowItem {
+  _id: string;
+  company: string;
+  name: string;
+  code: string;
+  description?: string;
+  applicableTo: ApprovalRequestType[];
+  status: "active" | "archived";
+  latestVersionNumber: number;
+  draftVersion?: ApprovalWorkflowVersion | null;
+  latestPublishedVersion?: ApprovalWorkflowVersion | null;
 }
 
 export interface PolicyVersion {
@@ -204,6 +253,7 @@ class WorkforcePolicyStore {
   leaveTypes: LeaveTypeItem[] = [];
   leavePolicies: WorkforcePolicyItem[] = [];
   remoteWorkPolicies: WorkforcePolicyItem[] = [];
+  approvalWorkflows: ApprovalWorkflowItem[] = [];
   assignments: WorkforcePolicyAssignment[] = [];
   assignmentsPagination: PaginationState = { ...EMPTY_PAGINATION };
   assignmentsLoading = false;
@@ -243,6 +293,7 @@ class WorkforcePolicyStore {
     this.leaveTypes = [];
     this.leavePolicies = [];
     this.remoteWorkPolicies = [];
+    this.approvalWorkflows = [];
     this.assignments = [];
     this.assignmentsPagination = { ...EMPTY_PAGINATION };
     this.auditLogs = [];
@@ -276,18 +327,20 @@ class WorkforcePolicyStore {
       this.leaveTypes = [];
       this.leavePolicies = [];
       this.remoteWorkPolicies = [];
+      this.approvalWorkflows = [];
       this.assignments = [];
       this.assignmentsPagination = { ...EMPTY_PAGINATION };
     }
     this.activeCompanyId = companyId;
     try {
-      const [attendance, schedules, calendars, leaveTypes, leavePolicies, remoteWorkPolicies, assignments] = await Promise.all([
+      const [attendance, schedules, calendars, leaveTypes, leavePolicies, remoteWorkPolicies, approvalWorkflows, assignments] = await Promise.all([
         axios.get("/workforce-policies/attendance", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/work-schedules", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/holiday-calendars", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/leave-types", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/leave-policies", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/remote-work-policies", { params: { companyId, limit: 100 } }),
+        axios.get("/approval-workflows", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/assignments", { params: { companyId, limit: 100 } }),
       ]);
       runInAction(() => {
@@ -297,6 +350,7 @@ class WorkforcePolicyStore {
         this.leaveTypes = leaveTypes.data?.data || [];
         this.leavePolicies = leavePolicies.data?.data || [];
         this.remoteWorkPolicies = remoteWorkPolicies.data?.data || [];
+        this.approvalWorkflows = approvalWorkflows.data?.data || [];
         this.assignments = assignments.data?.data || [];
         this.assignmentsPagination = assignments.data?.pagination || { ...EMPTY_PAGINATION };
       });
@@ -827,6 +881,61 @@ class WorkforcePolicyStore {
       return (await axios.post(`/workforce-policies/remote-work-policies/${policyId}/versions/${versionId}/publish`, payload)).data;
     } catch (error: any) {
       throw new Error(this.getError(error, "Failed to publish WFH policy"));
+    } finally {
+      runInAction(() => { this.submitting = false; });
+    }
+  };
+
+  createApprovalWorkflow = async (payload: any) => {
+    this.submitting = true;
+    try {
+      return (await axios.post("/approval-workflows", payload)).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to create approval workflow"));
+    } finally {
+      runInAction(() => { this.submitting = false; });
+    }
+  };
+
+  updateApprovalWorkflowDraft = async (workflowId: string, versionId: string, payload: any) => {
+    this.submitting = true;
+    try {
+      return (await axios.put(`/approval-workflows/${workflowId}/versions/${versionId}`, payload)).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to update approval workflow draft"));
+    } finally {
+      runInAction(() => { this.submitting = false; });
+    }
+  };
+
+  createApprovalWorkflowVersion = async (workflowId: string, payload: any) => {
+    this.submitting = true;
+    try {
+      return (await axios.post(`/approval-workflows/${workflowId}/versions`, payload)).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to create approval workflow version"));
+    } finally {
+      runInAction(() => { this.submitting = false; });
+    }
+  };
+
+  publishApprovalWorkflowVersion = async (workflowId: string, versionId: string, payload: any) => {
+    this.submitting = true;
+    try {
+      return (await axios.post(`/approval-workflows/${workflowId}/versions/${versionId}/publish`, payload)).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to publish approval workflow"));
+    } finally {
+      runInAction(() => { this.submitting = false; });
+    }
+  };
+
+  archiveApprovalWorkflow = async (workflowId: string, payload: any) => {
+    this.submitting = true;
+    try {
+      return (await axios.post(`/approval-workflows/${workflowId}/archive`, payload)).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to archive approval workflow"));
     } finally {
       runInAction(() => { this.submitting = false; });
     }

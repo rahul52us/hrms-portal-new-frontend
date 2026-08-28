@@ -51,6 +51,8 @@ export type LeaveRequest = {
   reason: string;
   status: string;
   approver?: any;
+  currentApprovers?: any[];
+  approvalInstance?: any;
   approverNameSnapshot?: string;
   dayBreakdown?: any[];
   attachments?: LeaveAttachment[];

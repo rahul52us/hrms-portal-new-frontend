@@ -41,6 +41,7 @@ export default function LeaveRequestsPanel({ companyId, borderColor, muted }: { 
   const toast = useToast();
   const details = useDisclosure();
   const canApprove = hasPermission(stores.auth.user, PERMISSION_KEYS.APPROVE_LEAVE_REQUESTS);
+  const actorId = String(stores.auth.user?._id || "");
   const [items, setItems] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -49,6 +50,13 @@ export default function LeaveRequestsPanel({ companyId, borderColor, muted }: { 
   const [totalPages, setTotalPages] = useState(1);
   const [selected, setSelected] = useState<LeaveRequest | null>(null);
   const [comment, setComment] = useState("");
+  const canDecideSelected = Boolean(
+    selected && canApprove && (
+      selected.approvalInstance
+        ? (selected.currentApprovers || []).some((item) => String(item?._id || item) === actorId)
+        : true
+    )
+  );
 
   const load = useCallback(async () => {
     if (!companyId) return;
@@ -80,8 +88,9 @@ export default function LeaveRequestsPanel({ companyId, borderColor, muted }: { 
     }
     setSubmitting(true);
     try {
-      await actOnLeaveRequest(selected._id, action, { companyId, comment: comment.trim() || undefined });
-      toast({ title: `Leave request ${action === "approve" ? "approved" : action === "reject" ? "rejected" : "cancelled"}`, status: "success" });
+      const updated = await actOnLeaveRequest(selected._id, action, { companyId, comment: comment.trim() || undefined });
+      const movedToNextLevel = action === "approve" && updated.status === "submitted";
+      toast({ title: movedToNextLevel ? "Approval recorded; request moved to the next level" : `Leave request ${action === "approve" ? "approved" : action === "reject" ? "rejected" : "cancelled"}`, status: "success" });
       details.onClose();
       await load();
     } catch (error: any) {
@@ -104,7 +113,7 @@ export default function LeaveRequestsPanel({ companyId, borderColor, muted }: { 
       )}
       <HStack justify="end"><Button size="sm" variant="outline" isDisabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}>Previous</Button><Text fontSize="sm">Page {page} of {totalPages}</Text><Button size="sm" variant="outline" isDisabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}>Next</Button></HStack>
 
-      <Drawer isOpen={details.isOpen} onClose={details.onClose} placement="right" size="lg"><DrawerOverlay /><DrawerContent><DrawerCloseButton /><DrawerHeader borderBottomWidth="1px">Leave request</DrawerHeader><DrawerBody py={5}>{selected ? <Stack spacing={5}><Box><HStack><Text fontSize="lg" fontWeight="800">{selected.employee?.name}</Text><Badge colorScheme={color(selected.status)}>{selected.status}</Badge></HStack><Text color={muted} fontSize="sm">{selected.employee?.code || selected.employee?.username}</Text></Box><Box borderWidth="1px" borderColor={borderColor} borderRadius="md" p={4}><Text fontWeight="800">{selected.leaveTypeNameSnapshot} ({selected.leaveTypeCodeSnapshot})</Text><Text mt={1}>{date(selected.fromDate)}{selected.toDate !== selected.fromDate ? ` to ${date(selected.toDate)}` : ""}</Text><Text mt={1} color={muted} fontSize="sm">{selected.chargedUnits} {selected.leaveUnit} charged</Text></Box><Box><Text fontSize="sm" color={muted}>Reason</Text><Text>{selected.reason}</Text></Box><Box><Text fontSize="sm" fontWeight="700" mb={2}>Date calculation</Text><Stack spacing={0} borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">{(selected.dayBreakdown || []).map((day) => <Flex key={day.attendanceDate} px={3} py={2} justify="space-between" borderBottomWidth="1px" _last={{ borderBottomWidth: 0 }}><Box><Text fontSize="sm" fontWeight="600">{date(day.attendanceDate)}</Text><Text fontSize="xs" color={muted}>{String(day.chargeReason).replace(/_/g, " ")}</Text></Box><Text fontWeight="700">{day.chargedUnits}</Text></Flex>)}</Stack></Box>{selected.attachments?.length ? <Box><Text fontSize="sm" fontWeight="700">Documents</Text>{selected.attachments.map((attachment) => <Button as="a" href={attachment.url} target="_blank" rel="noreferrer" key={attachment.url} mt={2} mr={2} size="sm" variant="outline">{attachment.name}</Button>)}</Box> : null}{canApprove && ["submitted", "approved"].includes(selected.status) ? <FormControl><FormLabel>{selected.status === "approved" ? "Cancellation reason" : "Decision comment"}</FormLabel><Textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder={selected.status === "submitted" ? "Required when rejecting" : "Required when cancelling"} /></FormControl> : null}</Stack> : null}</DrawerBody><DrawerFooter borderTopWidth="1px" gap={3}><Button variant="outline" onClick={details.onClose}>Close</Button>{canApprove && selected?.status === "submitted" ? <><Button colorScheme="red" variant="outline" leftIcon={<FiX />} onClick={() => act("reject")} isLoading={submitting}>Reject</Button><Button colorScheme="green" leftIcon={<FiCheck />} onClick={() => act("approve")} isLoading={submitting}>Approve</Button></> : null}{canApprove && selected?.status === "approved" ? <Button colorScheme="red" variant="outline" onClick={() => act("cancel")} isLoading={submitting}>Cancel approved leave</Button> : null}</DrawerFooter></DrawerContent></Drawer>
+      <Drawer isOpen={details.isOpen} onClose={details.onClose} placement="right" size="lg"><DrawerOverlay /><DrawerContent><DrawerCloseButton /><DrawerHeader borderBottomWidth="1px">Leave request</DrawerHeader><DrawerBody py={5}>{selected ? <Stack spacing={5}><Box><HStack><Text fontSize="lg" fontWeight="800">{selected.employee?.name}</Text><Badge colorScheme={color(selected.status)}>{selected.status}</Badge></HStack><Text color={muted} fontSize="sm">{selected.employee?.code || selected.employee?.username}</Text></Box><Box borderWidth="1px" borderColor={borderColor} borderRadius="md" p={4}><Text fontWeight="800">{selected.leaveTypeNameSnapshot} ({selected.leaveTypeCodeSnapshot})</Text><Text mt={1}>{date(selected.fromDate)}{selected.toDate !== selected.fromDate ? ` to ${date(selected.toDate)}` : ""}</Text><Text mt={1} color={muted} fontSize="sm">{selected.chargedUnits} {selected.leaveUnit} charged</Text></Box><Box><Text fontSize="sm" color={muted}>Reason</Text><Text>{selected.reason}</Text></Box><Box><Text fontSize="sm" fontWeight="700" mb={2}>Date calculation</Text><Stack spacing={0} borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">{(selected.dayBreakdown || []).map((day) => <Flex key={day.attendanceDate} px={3} py={2} justify="space-between" borderBottomWidth="1px" _last={{ borderBottomWidth: 0 }}><Box><Text fontSize="sm" fontWeight="600">{date(day.attendanceDate)}</Text><Text fontSize="xs" color={muted}>{String(day.chargeReason).replace(/_/g, " ")}</Text></Box><Text fontWeight="700">{day.chargedUnits}</Text></Flex>)}</Stack></Box>{selected.attachments?.length ? <Box><Text fontSize="sm" fontWeight="700">Documents</Text>{selected.attachments.map((attachment) => <Button as="a" href={attachment.url} target="_blank" rel="noreferrer" key={attachment.url} mt={2} mr={2} size="sm" variant="outline">{attachment.name}</Button>)}</Box> : null}{((selected.status === "submitted" && canDecideSelected) || (selected.status === "approved" && canApprove)) ? <FormControl><FormLabel>{selected.status === "approved" ? "Cancellation reason" : "Decision comment"}</FormLabel><Textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder={selected.status === "submitted" ? "Required when rejecting" : "Required when cancelling"} /></FormControl> : null}</Stack> : null}</DrawerBody><DrawerFooter borderTopWidth="1px" gap={3}><Button variant="outline" onClick={details.onClose}>Close</Button>{canDecideSelected && selected?.status === "submitted" ? <><Button colorScheme="red" variant="outline" leftIcon={<FiX />} onClick={() => act("reject")} isLoading={submitting}>Reject</Button><Button colorScheme="green" leftIcon={<FiCheck />} onClick={() => act("approve")} isLoading={submitting}>Approve</Button></> : null}{canApprove && selected?.status === "approved" ? <Button colorScheme="red" variant="outline" onClick={() => act("cancel")} isLoading={submitting}>Cancel approved leave</Button> : null}</DrawerFooter></DrawerContent></Drawer>
     </Stack>
   );
 }

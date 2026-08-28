@@ -13,6 +13,8 @@ export type RemoteWorkRequest = {
   status: string;
   approvalModeSnapshot: string;
   approver?: any;
+  currentApprovers?: any[];
+  approvalInstance?: any;
   approverNameSnapshot?: string;
   reportingManager?: any;
   reportingManagerNameSnapshot?: string;

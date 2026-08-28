@@ -44,6 +44,7 @@ export default function CompOffClaimsPanel({ companyId, borderColor, muted }: { 
   const toast = useToast();
   const details = useDisclosure();
   const canApprove = hasPermission(stores.auth.user, PERMISSION_KEYS.APPROVE_LEAVE_REQUESTS);
+  const actorId = String(stores.auth.user?._id || "");
   const [items, setItems] = useState<CompOffClaim[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -52,6 +53,13 @@ export default function CompOffClaimsPanel({ companyId, borderColor, muted }: { 
   const [totalPages, setTotalPages] = useState(1);
   const [selected, setSelected] = useState<CompOffClaim | null>(null);
   const [comment, setComment] = useState("");
+  const canDecideSelected = Boolean(
+    selected && canApprove && (
+      selected.approvalInstance
+        ? (selected.currentApprovers || []).some((item) => String(item?._id || item) === actorId)
+        : true
+    )
+  );
 
   const load = useCallback(async () => {
     if (!companyId) return;
@@ -83,8 +91,9 @@ export default function CompOffClaimsPanel({ companyId, borderColor, muted }: { 
     }
     setSubmitting(true);
     try {
-      await actOnCompOffClaim(selected._id, action, { companyId, comment: comment.trim() || undefined });
-      toast({ title: action === "approve" ? "Comp-off credited" : action === "revoke" ? "Comp-off credit revoked" : "Comp-off claim rejected", status: "success" });
+      const updated = await actOnCompOffClaim(selected._id, action, { companyId, comment: comment.trim() || undefined });
+      const movedToNextLevel = action === "approve" && updated.status === "submitted";
+      toast({ title: movedToNextLevel ? "Approval recorded; claim moved to the next level" : action === "approve" ? "Comp-off credited" : action === "revoke" ? "Comp-off credit revoked" : "Comp-off claim rejected", status: "success" });
       details.onClose();
       await load();
     } catch (error: any) {
@@ -107,7 +116,7 @@ export default function CompOffClaimsPanel({ companyId, borderColor, muted }: { 
       )}
       <HStack justify="end"><Button size="sm" variant="outline" isDisabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}>Previous</Button><Text fontSize="sm">Page {page} of {totalPages}</Text><Button size="sm" variant="outline" isDisabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}>Next</Button></HStack>
 
-      <Drawer isOpen={details.isOpen} onClose={details.onClose} placement="right" size="lg"><DrawerOverlay /><DrawerContent><DrawerCloseButton /><DrawerHeader borderBottomWidth="1px">Comp-off claim</DrawerHeader><DrawerBody py={5}>{selected ? <Stack spacing={5}><Box><HStack><Text fontSize="lg" fontWeight="800">{selected.employee?.name}</Text><Badge colorScheme={statusColor(selected.status)}>{selected.status}</Badge></HStack><Text fontSize="sm" color={muted}>{selected.employee?.code || selected.employee?.username}</Text></Box><Box borderWidth="1px" borderColor={borderColor} borderRadius="md" p={4}><Text fontWeight="800">{selected.leaveType?.name || "Comp-off"} ({selected.leaveType?.code})</Text><Text mt={1}>Worked {formatDate(selected.attendanceDate)}</Text><Text mt={1} fontSize="sm" color={muted}>{dayType(selected.dayTypeSnapshot)} | {selected.workedMinutesSnapshot} minutes | {selected.requestedUnits} day requested</Text>{selected.expiresOn ? <Text mt={1} fontSize="sm">Credit expiry: {formatDate(selected.expiresOn)}</Text> : null}</Box><Box><Text fontSize="xs" color={muted}>Reason</Text><Text mt={1}>{selected.reason}</Text></Box>{["submitted", "approved"].includes(selected.status) && canApprove ? <FormControl><FormLabel>{selected.status === "approved" ? "Revocation reason" : "Decision comment"}</FormLabel><Textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder={selected.status === "approved" ? "Required to revoke unused credit" : "Required when rejecting"} /></FormControl> : null}</Stack> : null}</DrawerBody><DrawerFooter borderTopWidth="1px" gap={3}><Button variant="outline" onClick={details.onClose}>Close</Button>{selected?.status === "submitted" && canApprove ? <><Button colorScheme="red" variant="outline" leftIcon={<FiX />} onClick={() => decide("reject")} isLoading={submitting}>Reject</Button><Button colorScheme="green" leftIcon={<FiCheck />} onClick={() => decide("approve")} isLoading={submitting}>Approve and credit</Button></> : null}{selected?.status === "approved" && canApprove ? <Button colorScheme="red" variant="outline" onClick={() => decide("revoke")} isLoading={submitting}>Revoke unused credit</Button> : null}</DrawerFooter></DrawerContent></Drawer>
+      <Drawer isOpen={details.isOpen} onClose={details.onClose} placement="right" size="lg"><DrawerOverlay /><DrawerContent><DrawerCloseButton /><DrawerHeader borderBottomWidth="1px">Comp-off claim</DrawerHeader><DrawerBody py={5}>{selected ? <Stack spacing={5}><Box><HStack><Text fontSize="lg" fontWeight="800">{selected.employee?.name}</Text><Badge colorScheme={statusColor(selected.status)}>{selected.status}</Badge></HStack><Text fontSize="sm" color={muted}>{selected.employee?.code || selected.employee?.username}</Text></Box><Box borderWidth="1px" borderColor={borderColor} borderRadius="md" p={4}><Text fontWeight="800">{selected.leaveType?.name || "Comp-off"} ({selected.leaveType?.code})</Text><Text mt={1}>Worked {formatDate(selected.attendanceDate)}</Text><Text mt={1} fontSize="sm" color={muted}>{dayType(selected.dayTypeSnapshot)} | {selected.workedMinutesSnapshot} minutes | {selected.requestedUnits} day requested</Text>{selected.expiresOn ? <Text mt={1} fontSize="sm">Credit expiry: {formatDate(selected.expiresOn)}</Text> : null}</Box><Box><Text fontSize="xs" color={muted}>Reason</Text><Text mt={1}>{selected.reason}</Text></Box>{((selected.status === "submitted" && canDecideSelected) || (selected.status === "approved" && canApprove)) ? <FormControl><FormLabel>{selected.status === "approved" ? "Revocation reason" : "Decision comment"}</FormLabel><Textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder={selected.status === "approved" ? "Required to revoke unused credit" : "Required when rejecting"} /></FormControl> : null}</Stack> : null}</DrawerBody><DrawerFooter borderTopWidth="1px" gap={3}><Button variant="outline" onClick={details.onClose}>Close</Button>{selected?.status === "submitted" && canDecideSelected ? <><Button colorScheme="red" variant="outline" leftIcon={<FiX />} onClick={() => decide("reject")} isLoading={submitting}>Reject</Button><Button colorScheme="green" leftIcon={<FiCheck />} onClick={() => decide("approve")} isLoading={submitting}>Approve</Button></> : null}{selected?.status === "approved" && canApprove ? <Button colorScheme="red" variant="outline" onClick={() => decide("revoke")} isLoading={submitting}>Revoke unused credit</Button> : null}</DrawerFooter></DrawerContent></Drawer>
     </Stack>
   );
 }

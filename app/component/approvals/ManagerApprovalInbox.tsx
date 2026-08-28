@@ -92,6 +92,12 @@ function requestDates(item: ApprovalItem) {
   return { from: item.request.fromDate, to: item.request.toDate };
 }
 
+function approvalStage(item: ApprovalItem) {
+  const instance = item.request.approvalInstance;
+  if (!instance?.steps?.length) return "";
+  return instance.steps.find((step: any) => step.order === instance.currentStepOrder)?.nameSnapshot || "";
+}
+
 const kindLabel = (kind: ApprovalItem["kind"]) =>
   kind === "leave" ? "Leave" : kind === "remote_work" ? "WFH" : "Comp-off";
 
@@ -165,14 +171,23 @@ export default function ManagerApprovalInbox() {
     }
     setSubmitting(true);
     try {
+      let updated: LeaveRequest | RemoteWorkRequest | CompOffClaim;
       if (selected.kind === "leave") {
-        await actOnLeaveRequest(selected.request._id, action, { comment: comment.trim() || undefined });
+        updated = await actOnLeaveRequest(selected.request._id, action, { comment: comment.trim() || undefined });
       } else if (selected.kind === "remote_work") {
-        await actOnRemoteWorkRequest(selected.request._id, action, { comment: comment.trim() || undefined });
+        updated = await actOnRemoteWorkRequest(selected.request._id, action, { comment: comment.trim() || undefined });
       } else {
-        await actOnCompOffClaim(selected.request._id, action, { comment: comment.trim() || undefined });
+        updated = await actOnCompOffClaim(selected.request._id, action, { comment: comment.trim() || undefined });
       }
-      toast({ title: action === "approve" ? "Request approved" : "Request rejected", status: "success" });
+      const movedToNextLevel = action === "approve" && ["submitted", "manager_approved"].includes(updated.status);
+      toast({
+        title: action === "reject"
+          ? "Request rejected"
+          : movedToNextLevel
+            ? "Approval recorded; request moved to the next level"
+            : "Request approved",
+        status: "success",
+      });
       details.onClose();
       setSelected(null);
       await load();
@@ -234,6 +249,7 @@ export default function ManagerApprovalInbox() {
                     <Badge colorScheme={kindColor(item.kind)} textTransform="none">
                       {kindLabel(item.kind)}
                     </Badge>
+                    {approvalStage(item) ? <Badge colorScheme="orange" textTransform="none">{approvalStage(item)}</Badge> : null}
                   </HStack>
                   <Text mt={1} fontSize="sm" fontWeight="700">{requestTitle(item)}</Text>
                   <HStack mt={1} color={muted} fontSize="xs" flexWrap="wrap">
@@ -270,6 +286,7 @@ export default function ManagerApprovalInbox() {
                   <Text fontWeight="800">{requestTitle(selected)}</Text>
                   <Text mt={1}>{formatDate(requestDates(selected).from)}{requestDates(selected).from !== requestDates(selected).to ? ` to ${formatDate(requestDates(selected).to)}` : ""}</Text>
                   <Text mt={1} color={muted} fontSize="sm">{requestUnits(selected)}</Text>
+                  {approvalStage(selected) ? <Text mt={2} fontSize="xs" fontWeight="700" color="orange.600">Current level: {approvalStage(selected)}</Text> : null}
                   {selected.kind === "comp_off" ? <Text mt={1} color={muted} fontSize="sm">{selected.request.workedMinutesSnapshot} worked minutes on {selected.request.dayTypeSnapshot.replace(/_/g, " ")}</Text> : null}
                 </Box>
                 <Box>

@@ -227,6 +227,12 @@ function emptyRule(leaveType: LeaveTypeItem): LeavePolicyRule {
     compOffValidityDays: 90,
     compOffFullDayMinutes: 480,
     compOffHalfDayMinutes: 240,
+    requestApprovalWorkflow: null,
+    requestApprovalWorkflowVersion: null,
+    requestApprovalWorkflowVersionNumber: null,
+    compOffClaimApprovalWorkflow: null,
+    compOffClaimApprovalWorkflowVersion: null,
+    compOffClaimApprovalWorkflowVersionNumber: null,
   };
 }
 
@@ -291,6 +297,12 @@ function normalizeSourceRule(rule: any): LeavePolicyRule {
     compOffValidityDays: Number(rule.compOffValidityDays || 90),
     compOffFullDayMinutes: Number(rule.compOffFullDayMinutes || 480),
     compOffHalfDayMinutes: Number(rule.compOffHalfDayMinutes || 240),
+    requestApprovalWorkflow: String(rule.requestApprovalWorkflow?._id || rule.requestApprovalWorkflow || "") || null,
+    requestApprovalWorkflowVersion: String(rule.requestApprovalWorkflowVersion?._id || rule.requestApprovalWorkflowVersion || "") || null,
+    requestApprovalWorkflowVersionNumber: Number(rule.requestApprovalWorkflowVersionNumber || 0) || null,
+    compOffClaimApprovalWorkflow: String(rule.compOffClaimApprovalWorkflow?._id || rule.compOffClaimApprovalWorkflow || "") || null,
+    compOffClaimApprovalWorkflowVersion: String(rule.compOffClaimApprovalWorkflowVersion?._id || rule.compOffClaimApprovalWorkflowVersion || "") || null,
+    compOffClaimApprovalWorkflowVersionNumber: Number(rule.compOffClaimApprovalWorkflowVersionNumber || 0) || null,
   };
 }
 
@@ -335,6 +347,12 @@ export default function LeavePolicyDrawer({
   const availableLeaveTypes = activeLeaveTypes.filter(
     (item) => !rules.some((rule) => rule.leaveType === item._id)
   );
+  const leaveApprovalWorkflows = workforcePolicyStore.approvalWorkflows.filter(
+    (workflow) => workflow.status === "active" && workflow.applicableTo.includes("leave_request") && workflow.latestPublishedVersion
+  );
+  const compOffApprovalWorkflows = workforcePolicyStore.approvalWorkflows.filter(
+    (workflow) => workflow.status === "active" && workflow.applicableTo.includes("comp_off_claim") && workflow.latestPublishedVersion
+  );
 
   const validationError = useMemo(() => {
     if (mode === "create" && !name.trim()) return "Policy name is required.";
@@ -361,10 +379,16 @@ export default function LeavePolicyDrawer({
     for (const rule of rules) {
       const leaveType = leaveTypeById.get(rule.leaveType);
       const code = leaveType?.code || rule.leaveTypeCodeSnapshot || "Leave type";
+      if (!rule.requestApprovalWorkflow || !rule.requestApprovalWorkflowVersion) {
+        return `${code} must select a published leave-request approval workflow.`;
+      }
       if (rule.entitlementMode === "fixed" && rule.creditComponents.some((component) => component.amount <= 0)) {
         return `${code} automatic credit amounts must be greater than zero.`;
       }
       if (rule.entitlementMode === "earned") {
+        if (!rule.compOffClaimApprovalWorkflow || !rule.compOffClaimApprovalWorkflowVersion) {
+          return `${code} must select a published comp-off claim approval workflow.`;
+        }
         if (rule.compOffValidityDays < 1 || rule.compOffValidityDays > 730) {
           return `${code} credit validity must be between 1 and 730 days.`;
         }
@@ -426,6 +450,24 @@ export default function LeavePolicyDrawer({
     setRules((current) =>
       current.map((rule, ruleIndex) => (ruleIndex === index ? { ...rule, ...patch } : rule))
     );
+  };
+
+  const setApprovalWorkflow = (
+    index: number,
+    kind: "leave" | "comp_off",
+    versionId: string
+  ) => {
+    const options = kind === "leave" ? leaveApprovalWorkflows : compOffApprovalWorkflows;
+    const selected = options.find((workflow) => workflow.latestPublishedVersion?._id === versionId);
+    updateRule(index, kind === "leave" ? {
+      requestApprovalWorkflow: selected?._id || null,
+      requestApprovalWorkflowVersion: selected?.latestPublishedVersion?._id || null,
+      requestApprovalWorkflowVersionNumber: selected?.latestPublishedVersion?.versionNumber || null,
+    } : {
+      compOffClaimApprovalWorkflow: selected?._id || null,
+      compOffClaimApprovalWorkflowVersion: selected?.latestPublishedVersion?._id || null,
+      compOffClaimApprovalWorkflowVersionNumber: selected?.latestPublishedVersion?.versionNumber || null,
+    });
   };
 
   const setCreditComponents = (ruleIndex: number, creditComponents: LeaveCreditComponent[]) => {
@@ -912,6 +954,47 @@ export default function LeavePolicyDrawer({
                                 <AlertDescription>This leave type does not track a balance or automatic credits.</AlertDescription>
                               </Alert>
                             )}
+
+                            <Box borderWidth="1px" borderRadius="md" p={4}>
+                              <Text fontSize="sm" fontWeight="700">Approval workflows</Text>
+                              <Text mt={1} fontSize="xs" color="gray.500">
+                                Published workflow versions are snapshotted when a request is submitted.
+                              </Text>
+                              <SimpleGrid mt={4} columns={{ base: 1, md: rule.entitlementMode === "earned" ? 2 : 1 }} spacing={4}>
+                                <FormControl isRequired>
+                                  <FormLabel fontSize="sm">Leave request approval</FormLabel>
+                                  <Select
+                                    value={rule.requestApprovalWorkflowVersion || ""}
+                                    placeholder="Select published workflow"
+                                    onChange={(event) => setApprovalWorkflow(index, "leave", event.target.value)}
+                                  >
+                                    {leaveApprovalWorkflows.map((workflow) => (
+                                      <option key={workflow._id} value={workflow.latestPublishedVersion!._id}>
+                                        {workflow.name} (v{workflow.latestPublishedVersion!.versionNumber})
+                                      </option>
+                                    ))}
+                                  </Select>
+                                  <Text mt={1} fontSize="xs" color="gray.500">Used when an employee applies for this leave type.</Text>
+                                </FormControl>
+                                {rule.entitlementMode === "earned" ? (
+                                  <FormControl isRequired>
+                                    <FormLabel fontSize="sm">Comp-off earning claim approval</FormLabel>
+                                    <Select
+                                      value={rule.compOffClaimApprovalWorkflowVersion || ""}
+                                      placeholder="Select published workflow"
+                                      onChange={(event) => setApprovalWorkflow(index, "comp_off", event.target.value)}
+                                    >
+                                      {compOffApprovalWorkflows.map((workflow) => (
+                                        <option key={workflow._id} value={workflow.latestPublishedVersion!._id}>
+                                          {workflow.name} (v{workflow.latestPublishedVersion!.versionNumber})
+                                        </option>
+                                      ))}
+                                    </Select>
+                                    <Text mt={1} fontSize="xs" color="gray.500">Used before earned comp-off is credited to the balance ledger.</Text>
+                                  </FormControl>
+                                ) : null}
+                              </SimpleGrid>
+                            </Box>
 
                             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
                               <FormControl isRequired>
