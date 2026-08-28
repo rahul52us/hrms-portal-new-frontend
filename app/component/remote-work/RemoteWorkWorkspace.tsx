@@ -1,6 +1,7 @@
 "use client";
 
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
+import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
 import { hasPermission, PERMISSION_KEYS } from "@/app/config/utils/permissions";
 import stores from "@/app/store/stores";
 import {
@@ -18,6 +19,7 @@ import {
   Badge,
   Box,
   Button,
+  Center,
   Divider,
   Drawer,
   DrawerBody,
@@ -32,6 +34,7 @@ import {
   FormLabel,
   Heading,
   HStack,
+  Icon,
   Input,
   Select,
   SimpleGrid,
@@ -50,7 +53,7 @@ import {
 } from "@chakra-ui/react";
 import { observer } from "mobx-react-lite";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FiCheck, FiClock, FiPlus, FiRefreshCw, FiWifi, FiX } from "react-icons/fi";
+import { FiCheck, FiClock, FiPlus, FiRefreshCw, FiWifi, FiX, FiInbox, FiCheckCircle } from "react-icons/fi";
 
 const localToday = () => {
   const now = new Date();
@@ -230,20 +233,78 @@ const RemoteWorkWorkspace = observer(function RemoteWorkWorkspace({ embedded = f
   return (
     <Box
       minH={embedded ? undefined : "100dvh"}
-      bg={embedded ? "transparent" : pageBg}
-      px={embedded ? 0 : { base: 3, md: 6 }}
-      py={embedded ? 0 : { base: 4, md: 6 }}
     >
-      <Stack maxW={embedded ? undefined : "1400px"} mx={embedded ? undefined : "auto"} spacing={5}>
-        <Flex direction={{ base: "column", md: "row" }} justify="space-between" align={{ md: "center" }} gap={3}>
-          <Box><Heading size="lg">Work from home</Heading><Text mt={1} color={muted} fontSize="sm">Request remote work and track manager or HR approval.</Text></Box>
-          <HStack><Button variant="outline" leftIcon={<FiRefreshCw />} onClick={load} isLoading={loading}>Refresh</Button><Button colorScheme="blue" leftIcon={<FiPlus />} onClick={openRequest}>Request WFH</Button></HStack>
-        </Flex>
-        <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={3}>
-          {[{ label: "Pending mine", value: mine.filter((item) => ["submitted", "manager_approved"].includes(item.status)).length }, { label: "Approved mine", value: mine.filter((item) => item.status === "approved").length }, { label: "Waiting for review", value: approvals.length }].map((item) => <Box key={item.label} bg={surface} borderWidth="1px" borderColor={border} borderRadius="md" p={4}><Text fontSize="xs" color={muted}>{item.label}</Text><Text mt={1} fontSize="2xl" fontWeight="800">{item.value}</Text></Box>)}
-        </SimpleGrid>
-        <Box bg={surface} borderWidth="1px" borderColor={border} borderRadius="md" overflow="hidden">
-          {loading ? <Stack p={4}><Skeleton h="84px" /><Skeleton h="84px" /></Stack> : <Tabs colorScheme="blue" isLazy><TabList px={4} overflowX="auto" overflowY="hidden">{panels.map((panel) => <Tab key={panel.key} whiteSpace="nowrap">{panel.label}</Tab>)}</TabList><TabPanels>{panels.map((panel) => <TabPanel key={panel.key} p={{ base: 3, md: 4 }}><RequestList items={panel.items} mode={panel.mode} onOpen={openDetails} onWithdraw={(request) => act("withdraw", request)} muted={muted} border={border} /></TabPanel>)}</TabPanels></Tabs>}
+      <Stack maxW={embedded ? undefined : "1500px"} mx={embedded ? undefined : "auto"} spacing={6}>
+        <Stack spacing={6}>
+          <PageBanner
+            titlePrefix="WORK"
+            titleHighlight="FROM HOME"
+            subtitle="REQUEST REMOTE WORK AND TRACK MANAGER OR HR APPROVAL."
+            icon={FiWifi}
+            showBackButton={false}
+            colorScheme="blue"
+          >
+            <HStack><Button variant="outline" size="sm" borderRadius="lg" leftIcon={<FiRefreshCw />} onClick={load} isLoading={loading}>Refresh</Button><Button colorScheme="blue" size="sm" borderRadius="lg" leftIcon={<FiPlus />} onClick={openRequest}>Request WFH</Button></HStack>
+          </PageBanner>
+          <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={4} w="full">
+            {[
+              { label: "Pending mine", value: mine.filter((item) => ["submitted", "manager_approved"].includes(item.status)).length, icon: FiClock },
+              { label: "Approved mine", value: mine.filter((item) => item.status === "approved").length, icon: FiCheckCircle },
+              { label: "Waiting for review", value: approvals.length, icon: FiInbox }
+            ].map((stat) => (
+              <HStack key={stat.label} bg={surface} borderWidth="1px" borderColor={border} borderRadius="xl" p={4} minW={0} shadow="sm">
+                <Center bg={useColorModeValue("blue.50", "blue.900")} color="blue.500" w={12} h={12} borderRadius="lg" flexShrink={0}>
+                  <Icon as={stat.icon} boxSize={5} />
+                </Center>
+                <Box minW={0} ml={3}>
+                  <Text fontSize="sm" color={muted} noOfLines={1} fontWeight="medium">{stat.label}</Text>
+                  <Text fontWeight="bold" fontSize="2xl" lineHeight="1">{stat.value}</Text>
+                </Box>
+              </HStack>
+            ))}
+          </SimpleGrid>
+        </Stack>
+
+        <Box bg={surface} borderWidth="1px" borderColor={border} borderRadius="xl" overflow="hidden" shadow="sm">
+          {loading ? <Stack p={4}><Skeleton h="84px" /><Skeleton h="84px" /></Stack> : (
+            <Tabs colorScheme="blue" variant="soft-rounded" size="sm" isLazy>
+              <Box px={5} pt={5} pb={3} borderBottomWidth="1px" borderColor={border} overflowX="auto" css={{ "&::-webkit-scrollbar": { display: "none" } }}>
+                <TabList
+                  gap={2}
+                  flexWrap="nowrap"
+                  w="max-content"
+                  bg={useColorModeValue("gray.100", "gray.900")}
+                  p={1}
+                  borderRadius="full"
+                  display="inline-flex"
+                >
+                  {panels.map((panel) => (
+                    <Tab
+                      key={panel.key}
+                      whiteSpace="nowrap"
+                      fontWeight="medium"
+                      color={muted}
+                      fontSize="sm"
+                      px={{ base: 4, md: 6 }}
+                      py={2}
+                      borderRadius="full"
+                      _selected={{
+                        bgGradient: "linear(to-r, blue.500, purple.600)",
+                        color: "white",
+                        boxShadow: "md"
+                      }}
+                      transition="all 0.2s"
+                    >
+                      {panel.label}
+                    </Tab>
+                  ))}
+                </TabList>
+              </Box>
+              <TabPanels>
+                {panels.map((panel) => <TabPanel key={panel.key} p={{ base: 3, md: 4 }}><RequestList items={panel.items} mode={panel.mode} onOpen={openDetails} onWithdraw={(request) => act("withdraw", request)} muted={muted} border={border} /></TabPanel>)}
+              </TabPanels>
+            </Tabs>
+          )}
         </Box>
       </Stack>
 

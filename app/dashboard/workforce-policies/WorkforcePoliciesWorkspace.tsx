@@ -399,13 +399,15 @@ const WorkforcePoliciesWorkspace = observer(() => {
           ) : null}
 
           <Box bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="xl" overflow="hidden" shadow="sm">
-            <Tabs index={tabIndex} onChange={setTabIndex} variant="unstyled" isLazy>
-              <Box px={5} pt={5} pb={3} borderBottomWidth="1px" borderColor={borderColor} overflowX="auto" sx={{ '&::-webkit-scrollbar': { display: 'none' }, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+            <Tabs index={tabIndex} onChange={setTabIndex} variant="soft-rounded" colorScheme="blue" size="sm" isLazy>
+              <Box px={5} pt={5} pb={3} borderBottomWidth="1px" borderColor={borderColor} overflowX="auto" css={{ "&::-webkit-scrollbar": { display: "none" } }}>
                 <TabList
-                  borderBottom="none"
+                  gap={2}
+                  flexWrap="nowrap"
+                  w="max-content"
                   bg={useColorModeValue("gray.100", "gray.900")}
                   p={1}
-                  borderRadius="xl"
+                  borderRadius="full"
                   display="inline-flex"
                 >
                   {[
@@ -424,18 +426,18 @@ const WorkforcePoliciesWorkspace = observer(() => {
                       fontWeight="medium"
                       color={muted}
                       fontSize="sm"
-                      px={5}
+                      px={{ base: 4, md: 6 }}
                       py={2}
-                      borderRadius="lg"
+                      borderRadius="full"
                       _selected={{
-                        color: useColorModeValue("blue.700", "blue.200"),
-                        bg: useColorModeValue("white", "gray.700"),
-                        shadow: "sm",
-                        fontWeight: "700"
+                        bgGradient: "linear(to-r, blue.500, purple.600)",
+                        color: "white",
+                        boxShadow: "md"
                       }}
                       _hover={{
                         color: useColorModeValue("gray.900", "white")
                       }}
+                      transition="all 0.2s"
                     >
                       {tabLabel}
                     </Tab>

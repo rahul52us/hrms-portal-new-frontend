@@ -3,6 +3,7 @@
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
 import { AttendanceRecord, fetchMyAttendance } from "./attendanceApi";
 import TodayPunchCard from "./TodayPunchCard";
+import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
 import {
   Alert,
   AlertDescription,
@@ -10,6 +11,7 @@ import {
   Badge,
   Box,
   Button,
+  Center,
   Flex,
   Heading,
   HStack,
@@ -21,7 +23,7 @@ import {
   useColorModeValue,
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FiCalendar, FiClock, FiMapPin, FiRefreshCw } from "react-icons/fi";
+import { FiCalendar, FiClock, FiMapPin, FiRefreshCw, FiCheckSquare, FiAlertCircle } from "react-icons/fi";
 
 const statusColor = (status: string) =>
   ({
@@ -76,16 +78,21 @@ function monthRange(value: Date) {
   return { from: key(1), to: key(lastDay) };
 }
 
-function Metric({ label, value, helper }: { label: string; value: string | number; helper?: string }) {
+function Metric({ label, value, helper, icon }: { label: string; value: string | number; helper?: string; icon: any }) {
   const surface = useColorModeValue("white", "gray.800");
   const border = useColorModeValue("gray.200", "gray.700");
-  const muted = useColorModeValue("gray.600", "gray.400");
+  const muted = useColorModeValue("gray.500", "gray.400");
   return (
-    <Box bg={surface} borderWidth="1px" borderColor={border} borderRadius="md" p={4}>
-      <Text fontSize="xs" color={muted} fontWeight="700">{label}</Text>
-      <Text mt={1} fontSize="2xl" fontWeight="800">{value}</Text>
-      {helper ? <Text mt={1} fontSize="xs" color={muted}>{helper}</Text> : null}
-    </Box>
+    <HStack bg={surface} borderWidth="1px" borderColor={border} borderRadius="xl" p={4} minW={0} shadow="sm">
+      <Center bg={useColorModeValue("blue.50", "blue.900")} color="blue.500" w={12} h={12} borderRadius="lg" flexShrink={0}>
+        <Icon as={icon} boxSize={5} />
+      </Center>
+      <Box minW={0} ml={3}>
+        <Text fontSize="sm" color={muted} noOfLines={1} fontWeight="medium">{label}</Text>
+        <Text fontWeight="bold" fontSize="2xl" lineHeight="1">{value}</Text>
+        {helper && <Text fontSize="xs" color={muted} mt={1}>{helper}</Text>}
+      </Box>
+    </HStack>
   );
 }
 
@@ -132,26 +139,32 @@ export default function MyAttendanceWorkspace() {
   };
 
   return (
-    <Box minH="100dvh" bg={pageBg} px={{ base: 3, md: 6 }} py={{ base: 4, md: 6 }}>
+    <Box minH="100dvh">
       <Stack maxW="1400px" mx="auto" spacing={5}>
-        <Flex direction={{ base: "column", md: "row" }} justify="space-between" align={{ md: "center" }} gap={3}>
-          <Box>
-            <Heading size="lg">My attendance</Heading>
-            <Text mt={1} color={muted} fontSize="sm">Punch sessions and calculated daily attendance.</Text>
-          </Box>
-          <Button variant="outline" leftIcon={<FiRefreshCw />} onClick={refreshAll} isLoading={loading}>Refresh</Button>
-        </Flex>
+        <Stack spacing={6}>
+          <PageBanner
+            titlePrefix="MY"
+            titleHighlight="ATTENDANCE"
+            subtitle="PUNCH SESSIONS AND CALCULATED DAILY ATTENDANCE."
+            icon={FiClock}
+            statLabel={`${summary.presentDays} PRESENT DAYS`}
+            statIcon={FiCalendar}
+            showBackButton={false}
+            colorScheme="blue"
+          >
+            <Button variant="outline" size="sm" borderRadius="lg" leftIcon={<FiRefreshCw />} onClick={refreshAll} isLoading={loading}>Refresh</Button>
+          </PageBanner>
+          <SimpleGrid columns={{ base: 2, lg: 4 }} spacing={4} w="full">
+            <Metric icon={FiCalendar} label="RECORDED DAYS" value={summary.recordedDays} helper="Days with attendance activity" />
+            <Metric icon={FiCheckSquare} label="PRESENT DAYS" value={summary.presentDays} helper="Calculated as full day" />
+            <Metric icon={FiClock} label="WORKED TIME" value={formatMinutes(summary.workedMinutes)} helper="For selected month" />
+            <Metric icon={FiAlertCircle} label="LATE ARRIVALS" value={summary.lateDays} helper="After policy grace" />
+          </SimpleGrid>
+        </Stack>
 
         {error ? <Alert status="error" borderRadius="md"><AlertIcon /><AlertDescription>{error}</AlertDescription></Alert> : null}
 
         <TodayPunchCard refreshKey={refreshKey} onAttendanceChanged={load} />
-
-        <SimpleGrid columns={{ base: 2, lg: 4 }} spacing={3}>
-          <Metric label="RECORDED DAYS" value={summary.recordedDays} helper="Days with attendance activity" />
-          <Metric label="PRESENT DAYS" value={summary.presentDays} helper="Calculated as full day" />
-          <Metric label="WORKED TIME" value={formatMinutes(summary.workedMinutes)} helper="For selected month" />
-          <Metric label="LATE ARRIVALS" value={summary.lateDays} helper="After policy grace" />
-        </SimpleGrid>
 
         <Box bg={surface} borderWidth="1px" borderColor={border} borderRadius="md" overflow="hidden">
           <Flex p={4} justify="space-between" align="center" gap={3} borderBottomWidth="1px" borderColor={border}>

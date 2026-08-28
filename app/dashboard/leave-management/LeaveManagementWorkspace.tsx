@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import PermissionGate from "@/app/component/common/PermissionGate";
+import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
 import { hasPermission, PERMISSION_KEYS } from "@/app/config/utils/permissions";
 import { departmentStore } from "@/app/store/departmentStore/departmentStore";
 import { locationStore } from "@/app/store/locationStore/locationStore";
@@ -20,6 +21,7 @@ import {
   Badge,
   Box,
   Button,
+  Center,
   Flex,
   Heading,
   HStack,
@@ -312,50 +314,72 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
       description="This account does not have permission to view leave operations or configurations."
       fallbackHref="/dashboard/profile"
     >
-      <Box minH="100dvh" bg={pageBg} px={{ base: 3, md: 6 }} py={{ base: 4, md: 6 }}>
-        <Stack spacing={5} maxW="1500px" mx="auto">
-          <Flex direction={{ base: "column", lg: "row" }} justify="space-between" align={{ lg: "end" }} gap={4}>
-            <Box>
-              <Heading size={{ base: "md", md: "lg" }}>Leave management</Heading>
-              <Text mt={1} fontSize="sm" color={muted}>Configure leave types, versioned policies and employee coverage for {activeCompany?.company_name || "the selected company"}.</Text>
-            </Box>
-            <SimpleGrid columns={{ base: 2, md: 3 }} spacing={3} minW={{ lg: "500px" }}>
+      <Box minH="100dvh" bg={pageBg}>
+        <Stack spacing={6} maxW="1500px" mx="auto">
+          <Stack spacing={6}>
+            <PageBanner
+              titlePrefix="LEAVE"
+              titleHighlight="MANAGEMENT"
+              subtitle={`CONFIGURE LEAVE TYPES AND POLICIES FOR ${activeCompany?.company_name?.toUpperCase() || "YOUR COMPANY"}`}
+              icon={FiCalendar}
+              statLabel={`${activeAssignments} ACTIVE SCOPE`}
+              statIcon={FiLink}
+              showBackButton={true}
+              colorScheme="blue"
+            />
+            <SimpleGrid columns={{ base: 2, md: 3 }} spacing={4} w="full">
               {[
                 { label: "Leave types", value: workforcePolicyStore.leaveTypes.filter((item) => item.status === "active").length, icon: FiTag },
-                { label: "Policies", value: workforcePolicyStore.leavePolicies.filter((item) => item.status === "active").length, icon: FiCalendar },
+                { label: "Leave policies", value: workforcePolicyStore.leavePolicies.filter((item) => item.status === "active").length, icon: FiCalendar },
                 { label: "Active scope", value: activeAssignments, icon: FiLink },
               ].map((stat) => (
-                <HStack key={stat.label} bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="md" p={3}>
-                  <Icon as={stat.icon} color="blue.500" /><Box><Text fontSize="xs" color={muted}>{stat.label}</Text><Text fontWeight="800">{stat.value}</Text></Box>
+                <HStack key={stat.label} bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={4} minW={0} shadow="sm">
+                  <Center bg={useColorModeValue("blue.50", "blue.900")} color="blue.500" w={12} h={12} borderRadius="lg" flexShrink={0}>
+                    <Icon as={stat.icon} boxSize={5} />
+                  </Center>
+                  <Box minW={0} ml={3}>
+                    <Text fontSize="sm" color={muted} noOfLines={1} fontWeight="medium">{stat.label}</Text>
+                    <Text fontWeight="bold" fontSize="2xl" lineHeight="1">{stat.value}</Text>
+                  </Box>
                 </HStack>
               ))}
             </SimpleGrid>
-          </Flex>
+          </Stack>
 
           {!companyId ? <Alert status="warning" borderRadius="md"><AlertIcon /><AlertDescription>Select a company before managing leave policies.</AlertDescription></Alert> : null}
           {workforcePolicyStore.error ? <Alert status="error" borderRadius="md"><AlertIcon /><AlertDescription>{workforcePolicyStore.error}</AlertDescription></Alert> : null}
 
-          <Box bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">
-            <Tabs index={tabIndex} onChange={setTabIndex} colorScheme="blue" isLazy>
-              <Flex direction={{ base: "column", md: "row" }} justify="space-between" gap={3} px={4} pt={4}>
-                <TabList overflowX="auto">
-                  {canViewConfiguration ? <Tab whiteSpace="nowrap">Leave types</Tab> : null}
-                  {canViewConfiguration ? <Tab whiteSpace="nowrap">Leave policies</Tab> : null}
-                  {canViewConfiguration ? <Tab whiteSpace="nowrap">Assignments</Tab> : null}
-                  {canViewConfiguration ? <Tab whiteSpace="nowrap">Coverage</Tab> : null}
-                  {canViewOperations ? <Tab whiteSpace="nowrap">Requests</Tab> : null}
-                  {canViewOperations ? <Tab whiteSpace="nowrap">Comp-off claims</Tab> : null}
-                  {canViewOperations ? <Tab whiteSpace="nowrap">Balances</Tab> : null}
-                </TabList>
-                <HStack pb={{ md: 2 }}>
-                  {canViewConfiguration && tabIndex < 2 ? <InputGroup size="sm" maxW="250px"><InputLeftElement><FiSearch /></InputLeftElement><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" /></InputGroup> : null}
-                  {canViewConfiguration && canManage && companyId && tabIndex < 3 ? (
-                    <Button size="sm" colorScheme="blue" leftIcon={<FiPlus />} flexShrink={0} onClick={() => tabIndex === 0 ? openType() : tabIndex === 1 ? openPolicy("create") : openAssignment()}>
-                      {tabIndex === 0 ? "New leave type" : tabIndex === 1 ? "New policy" : "New assignment"}
-                    </Button>
-                  ) : null}
-                </HStack>
-              </Flex>
+          <Box bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="xl" overflow="hidden" shadow="sm">
+            <Tabs index={tabIndex} onChange={setTabIndex} variant="soft-rounded" colorScheme="blue" size="sm" isLazy>
+              <Box px={5} pt={5} pb={3} borderBottomWidth="1px" borderColor={borderColor} overflowX="auto" css={{ "&::-webkit-scrollbar": { display: "none" } }}>
+                <Flex direction={{ base: "column", md: "row" }} justify="space-between" align={{ md: "center" }} gap={4}>
+                  <TabList
+                    gap={2}
+                    flexWrap="nowrap"
+                    w="max-content"
+                    bg={useColorModeValue("gray.100", "gray.900")}
+                    p={1}
+                    borderRadius="full"
+                    display="inline-flex"
+                  >
+                    {canViewConfiguration ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Leave types</Tab> : null}
+                    {canViewConfiguration ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Leave policies</Tab> : null}
+                    {canViewConfiguration ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Assignments</Tab> : null}
+                    {canViewConfiguration ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Coverage</Tab> : null}
+                    {canViewOperations ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Requests</Tab> : null}
+                    {canViewOperations ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Comp-off claims</Tab> : null}
+                    {canViewOperations ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Balances</Tab> : null}
+                  </TabList>
+                  <HStack>
+                    {canViewConfiguration && tabIndex < 2 ? <InputGroup size="sm" maxW="250px"><InputLeftElement><FiSearch /></InputLeftElement><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" borderRadius="lg" /></InputGroup> : null}
+                    {canViewConfiguration && canManage && companyId && tabIndex < 3 ? (
+                      <Button size="sm" colorScheme="blue" leftIcon={<FiPlus />} flexShrink={0} borderRadius="lg" onClick={() => tabIndex === 0 ? openType() : tabIndex === 1 ? openPolicy("create") : openAssignment()}>
+                        {tabIndex === 0 ? "New leave type" : tabIndex === 1 ? "New policy" : "New assignment"}
+                      </Button>
+                    ) : null}
+                  </HStack>
+                </Flex>
+              </Box>
               <TabPanels>
                 {canViewConfiguration ? <TabPanel><LeaveTypeList /></TabPanel> : null}
                 {canViewConfiguration ? <TabPanel><LeavePolicyList /></TabPanel> : null}
