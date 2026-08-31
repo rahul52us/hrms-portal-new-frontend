@@ -80,6 +80,9 @@ export async function punchIn(payload: Record<string, any> = {}) {
 
 export async function punchOut() {
   const response = await axios.post("/attendance/punch-out", {});
-  return response.data?.data as AttendanceRecord;
+  return {
+    record: response.data?.data as AttendanceRecord,
+    message: String(response.data?.message || "Punched out"),
+  };
 }
 

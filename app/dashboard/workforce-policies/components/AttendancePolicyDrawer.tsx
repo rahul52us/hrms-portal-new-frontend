@@ -38,7 +38,6 @@ const DEFAULT_RULES: AttendanceRules = {
   minimumFullDayMinutes: 480,
   minimumHalfDayMinutes: 240,
   requirePunchOut: true,
-  allowMultiplePunches: false,
   missingPunchTreatment: "flag_incomplete",
   overtimeEnabled: false,
   overtimeStartsAfterMinutes: 0,
@@ -252,7 +251,6 @@ export default function AttendancePolicyDrawer({
           <Text mb={4} fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Punch evaluation</Text>
           <Stack spacing={4}>
             <HStack justify="space-between"><Text fontSize="sm" fontWeight="600">Require punch-out</Text><Switch isChecked={rules.requirePunchOut} onChange={(event) => setRule("requirePunchOut", event.target.checked)} colorScheme="blue" /></HStack>
-            <HStack justify="space-between"><Text fontSize="sm" fontWeight="600">Allow multiple punch sessions</Text><Switch isChecked={rules.allowMultiplePunches} onChange={(event) => setRule("allowMultiplePunches", event.target.checked)} colorScheme="blue" /></HStack>
             <FormControl mt={2}>
               <FormLabel fontSize="sm" fontWeight="600">Missing punch treatment</FormLabel>
               <Select value={rules.missingPunchTreatment} onChange={(event) => setRule("missingPunchTreatment", event.target.value)} bg={inputBg}>

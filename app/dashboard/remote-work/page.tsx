@@ -1,5 +1,5 @@
-import RemoteWorkWorkspace from "@/app/component/remote-work/RemoteWorkWorkspace";
+import { redirect } from "next/navigation";
 
 export default function RemoteWorkPage() {
-  return <RemoteWorkWorkspace />;
+  redirect("/dashboard/requests");
 }

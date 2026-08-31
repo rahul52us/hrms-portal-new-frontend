@@ -135,8 +135,8 @@ export default function TodayPunchCard({
         await punchIn(await browserLocation());
         toast({ title: "Punched in", status: "success" });
       } else {
-        await punchOut();
-        toast({ title: "Punched out", status: "success" });
+        const result = await punchOut();
+        toast({ title: result.message, status: "success" });
       }
 
       await load();
@@ -178,6 +178,8 @@ export default function TodayPunchCard({
     (session) => session.punchIn && !session.punchOut
   );
   const lastSession = record?.punchSessions?.[record.punchSessions.length - 1];
+  const firstSession = record?.punchSessions?.find((session) => session.punchIn);
+  const hasPunchOut = Boolean(lastSession?.punchOut);
 
   return (
     <Stack spacing={3}>
@@ -293,8 +295,10 @@ export default function TodayPunchCard({
                 </Text>
               </Box>
               <Box>
-                <Text color={muted} fontSize="xs">Sessions</Text>
-                <Text fontWeight="700">{record?.punchSessions?.length || 0}</Text>
+                <Text color={muted} fontSize="xs">First in</Text>
+                <Text fontWeight="700">
+                  {formatTime(firstSession?.punchIn, record?.timezone || today.timezone)}
+                </Text>
               </Box>
             </HStack>
           </Stack>
@@ -337,7 +341,7 @@ export default function TodayPunchCard({
                 onClick={() => act("out")}
                 isLoading={punching}
               >
-                Punch out
+                {hasPunchOut ? "Update punch-out" : "Punch out"}
               </Button>
             ) : (
               <Button

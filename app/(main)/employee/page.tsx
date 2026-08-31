@@ -313,7 +313,7 @@ const EmployeePage = observer(() => {
                 </Text>
                 <SimpleGrid columns={{ base: 2, md: 3 }} spacing={6}>
                   <QuickLinkTile icon={FiCalendar} label="Monthly Att." href="/dashboard/my-attendance" />
-                  <QuickLinkTile icon={FiClock} label="Leave Request" href="/dashboard/request/leave" />
+                  <QuickLinkTile icon={FiClock} label="Requests" href="/dashboard/requests" />
                   <QuickLinkTile icon={FiShield} label="Holiday List" href="/dashboard/company/policy/holidays" />
                   <QuickLinkTile icon={FiCreditCard} label="Expense Claim" href="/dashboard/request" />
                   <QuickLinkTile icon={FiFileText} label="Salary Slip" href="/dashboard/salary-slip" />

@@ -3,7 +3,7 @@ import { expandRoleAliases } from "@/app/config/utils/roleAccess";
 import { PERMISSION_KEYS, hasPermission } from "@/app/config/utils/permissions";
 import { LucideBriefcaseBusiness, Network } from "lucide-react";
 import { BiCategory } from "react-icons/bi";
-import { FiBell, FiCalendar, FiCamera, FiClock, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers, FiPieChart, FiDatabase, FiWifi } from "react-icons/fi";
+import { FiBell, FiCalendar, FiCamera, FiClock, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers, FiPieChart, FiDatabase } from "react-icons/fi";
 
 interface SidebarItem {
   id: number;
@@ -88,10 +88,10 @@ const sidebarDatas: SidebarItem[] = [
   },
   {
     id: 106,
-    name: "My Leave",
-    icon: <FiCalendar />,
-    url: "/dashboard/my-leave",
-    role: ["departmenthead", "hradmin", "hr"],
+    name: "Requests",
+    icon: <FiFileText />,
+    url: "/dashboard/requests",
+    role: ["admin", "departmenthead", "hradmin", "hr"],
   },
   {
     id: 107,
@@ -107,13 +107,6 @@ const sidebarDatas: SidebarItem[] = [
     url: "/dashboard/leave-management",
     role: ["admin", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_LEAVE_REQUESTS,
-  },
-  {
-    id: 109,
-    name: "Work From Home",
-    icon: <FiWifi />,
-    url: "/dashboard/remote-work",
-    role: ["admin", "departmenthead", "hradmin", "hr"],
   },
   {
     id: 35,
@@ -325,54 +318,10 @@ const sidebarDatas: SidebarItem[] = [
   },
   {
     id: 217,
-    name: "Request",
+    name: "Requests",
     icon: <FiFileText />,
-    url: "/dashboard/request/leave",
+    url: "/dashboard/requests",
     role: ["user"],
-    children: [
-      {
-        id: 218,
-        name: "Attendance Regularise",
-        icon: <FiFileText />,
-        url: "/dashboard/request",
-        role: ["user"],
-      },
-      {
-        id: 219,
-        name: "Leave",
-        icon: <FiFileText />,
-        url: "/dashboard/request/leave",
-        role: ["user"],
-      },
-      {
-        id: 220,
-        name: "HelpDesk",
-        icon: <FiFileText />,
-        url: "/contact-us",
-        role: ["user"],
-      },
-      {
-        id: 221,
-        name: "Appreciation",
-        icon: <FiFileText />,
-        url: "/employee/appreciation",
-        role: ["user"],
-      },
-      {
-        id: 222,
-        name: "Resignation Note",
-        icon: <FiFileText />,
-        url: "/employee/resignation",
-        role: ["user"],
-      },
-      {
-        id: 223,
-        name: "Leave Encashment",
-        icon: <FiFileText />,
-        url: "/employee/leave-encashment",
-        role: ["user"],
-      },
-    ],
   },
   {
     id: 224,

@@ -1,5 +1,5 @@
-import MyLeaveWorkspace from "@/app/component/leave/MyLeaveWorkspace";
+import { redirect } from "next/navigation";
 
 export default function MyLeavePage() {
-  return <MyLeaveWorkspace />;
+  redirect("/dashboard/requests");
 }

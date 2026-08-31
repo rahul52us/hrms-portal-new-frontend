@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function EmployeeLeaveRequestsPage() {
+export default function LegacyEmployeeRequestsPage() {
   redirect("/dashboard/requests");
 }

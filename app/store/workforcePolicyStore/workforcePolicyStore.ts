@@ -16,7 +16,6 @@ export interface AttendanceRules {
   minimumFullDayMinutes: number;
   minimumHalfDayMinutes: number;
   requirePunchOut: boolean;
-  allowMultiplePunches: boolean;
   missingPunchTreatment: string;
   overtimeEnabled: boolean;
   overtimeStartsAfterMinutes: number;
