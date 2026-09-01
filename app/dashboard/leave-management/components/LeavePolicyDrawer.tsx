@@ -348,10 +348,10 @@ export default function LeavePolicyDrawer({
     (item) => !rules.some((rule) => rule.leaveType === item._id)
   );
   const leaveApprovalWorkflows = workforcePolicyStore.approvalWorkflows.filter(
-    (workflow) => workflow.status === "active" && workflow.applicableTo.includes("leave_request") && workflow.latestPublishedVersion
+    (workflow) => workflow.status === "active" && workflow.applicableTo.includes("leave_request") && (workflow.effectivePublishedVersion || workflow.latestPublishedVersion)
   );
   const compOffApprovalWorkflows = workforcePolicyStore.approvalWorkflows.filter(
-    (workflow) => workflow.status === "active" && workflow.applicableTo.includes("comp_off_claim") && workflow.latestPublishedVersion
+    (workflow) => workflow.status === "active" && workflow.applicableTo.includes("comp_off_claim") && (workflow.effectivePublishedVersion || workflow.latestPublishedVersion)
   );
 
   const validationError = useMemo(() => {
@@ -379,14 +379,14 @@ export default function LeavePolicyDrawer({
     for (const rule of rules) {
       const leaveType = leaveTypeById.get(rule.leaveType);
       const code = leaveType?.code || rule.leaveTypeCodeSnapshot || "Leave type";
-      if (!rule.requestApprovalWorkflow || !rule.requestApprovalWorkflowVersion) {
+      if (!rule.requestApprovalWorkflow) {
         return `${code} must select a published leave-request approval workflow.`;
       }
       if (rule.entitlementMode === "fixed" && rule.creditComponents.some((component) => component.amount <= 0)) {
         return `${code} automatic credit amounts must be greater than zero.`;
       }
       if (rule.entitlementMode === "earned") {
-        if (!rule.compOffClaimApprovalWorkflow || !rule.compOffClaimApprovalWorkflowVersion) {
+        if (!rule.compOffClaimApprovalWorkflow) {
           return `${code} must select a published comp-off claim approval workflow.`;
         }
         if (rule.compOffValidityDays < 1 || rule.compOffValidityDays > 730) {
@@ -455,18 +455,19 @@ export default function LeavePolicyDrawer({
   const setApprovalWorkflow = (
     index: number,
     kind: "leave" | "comp_off",
-    versionId: string
+    workflowId: string
   ) => {
     const options = kind === "leave" ? leaveApprovalWorkflows : compOffApprovalWorkflows;
-    const selected = options.find((workflow) => workflow.latestPublishedVersion?._id === versionId);
+    const selected = options.find((workflow) => workflow._id === workflowId);
+    const selectedVersion = selected?.effectivePublishedVersion || selected?.latestPublishedVersion;
     updateRule(index, kind === "leave" ? {
       requestApprovalWorkflow: selected?._id || null,
-      requestApprovalWorkflowVersion: selected?.latestPublishedVersion?._id || null,
-      requestApprovalWorkflowVersionNumber: selected?.latestPublishedVersion?.versionNumber || null,
+      requestApprovalWorkflowVersion: selectedVersion?._id || null,
+      requestApprovalWorkflowVersionNumber: selectedVersion?.versionNumber || null,
     } : {
       compOffClaimApprovalWorkflow: selected?._id || null,
-      compOffClaimApprovalWorkflowVersion: selected?.latestPublishedVersion?._id || null,
-      compOffClaimApprovalWorkflowVersionNumber: selected?.latestPublishedVersion?.versionNumber || null,
+      compOffClaimApprovalWorkflowVersion: selectedVersion?._id || null,
+      compOffClaimApprovalWorkflowVersionNumber: selectedVersion?.versionNumber || null,
     });
   };
 
@@ -964,13 +965,13 @@ export default function LeavePolicyDrawer({
                                 <FormControl isRequired>
                                   <FormLabel fontSize="sm">Leave request approval</FormLabel>
                                   <Select
-                                    value={rule.requestApprovalWorkflowVersion || ""}
+                                    value={rule.requestApprovalWorkflow || ""}
                                     placeholder="Select published workflow"
                                     onChange={(event) => setApprovalWorkflow(index, "leave", event.target.value)}
                                   >
                                     {leaveApprovalWorkflows.map((workflow) => (
-                                      <option key={workflow._id} value={workflow.latestPublishedVersion!._id}>
-                                        {workflow.name} (v{workflow.latestPublishedVersion!.versionNumber})
+                                      <option key={workflow._id} value={workflow._id}>
+                                        {workflow.name} (current v{(workflow.effectivePublishedVersion || workflow.latestPublishedVersion)!.versionNumber})
                                       </option>
                                     ))}
                                   </Select>
@@ -980,13 +981,13 @@ export default function LeavePolicyDrawer({
                                   <FormControl isRequired>
                                     <FormLabel fontSize="sm">Comp-off earning claim approval</FormLabel>
                                     <Select
-                                      value={rule.compOffClaimApprovalWorkflowVersion || ""}
+                                      value={rule.compOffClaimApprovalWorkflow || ""}
                                       placeholder="Select published workflow"
                                       onChange={(event) => setApprovalWorkflow(index, "comp_off", event.target.value)}
                                     >
                                       {compOffApprovalWorkflows.map((workflow) => (
-                                        <option key={workflow._id} value={workflow.latestPublishedVersion!._id}>
-                                          {workflow.name} (v{workflow.latestPublishedVersion!.versionNumber})
+                                        <option key={workflow._id} value={workflow._id}>
+                                          {workflow.name} (current v{(workflow.effectivePublishedVersion || workflow.latestPublishedVersion)!.versionNumber})
                                         </option>
                                       ))}
                                     </Select>

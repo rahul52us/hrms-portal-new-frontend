@@ -132,6 +132,7 @@ export interface ApprovalWorkflowVersion {
   _id: string;
   versionNumber: number;
   status: PolicyVersionStatus;
+  effectiveFrom?: string | null;
   autoApprove: boolean;
   steps: ApprovalWorkflowStep[];
   changeReason?: string;
@@ -149,6 +150,7 @@ export interface ApprovalWorkflowItem {
   latestVersionNumber: number;
   draftVersion?: ApprovalWorkflowVersion | null;
   latestPublishedVersion?: ApprovalWorkflowVersion | null;
+  effectivePublishedVersion?: ApprovalWorkflowVersion | null;
 }
 
 export interface PolicyVersion {

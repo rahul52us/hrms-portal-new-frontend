@@ -54,6 +54,11 @@ const STEP_TYPES: Array<{ value: ApprovalStepType; label: string }> = [
   { value: "specific_users", label: "Specific users" },
 ];
 
+function localDateValue() {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function emptyStep(index: number): ApprovalWorkflowStep {
   return {
     order: index + 1,
@@ -99,6 +104,7 @@ export default function ApprovalWorkflowDrawer({
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
   const [applicableTo, setApplicableTo] = useState<ApprovalRequestType[]>(["leave_request"]);
+  const [effectiveFrom, setEffectiveFrom] = useState(localDateValue());
   const [autoApprove, setAutoApprove] = useState(false);
   const [steps, setSteps] = useState<ApprovalWorkflowStep[]>([emptyStep(0)]);
   const [changeReason, setChangeReason] = useState("");
@@ -112,6 +118,11 @@ export default function ApprovalWorkflowDrawer({
     setCode(workflow?.code || "");
     setDescription(workflow?.description || "");
     setApplicableTo(workflow?.applicableTo?.length ? workflow.applicableTo : ["leave_request"]);
+    setEffectiveFrom(
+      mode === "new_version"
+        ? localDateValue()
+        : String(source?.effectiveFrom || "").slice(0, 10) || localDateValue()
+    );
     setAutoApprove(Boolean(source?.autoApprove));
     setSteps(source?.steps?.length ? normalizeSteps(source.steps) : [emptyStep(0)]);
     setChangeReason(mode === "create" ? "Initial approval flow" : "");
@@ -133,6 +144,7 @@ export default function ApprovalWorkflowDrawer({
     if (mode === "create" && name.trim().length < 3) return "Workflow name must be at least 3 characters.";
     if (mode === "create" && code.trim().length < 2) return "Workflow code must be at least 2 characters.";
     if (!applicableTo.length) return "Select at least one request type.";
+    if (!effectiveFrom) return "Select when this workflow version becomes effective.";
     if (!autoApprove && !steps.length) return "Add at least one approval level.";
     if (steps.some((step) => !step.name.trim())) return "Every approval level needs a name.";
     if (steps.some((step) => step.approverType === "specific_users" && !step.approverUserIds.length)) {
@@ -140,7 +152,7 @@ export default function ApprovalWorkflowDrawer({
     }
     if (mode !== "create" && changeReason.trim().length < 3) return "Describe why this version is changing.";
     return "";
-  }, [applicableTo, autoApprove, changeReason, code, mode, name, steps]);
+  }, [applicableTo, autoApprove, changeReason, code, effectiveFrom, mode, name, steps]);
 
   const updateStep = (index: number, patch: Partial<ApprovalWorkflowStep>) => {
     setSteps((current) => normalizeSteps(current.map((step, itemIndex) =>
@@ -171,6 +183,7 @@ export default function ApprovalWorkflowDrawer({
     }
     const payload = {
       companyId,
+      effectiveFrom,
       autoApprove,
       steps: autoApprove ? [] : normalizeSteps(steps),
       changeReason: changeReason.trim(),
@@ -197,6 +210,7 @@ export default function ApprovalWorkflowDrawer({
       if (publish) {
         await workforcePolicyStore.publishApprovalWorkflowVersion(workflowId, versionId, {
           companyId,
+          effectiveFrom,
           changeReason: changeReason.trim(),
         });
       }
@@ -229,7 +243,7 @@ export default function ApprovalWorkflowDrawer({
     >
       <Stack spacing={6}>
         {mode !== "create" ? (
-          <Alert status="info" borderRadius="md"><AlertIcon /><AlertDescription fontSize="sm">Published versions remain attached to historical requests.</AlertDescription></Alert>
+          <Alert status="info" borderRadius="md"><AlertIcon /><AlertDescription fontSize="sm">Existing requests keep their snapshotted version. New requests automatically use the version effective when they are submitted.</AlertDescription></Alert>
         ) : null}
         <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
           <Text mb={4} fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Workflow identity</Text>
@@ -260,10 +274,17 @@ export default function ApprovalWorkflowDrawer({
           
           <Box h="1px" bg={borderColor} my={5} mx={-5} />
 
-          <FormControl display="flex" justifyContent="space-between" alignItems="center">
-            <Box><FormLabel mb={0} fontWeight="800">Auto approve</FormLabel><FormHelperText mt={0}>Use only when the request needs no human decision.</FormHelperText></Box>
-            <Switch isChecked={autoApprove} onChange={(event) => setAutoApprove(event.target.checked)} colorScheme="blue" size="lg" />
-          </FormControl>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5} alignItems="end">
+            <FormControl isRequired>
+              <FormLabel fontWeight="800">Effective from</FormLabel>
+              <Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} />
+              <FormHelperText>New requests submitted from this date use this version.</FormHelperText>
+            </FormControl>
+            <FormControl display="flex" justifyContent="space-between" alignItems="center" minH="70px">
+              <Box><FormLabel mb={0} fontWeight="800">Auto approve</FormLabel><FormHelperText mt={0}>Use only when the request needs no human decision.</FormHelperText></Box>
+              <Switch isChecked={autoApprove} onChange={(event) => setAutoApprove(event.target.checked)} colorScheme="blue" size="lg" />
+            </FormControl>
+          </SimpleGrid>
         </Box>
         {!autoApprove ? (
           <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
