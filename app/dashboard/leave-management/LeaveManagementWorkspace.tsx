@@ -44,7 +44,7 @@ import {
 } from "@chakra-ui/react";
 import { observer } from "mobx-react-lite";
 import { useCallback, useEffect, useState } from "react";
-import { FiArchive, FiCalendar, FiEdit2, FiGitBranch, FiLink, FiPlus, FiSearch, FiTag } from "react-icons/fi";
+import { FiArchive, FiCalendar, FiEdit2, FiGitBranch, FiLink, FiPlus, FiSearch, FiTag, FiTrash2 } from "react-icons/fi";
 import PolicyAssignmentDrawer, {
   AssignmentScopeOption,
 } from "../workforce-policies/components/PolicyAssignmentDrawer";
@@ -100,11 +100,13 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
   const [endingAssignment, setEndingAssignment] = useState<WorkforcePolicyAssignment | null>(null);
   const [assignmentResourceId, setAssignmentResourceId] = useState("");
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget>(null);
+  const [draftCancelTarget, setDraftCancelTarget] = useState<WorkforcePolicyItem | null>(null);
   const typeDisclosure = useDisclosure();
   const policyDisclosure = useDisclosure();
   const historyDisclosure = useDisclosure();
   const assignmentDisclosure = useDisclosure();
   const archiveDisclosure = useDisclosure();
+  const draftCancelDisclosure = useDisclosure();
 
   const pageBg = useColorModeValue("gray.50", "gray.900");
   const surface = useColorModeValue("white", "gray.800");
@@ -234,6 +236,22 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
       toast({ title: error?.message || "Could not archive configuration", status: "error", duration: 5000 });
     }
   };
+  const cancelDraft = async (reason: string) => {
+    if (!draftCancelTarget?.draftVersion?._id) return;
+    try {
+      await workforcePolicyStore.cancelLeavePolicyVersion(
+        draftCancelTarget._id,
+        draftCancelTarget.draftVersion._id,
+        { companyId, reason }
+      );
+      await refresh();
+      toast({ title: `Draft v${draftCancelTarget.draftVersion.versionNumber} discarded`, status: "success" });
+      draftCancelDisclosure.onClose();
+      setDraftCancelTarget(null);
+    } catch (error: any) {
+      toast({ title: error?.message || "Could not discard leave policy draft", status: "error", duration: 5000 });
+    }
+  };
 
   const LeaveTypeList = () => workforcePolicyStore.loading ? (
     <Stack><Skeleton h="88px" /><Skeleton h="88px" /></Stack>
@@ -295,7 +313,10 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
             <Button size="sm" variant="ghost" leftIcon={<FiGitBranch />} onClick={() => openHistory(item)}>History</Button>
             {canManage && item.latestPublishedVersion ? <Button size="sm" variant="outline" leftIcon={<FiLink />} onClick={() => openAssignment(null, item._id)}>Assign</Button> : null}
             {canManage && item.status === "active" && item.draftVersion ? (
-              <Button size="sm" colorScheme="blue" leftIcon={<FiEdit2 />} onClick={() => openPolicy("edit_draft", item, item.draftVersion)}>Edit draft</Button>
+              <>
+                <Button size="sm" colorScheme="blue" leftIcon={<FiEdit2 />} onClick={() => openPolicy("edit_draft", item, item.draftVersion)}>Edit draft</Button>
+                <Button size="sm" variant="ghost" colorScheme="red" leftIcon={<FiTrash2 />} onClick={() => { setDraftCancelTarget(item); draftCancelDisclosure.onOpen(); }}>Discard draft</Button>
+              </>
             ) : null}
             {canManage && item.status === "active" && !item.draftVersion && item.latestPublishedVersion ? (
               <Button size="sm" colorScheme="blue" variant="outline" leftIcon={<FiPlus />} onClick={() => openPolicy("new_version", item, item.latestPublishedVersion)}>New version</Button>
@@ -398,6 +419,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
         <PolicyHistoryDrawer isOpen={historyDisclosure.isOpen} onClose={historyDisclosure.onClose} resourceType="leave_policy" resource={historyResource} />
         <PolicyAssignmentDrawer isOpen={assignmentDisclosure.isOpen} onClose={assignmentDisclosure.onClose} companyId={companyId} attendancePolicies={[]} workSchedules={[]} holidayCalendars={[]} leavePolicies={workforcePolicyStore.leavePolicies} allowedResourceTypes={LEAVE_RESOURCE_TYPES as any} initialResourceType="leave_policy" initialResourceId={assignmentResourceId} scopeOptions={scopeOptions} assignment={endingAssignment} onSaved={refresh} />
         <ArchiveLeaveDialog isOpen={archiveDisclosure.isOpen} onClose={archiveDisclosure.onClose} title={archiveTarget?.kind === "type" ? `Archive ${archiveTarget.item.name}` : archiveTarget?.kind === "policy" ? `Archive ${archiveTarget.item.name}` : "Archive configuration"} description={archiveTarget?.kind === "type" ? "Existing published policy versions keep their historical rule snapshot. This type cannot be used in new versions after archiving." : "Active or scheduled assignments must be ended before this policy can be archived."} submitting={workforcePolicyStore.submitting} onConfirm={archive} />
+        <ArchiveLeaveDialog isOpen={draftCancelDisclosure.isOpen} onClose={draftCancelDisclosure.onClose} title={draftCancelTarget ? `Discard draft v${draftCancelTarget.draftVersion?.versionNumber}` : "Discard leave policy draft"} description="The published policy remains unchanged. This draft stays in version history as cancelled and cannot be edited or published afterward." reasonLabel="Reason for discarding" confirmLabel="Discard draft" submitting={workforcePolicyStore.submitting} onConfirm={cancelDraft} />
       </Box>
     </PermissionGate>
   );

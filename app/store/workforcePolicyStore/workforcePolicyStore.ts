@@ -163,6 +163,8 @@ export interface PolicyVersion {
   effectiveFrom?: string | null;
   effectiveTo?: string | null;
   changeReason?: string;
+  cancellationReason?: string;
+  cancelledAt?: string | null;
   rules?: AttendanceRules | WorkScheduleRules | RemoteWorkRules | LeavePolicyRule[];
   leaveYearStartMonth?: number;
   leaveYearStartDay?: number;
@@ -824,6 +826,24 @@ class WorkforcePolicyStore {
       ).data;
     } catch (error: any) {
       throw new Error(this.getError(error, "Failed to publish leave policy"));
+    } finally {
+      runInAction(() => {
+        this.submitting = false;
+      });
+    }
+  };
+
+  cancelLeavePolicyVersion = async (policyId: string, versionId: string, payload: any) => {
+    this.submitting = true;
+    try {
+      return (
+        await axios.post(
+          `/workforce-policies/leave-policies/${policyId}/versions/${versionId}/cancel`,
+          payload
+        )
+      ).data;
+    } catch (error: any) {
+      throw new Error(this.getError(error, "Failed to discard leave policy draft"));
     } finally {
       runInAction(() => {
         this.submitting = false;

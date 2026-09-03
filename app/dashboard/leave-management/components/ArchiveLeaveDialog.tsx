@@ -21,6 +21,8 @@ export default function ArchiveLeaveDialog({
   description,
   submitting,
   onConfirm,
+  reasonLabel = "Archive reason",
+  confirmLabel = "Archive",
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -28,6 +30,8 @@ export default function ArchiveLeaveDialog({
   description: string;
   submitting: boolean;
   onConfirm: (reason: string) => Promise<void>;
+  reasonLabel?: string;
+  confirmLabel?: string;
 }) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [reason, setReason] = useState("");
@@ -44,13 +48,13 @@ export default function ArchiveLeaveDialog({
           <AlertDialogBody>
             {description}
             <FormControl mt={4} isRequired>
-              <FormLabel fontSize="sm">Archive reason</FormLabel>
+              <FormLabel fontSize="sm">{reasonLabel}</FormLabel>
               <Textarea value={reason} onChange={(event) => setReason(event.target.value)} rows={3} />
             </FormControl>
           </AlertDialogBody>
           <AlertDialogFooter gap={3}>
             <Button ref={cancelRef} variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button colorScheme="red" onClick={() => onConfirm(reason.trim())} isLoading={submitting} isDisabled={reason.trim().length < 3}>Archive</Button>
+            <Button colorScheme="red" onClick={() => onConfirm(reason.trim())} isLoading={submitting} isDisabled={reason.trim().length < 3}>{confirmLabel}</Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialogOverlay>

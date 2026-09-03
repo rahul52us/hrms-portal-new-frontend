@@ -336,18 +336,31 @@ export default function LeavePolicyDrawer({
   const [rules, setRules] = useState<LeavePolicyRule[]>([]);
   const [leaveTypeToAdd, setLeaveTypeToAdd] = useState("");
   const [publishing, setPublishing] = useState(false);
+  const [persistedDraft, setPersistedDraft] = useState<{
+    policyId: string;
+    versionId: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     setName(mode === "create" ? "" : resource?.name || "");
     setCode(mode === "create" ? "" : resource?.code || "");
     setDescription(mode === "create" ? "" : resource?.description || "");
-    setEffectiveFrom(String(version?.effectiveFrom || "").slice(0, 10) || localDateValue());
+    setEffectiveFrom(
+      mode === "new_version"
+        ? ""
+        : String(version?.effectiveFrom || "").slice(0, 10) || localDateValue()
+    );
     setLeaveYearStartMonth(String(version?.leaveYearStartMonth || 1));
     setLeaveYearStartDay(String(version?.leaveYearStartDay || 1));
     setChangeReason(mode === "create" ? "Initial leave policy configuration" : "");
     setRules(Array.isArray(version?.rules) ? version.rules.map(normalizeSourceRule) : []);
     setLeaveTypeToAdd("");
+    setPersistedDraft(
+      mode === "edit_draft" && resource?._id && version?._id
+        ? { policyId: resource._id, versionId: version._id }
+        : null
+    );
   }, [isOpen, mode, resource, version]);
 
   const activeLeaveTypes = leaveTypes.filter((item) => item.status === "active");
@@ -569,24 +582,32 @@ export default function LeavePolicyDrawer({
 
   const persistDraft = async () => {
     const payload = buildPayload();
+    if (persistedDraft) {
+      await workforcePolicyStore.updateLeavePolicyDraft(
+        persistedDraft.policyId,
+        persistedDraft.versionId,
+        payload
+      );
+      return persistedDraft;
+    }
     if (mode === "create") {
       const response = await workforcePolicyStore.createLeavePolicy(payload);
-      return {
+      const createdDraft = {
         policyId: String(response?.data?.policy?._id || ""),
         versionId: String(response?.data?.version?._id || ""),
       };
+      setPersistedDraft(createdDraft);
+      return createdDraft;
     }
     if (!resource?._id) throw new Error("Leave policy is missing");
-    if (mode === "edit_draft") {
-      if (!version?._id) throw new Error("Leave policy draft is missing");
-      await workforcePolicyStore.updateLeavePolicyDraft(resource._id, version._id, payload);
-      return { policyId: resource._id, versionId: version._id };
-    }
+    if (mode === "edit_draft") throw new Error("Leave policy draft is missing");
     const response = await workforcePolicyStore.createLeavePolicyVersion(resource._id, payload);
-    return {
+    const createdDraft = {
       policyId: resource._id,
       versionId: String(response?.data?._id || response?.data?.version?._id || ""),
     };
+    setPersistedDraft(createdDraft);
+    return createdDraft;
   };
 
   const saveDraft = async () => {
@@ -610,8 +631,10 @@ export default function LeavePolicyDrawer({
       return;
     }
     setPublishing(true);
+    let savedDraft: { policyId: string; versionId: string } | null = null;
     try {
-      const { policyId, versionId } = await persistDraft();
+      savedDraft = await persistDraft();
+      const { policyId, versionId } = savedDraft;
       if (!policyId || !versionId) throw new Error("Created policy identifiers are missing");
       await workforcePolicyStore.publishLeavePolicyVersion(policyId, versionId, {
         companyId,
@@ -623,6 +646,10 @@ export default function LeavePolicyDrawer({
       onClose();
       if (mode !== "new_version" && !resource?.assignmentCount) onPublished?.(policyId);
     } catch (error: any) {
+      await Promise.resolve(onSaved()).catch(() => undefined);
+      if (!savedDraft && /existing draft/i.test(String(error?.message || ""))) {
+        onClose();
+      }
       toast({ title: error?.message || "Could not publish leave policy", status: "error", duration: 5000 });
     } finally {
       setPublishing(false);

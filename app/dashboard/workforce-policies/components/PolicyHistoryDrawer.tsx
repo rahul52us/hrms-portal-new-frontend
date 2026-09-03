@@ -115,14 +115,23 @@ const PolicyHistoryDrawer = observer(function PolicyHistoryDrawer({
                     </Badge>
                   </HStack>
                   <Text mt={1} fontSize="sm" color="gray.600">
-                    {formatDate(version.effectiveFrom)} to {formatDate(version.effectiveTo)}
+                    {version.status === "cancelled"
+                      ? `Planned from ${formatDate(version.effectiveFrom)} / never published`
+                      : `${formatDate(version.effectiveFrom)} to ${formatDate(version.effectiveTo)}`}
                   </Text>
                 </Box>
                 <Text fontSize="xs" color="gray.500">
-                  {version.status === "published" ? "Immutable" : "Editable draft"}
+                  {version.status === "published"
+                    ? "Immutable"
+                    : version.status === "draft"
+                      ? "Editable draft"
+                      : "Cancelled"}
                 </Text>
               </HStack>
               <Text mt={3} fontSize="sm">{version.changeReason || "No change reason recorded"}</Text>
+              {version.status === "cancelled" && version.cancellationReason ? (
+                <Text mt={1} fontSize="xs" color="red.600">Discarded: {version.cancellationReason}</Text>
+              ) : null}
               {resourceType === "attendance_policy" && version.rules ? (
                 <HStack mt={3} spacing={4} wrap="wrap" color="gray.600">
                   <Text fontSize="xs">{(version.rules as AttendanceRules).minimumFullDayMinutes} full-day minutes</Text>
