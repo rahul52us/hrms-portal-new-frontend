@@ -4,6 +4,7 @@ import { getApiErrorMessage } from "@/app/config/utils/apiError";
 import {
   EligibleLeaveItem,
   LeaveAttachment,
+  addLeaveRequestDocuments,
   actOnLeaveRequest,
   fetchEligibleLeave,
   fetchLeaveRequests,
@@ -167,6 +168,7 @@ export default function EmployeeRequestsWorkspace() {
   const [checking, setChecking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [postUploadingRequestId, setPostUploadingRequestId] = useState("");
 
   const isWfh = form.leaveTypeId === WFH_OPTION;
   const isCompOffClaim = form.leaveTypeId === COMP_OFF_CLAIM_OPTION;
@@ -289,8 +291,8 @@ export default function EmployeeRequestsWorkspace() {
     setRemoteEligibility(null);
     setCompOffEligibility(null);
     setEligibilityErrorMessage("");
-    if (value !== WFH_OPTION && value !== COMP_OFF_CLAIM_OPTION) return;
     setAttachments([]);
+    if (value !== WFH_OPTION && value !== COMP_OFF_CLAIM_OPTION) return;
     if (value === WFH_OPTION) void loadRemoteEligibility(form.fromDate);
   };
 
@@ -381,11 +383,28 @@ export default function EmployeeRequestsWorkspace() {
     try {
       const attachment = await uploadLeaveAttachment(file);
       setAttachments((current) => [...current, attachment]);
-      setPreview(null);
     } catch (error: any) {
       toast({ title: getApiErrorMessage(error?.response?.data || error, "Could not upload document"), status: "error" });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const uploadForRequest = async (request: any, file?: File) => {
+    if (!file) return;
+    setPostUploadingRequestId(request._id);
+    try {
+      const attachment = await uploadLeaveAttachment(file);
+      await addLeaveRequestDocuments(request._id, [attachment]);
+      toast({ title: "Supporting document added", status: "success" });
+      await load();
+    } catch (error: any) {
+      toast({
+        title: getApiErrorMessage(error?.response?.data || error, "Could not add supporting document"),
+        status: "error",
+      });
+    } finally {
+      setPostUploadingRequestId("");
     }
   };
 
@@ -415,6 +434,12 @@ export default function EmployeeRequestsWorkspace() {
       : Boolean(selectedLeave && form.reason.trim());
   const canSubmitCompOff = Boolean(
     selectedCompOff && selectedCompOff.eligibleUnits > 0 && !selectedCompOff.existingClaim && form.reason.trim().length >= 3
+  );
+  const documentRequirement = isLeave ? preview?.documentRequirement : null;
+  const documentRequiredAtSubmission = Boolean(
+    documentRequirement?.required &&
+    documentRequirement.submissionMode === "with_request" &&
+    attachments.length === 0
   );
 
   return (
@@ -471,11 +496,43 @@ export default function EmployeeRequestsWorkspace() {
                             <Text fontWeight="800">{requestTitle(item)}</Text>
                             <Badge variant="outline">{item.kind === "wfh" ? "WFH" : item.kind === "comp_off" ? "Comp-off claim" : item.request.leaveTypeCodeSnapshot}</Badge>
                             <Badge colorScheme={statusColor(item.request.status)}>{formatStatus(item.request.status)}</Badge>
+                            {item.kind === "leave" && item.request.documentRequirementSnapshot?.required ? (
+                              <Badge colorScheme={item.request.documentStatus === "pending" ? "red" : item.request.documentStatus === "submitted" ? "orange" : "green"}>
+                                Document {formatStatus(item.request.documentStatus || "pending")}
+                              </Badge>
+                            ) : null}
                           </HStack>
                           <Text mt={1} fontSize="sm">{requestDateText(item)}</Text>
                           <Text mt={1} fontSize="xs" color={muted}>{requestDetail(item)}</Text>
                         </Box>
-                        {canWithdraw ? <Button size="sm" variant="outline" colorScheme="red" alignSelf={{ lg: "center" }} onClick={() => withdraw(item)}>Withdraw</Button> : null}
+                        <HStack alignSelf={{ lg: "center" }}>
+                          {item.kind === "leave" &&
+                          item.request.documentRequirementSnapshot?.required &&
+                          ["pending", "submitted"].includes(item.request.documentStatus || "pending") &&
+                          !["rejected", "withdrawn", "cancelled"].includes(item.request.status) &&
+                          (item.request.attachments?.length || 0) < 5 ? (
+                            <Button
+                              as="label"
+                              size="sm"
+                              variant="outline"
+                              leftIcon={<FiFile />}
+                              cursor="pointer"
+                              isLoading={postUploadingRequestId === item.request._id}
+                            >
+                              {item.request.documentStatus === "pending" ? "Upload document" : "Add document"}
+                              <Input
+                                type="file"
+                                accept="application/pdf,image/jpeg,image/png"
+                                display="none"
+                                onChange={(event) => {
+                                  void uploadForRequest(item.request, event.target.files?.[0]);
+                                  event.target.value = "";
+                                }}
+                              />
+                            </Button>
+                          ) : null}
+                          {canWithdraw ? <Button size="sm" variant="outline" colorScheme="red" onClick={() => withdraw(item)}>Withdraw</Button> : null}
+                        </HStack>
                       </Flex>
                     );
                   })}
@@ -571,15 +628,23 @@ export default function EmployeeRequestsWorkspace() {
                 {isWfh ? <FormHelperText>{wfhMinimumReason ? `At least ${wfhMinimumReason} characters.` : "Provide enough context for the approver."}</FormHelperText> : null}
               </FormControl>
 
-              {isLeave ? (
-                <Box>
-                  <FormLabel>Supporting documents</FormLabel>
+              {isLeave && documentRequirement?.required ? (
+                <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}>
+                  <Alert status={documentRequirement.submissionMode === "with_request" ? "warning" : "info"} mb={4} borderRadius="md">
+                    <AlertIcon />
+                    <AlertDescription>
+                      {documentRequirement.submissionMode === "with_request"
+                        ? `A supporting document is required for ${preview.chargedUnits} ${selectedLeave?.leaveType.unit} of this leave.`
+                        : `A supporting document is required by ${formatDate(documentRequirement.dueDate)}. You can submit now and upload it later.`}
+                    </AlertDescription>
+                  </Alert>
+                  <FormLabel>{documentRequirement.submissionMode === "with_request" ? "Supporting document" : "Upload now (optional)"}</FormLabel>
                   <Input type="file" accept="application/pdf,image/jpeg,image/png" p={1} isDisabled={uploading || attachments.length >= 5} onChange={(event) => { void upload(event.target.files?.[0]); event.target.value = ""; }} />
                   <Text mt={1} fontSize="xs" color={muted}>PDF, JPG or PNG, up to 5 MB each.</Text>
                   {attachments.map((attachment, index) => (
                     <Flex key={`${attachment.url}-${index}`} mt={2} p={2} borderWidth="1px" borderColor={border} borderRadius="md" justify="space-between" align="center">
                       <HStack minW={0}><FiFile /><Text fontSize="sm" noOfLines={1}>{attachment.name}</Text></HStack>
-                      <Button size="xs" variant="ghost" colorScheme="red" aria-label="Remove attachment" leftIcon={<FiTrash2 />} onClick={() => { setAttachments((items) => items.filter((_, itemIndex) => itemIndex !== index)); setPreview(null); }}>Remove</Button>
+                      <Button size="xs" variant="ghost" colorScheme="red" aria-label="Remove attachment" leftIcon={<FiTrash2 />} onClick={() => setAttachments((items) => items.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button>
                     </Flex>
                   ))}
                 </Box>
@@ -605,7 +670,7 @@ export default function EmployeeRequestsWorkspace() {
             {isCompOffClaim && compOffEligibility ? (
               <Button colorScheme="blue" onClick={submit} isLoading={submitting} isDisabled={!canSubmitCompOff}>Submit request</Button>
             ) : preview ? (
-              <Button colorScheme="blue" onClick={submit} isLoading={submitting}>Submit request</Button>
+              <Button colorScheme="blue" onClick={submit} isLoading={submitting} isDisabled={documentRequiredAtSubmission}>Submit request</Button>
             ) : (
               <Button colorScheme="blue" onClick={review} isLoading={submitting || checking || uploading} isDisabled={!canReview}>{isCompOffClaim ? "Check eligibility" : "Review request"}</Button>
             )}

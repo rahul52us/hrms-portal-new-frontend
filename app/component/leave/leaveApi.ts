@@ -8,6 +8,22 @@ export type LeaveAttachment = {
   size: number;
 };
 
+export type LeaveDocumentStatus =
+  | "not_required"
+  | "pending"
+  | "submitted"
+  | "verified"
+  | "waived";
+
+export type LeaveDocumentRequirement = {
+  required: boolean;
+  thresholdUnits?: number | null;
+  submissionMode?: "with_request" | "allow_later" | null;
+  dueDaysAfterLeaveEnd?: number | null;
+  dueDate?: string | null;
+  provided?: boolean;
+};
+
 export type LeaveBalance = {
   _id?: string;
   creditedUnits: number;
@@ -56,6 +72,14 @@ export type LeaveRequest = {
   approverNameSnapshot?: string;
   dayBreakdown?: any[];
   attachments?: LeaveAttachment[];
+  documentRequirementSnapshot?: LeaveDocumentRequirement;
+  documentStatus?: LeaveDocumentStatus;
+  documentSubmittedAt?: string | null;
+  documentVerifiedAt?: string | null;
+  documentVerifiedBy?: any;
+  documentWaivedAt?: string | null;
+  documentWaivedBy?: any;
+  documentDecisionComment?: string;
   history?: any[];
   submittedAt: string;
   decisionComment?: string;
@@ -108,6 +132,27 @@ export async function uploadLeaveAttachment(file: File, companyId?: string) {
     data,
   });
   return response.data?.data as LeaveAttachment;
+}
+
+export async function addLeaveRequestDocuments(
+  requestId: string,
+  attachments: LeaveAttachment[],
+  companyId?: string
+) {
+  const response = await axios.post(`/leave/requests/${requestId}/documents`, {
+    companyId: companyId || undefined,
+    attachments: attachments.map((attachment) => ({ _id: attachment._id })),
+  });
+  return response.data?.data as LeaveRequest;
+}
+
+export async function manageLeaveRequestDocuments(
+  requestId: string,
+  action: "verify" | "waive",
+  payload: Record<string, any> = {}
+) {
+  const response = await axios.post(`/leave/requests/${requestId}/documents/${action}`, payload);
+  return response.data?.data as LeaveRequest;
 }
 
 export async function actOnLeaveRequest(

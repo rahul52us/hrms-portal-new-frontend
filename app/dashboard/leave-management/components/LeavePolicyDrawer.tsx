@@ -221,6 +221,9 @@ function emptyRule(leaveType: LeaveTypeItem): LeavePolicyRule {
       leaveType.unit === "hours" ? 0.25 : leaveType.allowHalfDay ? 0.5 : 1,
     maximumRequestDays: null,
     minimumNoticeDays: 0,
+    documentRequiredFromUnits: null,
+    documentSubmissionMode: "allow_later",
+    documentDueDaysAfterLeaveEnd: 2,
     documentRequiredAfterDays: null,
     probationEligibility: "allowed",
     sandwichRuleEnabled: false,
@@ -293,7 +296,12 @@ function normalizeSourceRule(rule: any): LeavePolicyRule {
     minimumRequestDays: Number(rule.minimumRequestDays || 1),
     maximumRequestDays: rule.maximumRequestDays ?? null,
     minimumNoticeDays: Number(rule.minimumNoticeDays || 0),
-    documentRequiredAfterDays: rule.documentRequiredAfterDays ?? null,
+    documentRequiredFromUnits:
+      rule.documentRequiredFromUnits ?? rule.documentRequiredAfterDays ?? null,
+    documentSubmissionMode:
+      rule.documentSubmissionMode === "with_request" ? "with_request" : "allow_later",
+    documentDueDaysAfterLeaveEnd: Number(rule.documentDueDaysAfterLeaveEnd ?? 2),
+    documentRequiredAfterDays: null,
     compOffValidityDays: Number(rule.compOffValidityDays || 90),
     compOffFullDayMinutes: Number(rule.compOffFullDayMinutes || 480),
     compOffHalfDayMinutes: Number(rule.compOffHalfDayMinutes || 240),
@@ -397,6 +405,23 @@ export default function LeavePolicyDrawer({
         }
         if (rule.compOffHalfDayMinutes > rule.compOffFullDayMinutes) {
           return `${code} half-day threshold cannot exceed the full-day threshold.`;
+        }
+      }
+      if (rule.documentRequiredFromUnits !== null && rule.documentRequiredFromUnits !== undefined) {
+        if (rule.documentRequiredFromUnits <= 0) {
+          return `${code} document threshold must be greater than zero.`;
+        }
+        const documentIncrement = leaveType?.unit === "hours" ? 0.25 : rule.allowHalfDay ? 0.5 : 1;
+        if (!Number.isInteger(rule.documentRequiredFromUnits / documentIncrement)) {
+          return `${code} document threshold must use valid ${leaveType?.unit || "day"} increments.`;
+        }
+        if (
+          rule.documentSubmissionMode === "allow_later" &&
+          (!Number.isInteger(rule.documentDueDaysAfterLeaveEnd) ||
+            rule.documentDueDaysAfterLeaveEnd < 0 ||
+            rule.documentDueDaysAfterLeaveEnd > 365)
+        ) {
+          return `${code} document due period must be a whole number from 0 to 365 days.`;
         }
       }
       if (rule.carryForwardEnabled && rule.maxCarryForward <= 0) {
@@ -1030,10 +1055,6 @@ export default function LeavePolicyDrawer({
                                 <Input type="number" min={0} value={rule.minimumNoticeDays} onChange={(event) => updateRule(index, { minimumNoticeDays: Number(event.target.value || 0) })} />
                               </FormControl>
                               <FormControl>
-                                <FormLabel fontSize="sm">Document required after</FormLabel>
-                                <Input type="number" min={0.25} step="0.25" value={rule.documentRequiredAfterDays ?? ""} onChange={(event) => updateRule(index, { documentRequiredAfterDays: event.target.value ? Number(event.target.value) : null })} placeholder="Not required" />
-                              </FormControl>
-                              <FormControl>
                                 <FormLabel fontSize="sm">Probation eligibility</FormLabel>
                                 <Select value={rule.probationEligibility} onChange={(event) => updateRule(index, { probationEligibility: event.target.value as LeavePolicyRule["probationEligibility"] })}>
                                   <option value="allowed">Allowed</option>
@@ -1042,6 +1063,72 @@ export default function LeavePolicyDrawer({
                                 </Select>
                               </FormControl>
                             </SimpleGrid>
+
+                            <Box borderTopWidth="1px" pt={4}>
+                              <Checkbox
+                                isChecked={rule.documentRequiredFromUnits !== null && rule.documentRequiredFromUnits !== undefined}
+                                onChange={(event) => updateRule(index, event.target.checked ? {
+                                  documentRequiredFromUnits: leaveType?.unit === "hours" ? 1 : 2,
+                                  documentSubmissionMode: "allow_later",
+                                  documentDueDaysAfterLeaveEnd: 2,
+                                  documentRequiredAfterDays: null,
+                                } : {
+                                  documentRequiredFromUnits: null,
+                                  documentRequiredAfterDays: null,
+                                })}
+                              >
+                                Require supporting document
+                              </Checkbox>
+                              {rule.documentRequiredFromUnits !== null && rule.documentRequiredFromUnits !== undefined ? (
+                                <SimpleGrid mt={4} columns={{ base: 1, md: 3 }} spacing={4}>
+                                  <FormControl isRequired>
+                                    <FormLabel fontSize="sm">Required from ({ruleUnit})</FormLabel>
+                                    <OptionalPositiveNumberInput
+                                      min={requestStep}
+                                      step={requestStep}
+                                      value={rule.documentRequiredFromUnits}
+                                      onValueChange={(value) => updateRule(index, {
+                                        documentRequiredFromUnits: value > 0 ? value : requestStep,
+                                      })}
+                                      placeholder={leaveType?.unit === "hours" ? "e.g. 4" : "e.g. 2"}
+                                    />
+                                    <Text mt={1} fontSize="xs" color="gray.500">
+                                      Required when charged leave is this amount or more.
+                                    </Text>
+                                  </FormControl>
+                                  <FormControl isRequired>
+                                    <FormLabel fontSize="sm">When must it be submitted?</FormLabel>
+                                    <Select
+                                      value={rule.documentSubmissionMode}
+                                      onChange={(event) => updateRule(index, {
+                                        documentSubmissionMode: event.target.value as LeavePolicyRule["documentSubmissionMode"],
+                                      })}
+                                    >
+                                      <option value="allow_later">Employee can upload later</option>
+                                      <option value="with_request">Required with request</option>
+                                    </Select>
+                                  </FormControl>
+                                  {rule.documentSubmissionMode === "allow_later" ? (
+                                    <FormControl isRequired>
+                                      <FormLabel fontSize="sm">Due after leave ends (days)</FormLabel>
+                                      <Input
+                                        type="number"
+                                        min={0}
+                                        max={365}
+                                        step={1}
+                                        value={rule.documentDueDaysAfterLeaveEnd}
+                                        onChange={(event) => updateRule(index, {
+                                          documentDueDaysAfterLeaveEnd: Math.max(0, Number(event.target.value || 0)),
+                                        })}
+                                      />
+                                      <Text mt={1} fontSize="xs" color="gray.500">
+                                        Use 0 when the document is due on the leave end date.
+                                      </Text>
+                                    </FormControl>
+                                  ) : null}
+                                </SimpleGrid>
+                              ) : null}
+                            </Box>
 
                             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
                               <Checkbox

@@ -7,6 +7,7 @@ import {
   LeaveRequest,
   actOnLeaveRequest,
   fetchLeaveRequests,
+  manageLeaveRequestDocuments,
 } from "@/app/component/leave/leaveApi";
 import {
   Badge,
@@ -41,6 +42,8 @@ export default function LeaveRequestsPanel({ companyId, borderColor, muted }: { 
   const toast = useToast();
   const details = useDisclosure();
   const canApprove = hasPermission(stores.auth.user, PERMISSION_KEYS.APPROVE_LEAVE_REQUESTS);
+  const actorRole = String(stores.auth.user?.role || "").toLowerCase();
+  const canManageDocuments = canApprove && ["superadmin", "admin", "hradmin", "hr"].includes(actorRole);
   const actorId = String(stores.auth.user?._id || "");
   const [items, setItems] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,6 +53,7 @@ export default function LeaveRequestsPanel({ companyId, borderColor, muted }: { 
   const [totalPages, setTotalPages] = useState(1);
   const [selected, setSelected] = useState<LeaveRequest | null>(null);
   const [comment, setComment] = useState("");
+  const [documentComment, setDocumentComment] = useState("");
   const canDecideSelected = Boolean(
     selected && canApprove && (
       selected.approvalInstance
@@ -77,7 +81,34 @@ export default function LeaveRequestsPanel({ companyId, borderColor, muted }: { 
   const open = (request: LeaveRequest) => {
     setSelected(request);
     setComment("");
+    setDocumentComment("");
     details.onOpen();
+  };
+
+  const actOnDocuments = async (action: "verify" | "waive") => {
+    if (!selected) return;
+    if (action === "waive" && documentComment.trim().length < 3) {
+      toast({ title: "A document waiver reason is required", status: "warning" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const updated = await manageLeaveRequestDocuments(selected._id, action, {
+        companyId,
+        comment: documentComment.trim() || undefined,
+      });
+      setSelected(updated);
+      setDocumentComment("");
+      toast({
+        title: action === "verify" ? "Supporting documents verified" : "Document requirement waived",
+        status: "success",
+      });
+      await load();
+    } catch (error: any) {
+      toast({ title: getApiErrorMessage(error?.response?.data || error), status: "error" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const act = async (action: "approve" | "reject" | "cancel") => {
@@ -103,17 +134,149 @@ export default function LeaveRequestsPanel({ companyId, borderColor, muted }: { 
   return (
     <Stack spacing={4}>
       <Flex justify="space-between" direction={{ base: "column", md: "row" }} gap={3}>
-        <Box><Text fontWeight="800">Employee leave requests</Text><Text fontSize="sm" color={muted}>Requests are limited to your current company and HR scope.</Text></Box>
-        <Select size="sm" maxW="210px" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option value="submitted">Pending approval</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="withdrawn">Withdrawn</option><option value="cancelled">Cancelled</option><option value="">All statuses</option></Select>
+        <Box>
+          <Text fontWeight="800">Employee leave requests</Text>
+          <Text fontSize="sm" color={muted}>Requests are limited to your current company and HR scope.</Text>
+        </Box>
+        <Select
+          size="sm"
+          maxW="210px"
+          value={status}
+          onChange={(event) => { setStatus(event.target.value); setPage(1); }}
+        >
+          <option value="submitted">Pending approval</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="withdrawn">Withdrawn</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="">All statuses</option>
+        </Select>
       </Flex>
-      {loading ? <Stack><Skeleton h="92px" /><Skeleton h="92px" /></Stack> : items.length === 0 ? <Box py={12} textAlign="center" borderWidth="1px" borderStyle="dashed" borderColor={borderColor} borderRadius="md"><Text color={muted}>No requests match this filter.</Text></Box> : (
+
+      {loading ? (
+        <Stack><Skeleton h="92px" /><Skeleton h="92px" /></Stack>
+      ) : items.length === 0 ? (
+        <Box py={12} textAlign="center" borderWidth="1px" borderStyle="dashed" borderColor={borderColor} borderRadius="md">
+          <Text color={muted}>No requests match this filter.</Text>
+        </Box>
+      ) : (
         <Stack spacing={0} borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">
-          {items.map((request, index) => <Flex key={request._id} p={4} direction={{ base: "column", lg: "row" }} justify="space-between" gap={3} borderBottomWidth={index === items.length - 1 ? 0 : "1px"}><Box><HStack flexWrap="wrap"><Text fontWeight="800">{request.employee?.name || "Employee"}</Text><Text fontSize="sm" color={muted}>{request.employee?.code || request.employee?.username}</Text><Badge colorScheme={color(request.status)}>{request.status}</Badge></HStack><Text mt={1} fontSize="sm">{request.leaveTypeNameSnapshot} · {date(request.fromDate)}{request.toDate !== request.fromDate ? ` to ${date(request.toDate)}` : ""}</Text><Text mt={1} fontSize="xs" color={muted}>{request.chargedUnits} {request.leaveUnit} charged · {request.reason}</Text></Box><Button size="sm" variant="outline" leftIcon={<FiEye />} alignSelf={{ lg: "center" }} onClick={() => open(request)}>Review</Button></Flex>)}
+          {items.map((request, index) => (
+            <Flex key={request._id} p={4} direction={{ base: "column", lg: "row" }} justify="space-between" gap={3} borderBottomWidth={index === items.length - 1 ? 0 : "1px"}>
+              <Box>
+                <HStack flexWrap="wrap">
+                  <Text fontWeight="800">{request.employee?.name || "Employee"}</Text>
+                  <Text fontSize="sm" color={muted}>{request.employee?.code || request.employee?.username}</Text>
+                  <Badge colorScheme={color(request.status)}>{request.status}</Badge>
+                  {request.documentRequirementSnapshot?.required ? (
+                    <Badge colorScheme={request.documentStatus === "pending" ? "red" : request.documentStatus === "submitted" ? "orange" : "green"}>
+                      Document {String(request.documentStatus || "pending").replace(/_/g, " ")}
+                    </Badge>
+                  ) : null}
+                </HStack>
+                <Text mt={1} fontSize="sm">{request.leaveTypeNameSnapshot} | {date(request.fromDate)}{request.toDate !== request.fromDate ? ` to ${date(request.toDate)}` : ""}</Text>
+                <Text mt={1} fontSize="xs" color={muted}>{request.chargedUnits} {request.leaveUnit} charged | {request.reason}</Text>
+              </Box>
+              <Button size="sm" variant="outline" leftIcon={<FiEye />} alignSelf={{ lg: "center" }} onClick={() => open(request)}>Review</Button>
+            </Flex>
+          ))}
         </Stack>
       )}
-      <HStack justify="end"><Button size="sm" variant="outline" isDisabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}>Previous</Button><Text fontSize="sm">Page {page} of {totalPages}</Text><Button size="sm" variant="outline" isDisabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}>Next</Button></HStack>
 
-      <Drawer isOpen={details.isOpen} onClose={details.onClose} placement="right" size="lg"><DrawerOverlay /><DrawerContent><DrawerCloseButton /><DrawerHeader borderBottomWidth="1px">Leave request</DrawerHeader><DrawerBody py={5}>{selected ? <Stack spacing={5}><Box><HStack><Text fontSize="lg" fontWeight="800">{selected.employee?.name}</Text><Badge colorScheme={color(selected.status)}>{selected.status}</Badge></HStack><Text color={muted} fontSize="sm">{selected.employee?.code || selected.employee?.username}</Text></Box><Box borderWidth="1px" borderColor={borderColor} borderRadius="md" p={4}><Text fontWeight="800">{selected.leaveTypeNameSnapshot} ({selected.leaveTypeCodeSnapshot})</Text><Text mt={1}>{date(selected.fromDate)}{selected.toDate !== selected.fromDate ? ` to ${date(selected.toDate)}` : ""}</Text><Text mt={1} color={muted} fontSize="sm">{selected.chargedUnits} {selected.leaveUnit} charged</Text></Box><Box><Text fontSize="sm" color={muted}>Reason</Text><Text>{selected.reason}</Text></Box><Box><Text fontSize="sm" fontWeight="700" mb={2}>Date calculation</Text><Stack spacing={0} borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">{(selected.dayBreakdown || []).map((day) => <Flex key={day.attendanceDate} px={3} py={2} justify="space-between" borderBottomWidth="1px" _last={{ borderBottomWidth: 0 }}><Box><Text fontSize="sm" fontWeight="600">{date(day.attendanceDate)}</Text><Text fontSize="xs" color={muted}>{String(day.chargeReason).replace(/_/g, " ")}</Text></Box><Text fontWeight="700">{day.chargedUnits}</Text></Flex>)}</Stack></Box>{selected.attachments?.length ? <Box><Text fontSize="sm" fontWeight="700">Documents</Text>{selected.attachments.map((attachment) => <Button as="a" href={attachment.url} target="_blank" rel="noreferrer" key={attachment.url} mt={2} mr={2} size="sm" variant="outline">{attachment.name}</Button>)}</Box> : null}{((selected.status === "submitted" && canDecideSelected) || (selected.status === "approved" && canApprove)) ? <FormControl><FormLabel>{selected.status === "approved" ? "Cancellation reason" : "Decision comment"}</FormLabel><Textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder={selected.status === "submitted" ? "Required when rejecting" : "Required when cancelling"} /></FormControl> : null}</Stack> : null}</DrawerBody><DrawerFooter borderTopWidth="1px" gap={3}><Button variant="outline" onClick={details.onClose}>Close</Button>{canDecideSelected && selected?.status === "submitted" ? <><Button colorScheme="red" variant="outline" leftIcon={<FiX />} onClick={() => act("reject")} isLoading={submitting}>Reject</Button><Button colorScheme="green" leftIcon={<FiCheck />} onClick={() => act("approve")} isLoading={submitting}>Approve</Button></> : null}{canApprove && selected?.status === "approved" ? <Button colorScheme="red" variant="outline" onClick={() => act("cancel")} isLoading={submitting}>Cancel approved leave</Button> : null}</DrawerFooter></DrawerContent></Drawer>
+      <HStack justify="end">
+        <Button size="sm" variant="outline" isDisabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}>Previous</Button>
+        <Text fontSize="sm">Page {page} of {totalPages}</Text>
+        <Button size="sm" variant="outline" isDisabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}>Next</Button>
+      </HStack>
+
+      <Drawer isOpen={details.isOpen} onClose={details.onClose} placement="right" size="lg">
+        <DrawerOverlay />
+        <DrawerContent>
+          <DrawerCloseButton />
+          <DrawerHeader borderBottomWidth="1px">Leave request</DrawerHeader>
+          <DrawerBody py={5}>
+            {selected ? (
+              <Stack spacing={5}>
+                <Box>
+                  <HStack><Text fontSize="lg" fontWeight="800">{selected.employee?.name}</Text><Badge colorScheme={color(selected.status)}>{selected.status}</Badge></HStack>
+                  <Text color={muted} fontSize="sm">{selected.employee?.code || selected.employee?.username}</Text>
+                </Box>
+                <Box borderWidth="1px" borderColor={borderColor} borderRadius="md" p={4}>
+                  <Text fontWeight="800">{selected.leaveTypeNameSnapshot} ({selected.leaveTypeCodeSnapshot})</Text>
+                  <Text mt={1}>{date(selected.fromDate)}{selected.toDate !== selected.fromDate ? ` to ${date(selected.toDate)}` : ""}</Text>
+                  <Text mt={1} color={muted} fontSize="sm">{selected.chargedUnits} {selected.leaveUnit} charged</Text>
+                </Box>
+                <Box><Text fontSize="sm" color={muted}>Reason</Text><Text>{selected.reason}</Text></Box>
+                <Box>
+                  <Text fontSize="sm" fontWeight="700" mb={2}>Date calculation</Text>
+                  <Stack spacing={0} borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">
+                    {(selected.dayBreakdown || []).map((day) => (
+                      <Flex key={day.attendanceDate} px={3} py={2} justify="space-between" borderBottomWidth="1px" _last={{ borderBottomWidth: 0 }}>
+                        <Box><Text fontSize="sm" fontWeight="600">{date(day.attendanceDate)}</Text><Text fontSize="xs" color={muted}>{String(day.chargeReason).replace(/_/g, " ")}</Text></Box>
+                        <Text fontWeight="700">{day.chargedUnits}</Text>
+                      </Flex>
+                    ))}
+                  </Stack>
+                </Box>
+
+                {selected.documentRequirementSnapshot?.required ? (
+                  <Box borderWidth="1px" borderColor={borderColor} borderRadius="md" p={4}>
+                    <HStack justify="space-between" align="start">
+                      <Box>
+                        <Text fontWeight="800">Supporting documents</Text>
+                        <Text fontSize="xs" color={muted}>
+                          Required from {selected.documentRequirementSnapshot.thresholdUnits} {selected.leaveUnit}
+                          {selected.documentRequirementSnapshot.dueDate ? ` | Due ${date(selected.documentRequirementSnapshot.dueDate)}` : ""}
+                        </Text>
+                      </Box>
+                      <Badge colorScheme={selected.documentStatus === "pending" ? "red" : selected.documentStatus === "submitted" ? "orange" : "green"}>
+                        {String(selected.documentStatus || "pending").replace(/_/g, " ")}
+                      </Badge>
+                    </HStack>
+                    {selected.attachments?.length ? (
+                      <Box mt={3}>
+                        {selected.attachments.map((attachment) => (
+                          <Button as="a" href={attachment.url} target="_blank" rel="noreferrer" key={attachment.url} mr={2} mb={2} size="sm" variant="outline">{attachment.name}</Button>
+                        ))}
+                      </Box>
+                    ) : <Text mt={3} fontSize="sm" color={muted}>The employee has not uploaded a document yet.</Text>}
+                    {selected.documentDecisionComment ? <Text mt={2} fontSize="sm">HR note: {selected.documentDecisionComment}</Text> : null}
+                    {canManageDocuments && ["pending", "submitted"].includes(selected.documentStatus || "pending") ? (
+                      <FormControl mt={4}>
+                        <FormLabel fontSize="sm">Document review note</FormLabel>
+                        <Textarea value={documentComment} onChange={(event) => setDocumentComment(event.target.value)} placeholder="Required when waiving the document" />
+                      </FormControl>
+                    ) : null}
+                  </Box>
+                ) : null}
+
+                {((selected.status === "submitted" && canDecideSelected) || (selected.status === "approved" && canApprove)) ? (
+                  <FormControl>
+                    <FormLabel>{selected.status === "approved" ? "Cancellation reason" : "Decision comment"}</FormLabel>
+                    <Textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder={selected.status === "submitted" ? "Required when rejecting" : "Required when cancelling"} />
+                  </FormControl>
+                ) : null}
+              </Stack>
+            ) : null}
+          </DrawerBody>
+          <DrawerFooter borderTopWidth="1px" gap={3} flexWrap="wrap">
+            <Button variant="outline" onClick={details.onClose}>Close</Button>
+            {canManageDocuments && selected?.documentRequirementSnapshot?.required && selected.documentStatus === "submitted" ? (
+              <Button colorScheme="blue" variant="outline" onClick={() => actOnDocuments("verify")} isLoading={submitting}>Verify documents</Button>
+            ) : null}
+            {canManageDocuments && selected?.documentRequirementSnapshot?.required && ["pending", "submitted"].includes(selected.documentStatus || "pending") ? (
+              <Button colorScheme="orange" variant="outline" onClick={() => actOnDocuments("waive")} isLoading={submitting}>Waive document</Button>
+            ) : null}
+            {canDecideSelected && selected?.status === "submitted" ? (
+              <>
+                <Button colorScheme="red" variant="outline" leftIcon={<FiX />} onClick={() => act("reject")} isLoading={submitting}>Reject</Button>
+                <Button colorScheme="green" leftIcon={<FiCheck />} onClick={() => act("approve")} isLoading={submitting}>Approve</Button>
+              </>
+            ) : null}
+            {canApprove && selected?.status === "approved" ? <Button colorScheme="red" variant="outline" onClick={() => act("cancel")} isLoading={submitting}>Cancel approved leave</Button> : null}
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </Stack>
   );
 }

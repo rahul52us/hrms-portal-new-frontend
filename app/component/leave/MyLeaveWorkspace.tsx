@@ -5,6 +5,7 @@ import {
   EligibleLeaveItem,
   LeaveAttachment,
   LeaveRequest,
+  addLeaveRequestDocuments,
   actOnLeaveRequest,
   fetchEligibleLeave,
   fetchLeaveRequests,
@@ -98,6 +99,7 @@ export default function MyLeaveWorkspace({ embedded = false }: MyLeaveWorkspaceP
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [postUploadingRequestId, setPostUploadingRequestId] = useState("");
   const [form, setForm] = useState(initialForm);
   const [attachments, setAttachments] = useState<LeaveAttachment[]>([]);
   const [preview, setPreview] = useState<any>(null);
@@ -201,11 +203,25 @@ export default function MyLeaveWorkspace({ embedded = false }: MyLeaveWorkspaceP
     try {
       const attachment = await uploadLeaveAttachment(file);
       setAttachments((previous) => [...previous, attachment]);
-      setPreview(null);
     } catch (error: any) {
       toast({ title: getApiErrorMessage(error?.response?.data || error, "Could not upload document"), status: "error" });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const uploadForRequest = async (request: LeaveRequest, file?: File) => {
+    if (!file) return;
+    setPostUploadingRequestId(request._id);
+    try {
+      const attachment = await uploadLeaveAttachment(file);
+      await addLeaveRequestDocuments(request._id, [attachment]);
+      toast({ title: "Supporting document added", status: "success" });
+      await load();
+    } catch (error: any) {
+      toast({ title: getApiErrorMessage(error?.response?.data || error), status: "error" });
+    } finally {
+      setPostUploadingRequestId("");
     }
   };
 
@@ -218,6 +234,13 @@ export default function MyLeaveWorkspace({ embedded = false }: MyLeaveWorkspaceP
       toast({ title: getApiErrorMessage(error?.response?.data || error), status: "error" });
     }
   };
+
+  const documentRequirement = preview?.documentRequirement;
+  const documentRequiredAtSubmission = Boolean(
+    documentRequirement?.required &&
+    documentRequirement.submissionMode === "with_request" &&
+    attachments.length === 0
+  );
 
   return (
     <Box
@@ -267,11 +290,14 @@ export default function MyLeaveWorkspace({ embedded = false }: MyLeaveWorkspaceP
                   {requests.length === 0 ? <Text py={12} textAlign="center" color={muted}>No leave requests yet.</Text> : requests.map((request, index) => (
                     <Flex key={request._id} direction={{ base: "column", lg: "row" }} justify="space-between" gap={3} p={4} borderBottomWidth={index === requests.length - 1 ? "0" : "1px"}>
                       <Box>
-                        <HStack flexWrap="wrap"><Text fontWeight="800">{request.leaveTypeNameSnapshot}</Text><Badge>{request.leaveTypeCodeSnapshot}</Badge><Badge colorScheme={statusColor(request.status)}>{request.status}</Badge></HStack>
+                        <HStack flexWrap="wrap"><Text fontWeight="800">{request.leaveTypeNameSnapshot}</Text><Badge>{request.leaveTypeCodeSnapshot}</Badge><Badge colorScheme={statusColor(request.status)}>{request.status}</Badge>{request.documentRequirementSnapshot?.required ? <Badge colorScheme={request.documentStatus === "pending" ? "red" : request.documentStatus === "submitted" ? "orange" : "green"}>Document {String(request.documentStatus || "pending").replace(/_/g, " ")}</Badge> : null}</HStack>
                         <Text mt={1} fontSize="sm">{formatDate(request.fromDate)}{request.fromDate !== request.toDate ? ` to ${formatDate(request.toDate)}` : ""}</Text>
                         <Text mt={1} fontSize="xs" color={muted}>{request.chargedUnits} {request.leaveUnit} charged · Approver: {request.approver?.name || request.approverNameSnapshot || "HR queue"}</Text>
                       </Box>
-                      {request.status === "submitted" ? <Button size="sm" variant="outline" colorScheme="red" alignSelf={{ lg: "center" }} onClick={() => withdraw(request._id)}>Withdraw</Button> : null}
+                      <HStack alignSelf={{ lg: "center" }}>
+                        {request.documentRequirementSnapshot?.required && ["pending", "submitted"].includes(request.documentStatus || "pending") && !["rejected", "withdrawn", "cancelled"].includes(request.status) && (request.attachments?.length || 0) < 5 ? <Button as="label" size="sm" variant="outline" leftIcon={<FiFile />} cursor="pointer" isLoading={postUploadingRequestId === request._id}>{request.documentStatus === "pending" ? "Upload document" : "Add document"}<Input type="file" accept="application/pdf,image/jpeg,image/png" display="none" onChange={(event) => { void uploadForRequest(request, event.target.files?.[0]); event.target.value = ""; }} /></Button> : null}
+                        {request.status === "submitted" ? <Button size="sm" variant="outline" colorScheme="red" onClick={() => withdraw(request._id)}>Withdraw</Button> : null}
+                      </HStack>
                     </Flex>
                   ))}
                 </Stack>
@@ -298,7 +324,7 @@ export default function MyLeaveWorkspace({ embedded = false }: MyLeaveWorkspaceP
           <DrawerHeader borderBottomWidth="1px">Request leave</DrawerHeader>
           <DrawerBody py={5}>
             <Stack spacing={5}>
-              <FormControl isRequired><FormLabel>Leave type</FormLabel><Select value={form.leaveTypeId} onChange={(event) => { setForm((p) => ({ ...p, leaveTypeId: event.target.value })); setPreview(null); }}>{requestEligible.map((item) => <option key={item.leaveType._id} value={item.leaveType._id}>{item.leaveType.name} ({item.leaveType.code}) · {item.balance.availableUnits || 0} available</option>)}</Select></FormControl>
+              <FormControl isRequired><FormLabel>Leave type</FormLabel><Select value={form.leaveTypeId} onChange={(event) => { setForm((p) => ({ ...p, leaveTypeId: event.target.value })); setAttachments([]); setPreview(null); }}>{requestEligible.map((item) => <option key={item.leaveType._id} value={item.leaveType._id}>{item.leaveType.name} ({item.leaveType.code}) · {item.balance.availableUnits || 0} available</option>)}</Select></FormControl>
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                 <FormControl isRequired><FormLabel>From date</FormLabel><Input type="date" value={form.fromDate} onChange={(event) => { const value = event.target.value; setForm((p) => ({ ...p, fromDate: value, toDate: p.toDate < value ? value : p.toDate })); setPreview(null); refreshEligibility(value); }} /></FormControl>
                 <FormControl isRequired><FormLabel>To date</FormLabel><Input type="date" min={form.fromDate} value={form.toDate} onChange={(event) => { setForm((p) => ({ ...p, toDate: event.target.value })); setPreview(null); }} /></FormControl>
@@ -312,7 +338,7 @@ export default function MyLeaveWorkspace({ embedded = false }: MyLeaveWorkspaceP
                 </SimpleGrid>
               ) : null}
               <FormControl isRequired><FormLabel>Reason</FormLabel><Textarea value={form.reason} placeholder="Enter the reason for leave" onChange={(event) => { setForm((p) => ({ ...p, reason: event.target.value })); setPreview(null); }} /></FormControl>
-              <Box><FormLabel>Supporting documents</FormLabel><Input type="file" accept="application/pdf,image/jpeg,image/png" p={1} isDisabled={uploading || attachments.length >= 5} onChange={(event) => { upload(event.target.files?.[0]); event.target.value = ""; }} /><Text mt={1} fontSize="xs" color={muted}>PDF, JPG or PNG, up to 5 MB each.</Text>{attachments.map((attachment, index) => <Flex key={`${attachment.url}-${index}`} mt={2} p={2} borderWidth="1px" borderColor={border} borderRadius="md" justify="space-between" align="center"><HStack minW={0}><FiFile /><Text fontSize="sm" noOfLines={1}>{attachment.name}</Text></HStack><Button size="xs" variant="ghost" colorScheme="red" aria-label="Remove attachment" leftIcon={<FiTrash2 />} onClick={() => { setAttachments((items) => items.filter((_, itemIndex) => itemIndex !== index)); setPreview(null); }}>Remove</Button></Flex>)}</Box>
+              {documentRequirement?.required ? <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}><Alert status={documentRequirement.submissionMode === "with_request" ? "warning" : "info"} mb={4} borderRadius="md"><AlertIcon /><AlertDescription>{documentRequirement.submissionMode === "with_request" ? `A supporting document is required for ${preview.chargedUnits} ${selected?.leaveType.unit} of this leave.` : `A supporting document is required by ${formatDate(documentRequirement.dueDate)}. You can submit now and upload it later.`}</AlertDescription></Alert><FormLabel>{documentRequirement.submissionMode === "with_request" ? "Supporting document" : "Upload now (optional)"}</FormLabel><Input type="file" accept="application/pdf,image/jpeg,image/png" p={1} isDisabled={uploading || attachments.length >= 5} onChange={(event) => { upload(event.target.files?.[0]); event.target.value = ""; }} /><Text mt={1} fontSize="xs" color={muted}>PDF, JPG or PNG, up to 5 MB each.</Text>{attachments.map((attachment, index) => <Flex key={`${attachment.url}-${index}`} mt={2} p={2} borderWidth="1px" borderColor={border} borderRadius="md" justify="space-between" align="center"><HStack minW={0}><FiFile /><Text fontSize="sm" noOfLines={1}>{attachment.name}</Text></HStack><Button size="xs" variant="ghost" colorScheme="red" aria-label="Remove attachment" leftIcon={<FiTrash2 />} onClick={() => setAttachments((items) => items.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button></Flex>)}</Box> : null}
               {preview ? (
                 <Box borderWidth="1px" borderColor={border} borderRadius="md" overflow="hidden">
                   <Flex p={4} justify="space-between" bg={pageBg}><Box><Text fontSize="xs" color={muted}>Policy calculation</Text><Text fontWeight="800">{preview.chargedUnits} {selected?.leaveType.unit} will be charged</Text></Box><Icon as={selected?.leaveType.unit === "hours" ? FiClock : FiCalendar} color="blue.500" boxSize={5} /></Flex>
@@ -322,7 +348,7 @@ export default function MyLeaveWorkspace({ embedded = false }: MyLeaveWorkspaceP
               ) : null}
             </Stack>
           </DrawerBody>
-          <DrawerFooter borderTopWidth="1px" gap={3}><Button variant="outline" onClick={drawer.onClose}>Cancel</Button>{preview ? <Button colorScheme="blue" onClick={submit} isLoading={submitting}>Submit request</Button> : <Button colorScheme="blue" onClick={review} isLoading={submitting || uploading} isDisabled={!form.leaveTypeId || !form.reason.trim()}>Review request</Button>}</DrawerFooter>
+          <DrawerFooter borderTopWidth="1px" gap={3}><Button variant="outline" onClick={drawer.onClose}>Cancel</Button>{preview ? <Button colorScheme="blue" onClick={submit} isLoading={submitting} isDisabled={documentRequiredAtSubmission}>Submit request</Button> : <Button colorScheme="blue" onClick={review} isLoading={submitting || uploading} isDisabled={!form.leaveTypeId || !form.reason.trim()}>Review request</Button>}</DrawerFooter>
         </DrawerContent>
       </Drawer>
     </Box>

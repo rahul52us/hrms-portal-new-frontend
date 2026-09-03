@@ -97,6 +97,9 @@ export interface LeavePolicyRule {
   minimumRequestDays: number;
   maximumRequestDays?: number | null;
   minimumNoticeDays: number;
+  documentRequiredFromUnits?: number | null;
+  documentSubmissionMode: "with_request" | "allow_later";
+  documentDueDaysAfterLeaveEnd: number;
   documentRequiredAfterDays?: number | null;
   probationEligibility: "allowed" | "after_confirmation" | "not_allowed";
   sandwichRuleEnabled: boolean;
