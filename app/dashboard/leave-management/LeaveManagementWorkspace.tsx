@@ -57,6 +57,7 @@ import LeaveTypeDrawer from "./components/LeaveTypeDrawer";
 import LeaveRequestsPanel from "./components/LeaveRequestsPanel";
 import LeaveBalancesPanel from "./components/LeaveBalancesPanel";
 import CompOffClaimsPanel from "./components/CompOffClaimsPanel";
+import LeaveEncashmentsPanel from "./components/LeaveEncashmentsPanel";
 
 const LEAVE_RESOURCE_TYPES = ["leave_policy"] as const;
 
@@ -88,6 +89,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
   const isSuperadmin = role === "superadmin";
   const canViewConfiguration = hasPermission(auth.user, PERMISSION_KEYS.VIEW_WORKFORCE_POLICIES);
   const canViewOperations = hasPermission(auth.user, PERMISSION_KEYS.VIEW_LEAVE_REQUESTS);
+  const canSettleEncashments = hasPermission(auth.user, PERMISSION_KEYS.MANAGE_LEAVE_BALANCES);
   const canView = canViewConfiguration || canViewOperations;
   const canManage = ["superadmin", "admin", "hradmin"].includes(role) &&
     hasPermission(auth.user, PERMISSION_KEYS.MANAGE_WORKFORCE_POLICIES);
@@ -388,6 +390,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
                     {canViewConfiguration ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Assignments</Tab> : null}
                     {canViewConfiguration ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Coverage</Tab> : null}
                     {canViewOperations ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Requests</Tab> : null}
+                    {canViewOperations ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Encashments</Tab> : null}
                     {canViewOperations ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Comp-off claims</Tab> : null}
                     {canViewOperations ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Balances</Tab> : null}
                   </TabList>
@@ -407,6 +410,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
                 {canViewConfiguration ? <TabPanel><PolicyAssignmentsPanel companyId={companyId} canManage={canManage} borderColor={borderColor} muted={muted} lockedResourceType="leave_policy" onEndAssignment={(assignment) => openAssignment(assignment)} /></TabPanel> : null}
                 {canViewConfiguration ? <TabPanel><LeaveCoveragePanel companyId={companyId} borderColor={borderColor} muted={muted} onManageAssignments={() => setTabIndex(2)} /></TabPanel> : null}
                 {canViewOperations ? <TabPanel><LeaveRequestsPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel> : null}
+                {canViewOperations ? <TabPanel><LeaveEncashmentsPanel companyId={companyId} canSettle={canSettleEncashments} borderColor={borderColor} muted={muted} /></TabPanel> : null}
                 {canViewOperations ? <TabPanel><CompOffClaimsPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel> : null}
                 {canViewOperations ? <TabPanel><LeaveBalancesPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel> : null}
               </TabPanels>

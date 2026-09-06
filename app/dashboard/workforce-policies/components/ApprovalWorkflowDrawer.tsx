@@ -42,6 +42,7 @@ type UserOption = { _id: string; name?: string; username?: string; code?: string
 
 const REQUEST_TYPES: Array<{ value: ApprovalRequestType; label: string }> = [
   { value: "leave_request", label: "Leave requests" },
+  { value: "leave_encashment_request", label: "Leave encashment" },
   { value: "remote_work_request", label: "WFH requests" },
   { value: "comp_off_claim", label: "Comp-off claims" },
 ];

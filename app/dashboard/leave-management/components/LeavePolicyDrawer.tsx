@@ -214,6 +214,9 @@ function emptyRule(leaveType: LeaveTypeItem): LeavePolicyRule {
     carryForwardExpiryMonths: 0,
     encashmentEnabled: false,
     maxEncashmentPerYear: 0,
+    encashmentApprovalWorkflow: null,
+    encashmentApprovalWorkflowVersion: null,
+    encashmentApprovalWorkflowVersionNumber: null,
     negativeBalanceAllowed: false,
     maxNegativeBalance: 0,
     allowHalfDay: leaveType.unit === "days" && leaveType.allowHalfDay,
@@ -292,6 +295,9 @@ function normalizeSourceRule(rule: any): LeavePolicyRule {
     maxCarryForward: Number(rule.maxCarryForward || 0),
     carryForwardExpiryMonths: Number(rule.carryForwardExpiryMonths || 0),
     maxEncashmentPerYear: Number(rule.maxEncashmentPerYear || 0),
+    encashmentApprovalWorkflow: String(rule.encashmentApprovalWorkflow?._id || rule.encashmentApprovalWorkflow || "") || null,
+    encashmentApprovalWorkflowVersion: String(rule.encashmentApprovalWorkflowVersion?._id || rule.encashmentApprovalWorkflowVersion || "") || null,
+    encashmentApprovalWorkflowVersionNumber: Number(rule.encashmentApprovalWorkflowVersionNumber || 0) || null,
     maxNegativeBalance: Number(rule.maxNegativeBalance || 0),
     minimumRequestDays: Number(rule.minimumRequestDays || 1),
     maximumRequestDays: rule.maximumRequestDays ?? null,
@@ -374,6 +380,9 @@ export default function LeavePolicyDrawer({
   const compOffApprovalWorkflows = workforcePolicyStore.approvalWorkflows.filter(
     (workflow) => workflow.status === "active" && workflow.applicableTo.includes("comp_off_claim") && (workflow.effectivePublishedVersion || workflow.latestPublishedVersion)
   );
+  const encashmentApprovalWorkflows = workforcePolicyStore.approvalWorkflows.filter(
+    (workflow) => workflow.status === "active" && workflow.applicableTo.includes("leave_encashment_request") && (workflow.effectivePublishedVersion || workflow.latestPublishedVersion)
+  );
 
   const validationError = useMemo(() => {
     if (mode === "create" && !name.trim()) return "Policy name is required.";
@@ -443,6 +452,9 @@ export default function LeavePolicyDrawer({
       if (rule.encashmentEnabled && rule.maxEncashmentPerYear <= 0) {
         return `${code} annual encashment limit must be greater than zero.`;
       }
+      if (rule.encashmentEnabled && !rule.encashmentApprovalWorkflow) {
+        return `${code} must select a published leave-encashment approval workflow.`;
+      }
       if (rule.negativeBalanceAllowed && rule.maxNegativeBalance <= 0) {
         return `${code} maximum negative balance must be greater than zero.`;
       }
@@ -492,21 +504,33 @@ export default function LeavePolicyDrawer({
 
   const setApprovalWorkflow = (
     index: number,
-    kind: "leave" | "comp_off",
+    kind: "leave" | "comp_off" | "encashment",
     workflowId: string
   ) => {
-    const options = kind === "leave" ? leaveApprovalWorkflows : compOffApprovalWorkflows;
+    const options = kind === "leave"
+      ? leaveApprovalWorkflows
+      : kind === "comp_off"
+        ? compOffApprovalWorkflows
+        : encashmentApprovalWorkflows;
     const selected = options.find((workflow) => workflow._id === workflowId);
     const selectedVersion = selected?.effectivePublishedVersion || selected?.latestPublishedVersion;
-    updateRule(index, kind === "leave" ? {
-      requestApprovalWorkflow: selected?._id || null,
-      requestApprovalWorkflowVersion: selectedVersion?._id || null,
-      requestApprovalWorkflowVersionNumber: selectedVersion?.versionNumber || null,
-    } : {
-      compOffClaimApprovalWorkflow: selected?._id || null,
-      compOffClaimApprovalWorkflowVersion: selectedVersion?._id || null,
-      compOffClaimApprovalWorkflowVersionNumber: selectedVersion?.versionNumber || null,
-    });
+    updateRule(index, kind === "leave"
+      ? {
+          requestApprovalWorkflow: selected?._id || null,
+          requestApprovalWorkflowVersion: selectedVersion?._id || null,
+          requestApprovalWorkflowVersionNumber: selectedVersion?.versionNumber || null,
+        }
+      : kind === "comp_off"
+        ? {
+            compOffClaimApprovalWorkflow: selected?._id || null,
+            compOffClaimApprovalWorkflowVersion: selectedVersion?._id || null,
+            compOffClaimApprovalWorkflowVersionNumber: selectedVersion?.versionNumber || null,
+          }
+        : {
+            encashmentApprovalWorkflow: selected?._id || null,
+            encashmentApprovalWorkflowVersion: selectedVersion?._id || null,
+            encashmentApprovalWorkflowVersionNumber: selectedVersion?.versionNumber || null,
+          });
   };
 
   const setCreditComponents = (ruleIndex: number, creditComponents: LeaveCreditComponent[]) => {
@@ -1013,7 +1037,7 @@ export default function LeavePolicyDrawer({
                               <Text mt={1} fontSize="xs" color="gray.500">
                                 Published workflow versions are snapshotted when a request is submitted.
                               </Text>
-                              <SimpleGrid mt={4} columns={{ base: 1, md: rule.entitlementMode === "earned" ? 2 : 1 }} spacing={4}>
+                              <SimpleGrid mt={4} columns={{ base: 1, md: rule.entitlementMode === "earned" || rule.encashmentEnabled ? 2 : 1 }} spacing={4}>
                                 <FormControl isRequired>
                                   <FormLabel fontSize="sm">Leave request approval</FormLabel>
                                   <Select
@@ -1044,6 +1068,23 @@ export default function LeavePolicyDrawer({
                                       ))}
                                     </Select>
                                     <Text mt={1} fontSize="xs" color="gray.500">Used before earned comp-off is credited to the balance ledger.</Text>
+                                  </FormControl>
+                                ) : null}
+                                {rule.encashmentEnabled ? (
+                                  <FormControl isRequired>
+                                    <FormLabel fontSize="sm">Leave encashment approval</FormLabel>
+                                    <Select
+                                      value={rule.encashmentApprovalWorkflow || ""}
+                                      placeholder="Select published workflow"
+                                      onChange={(event) => setApprovalWorkflow(index, "encashment", event.target.value)}
+                                    >
+                                      {encashmentApprovalWorkflows.map((workflow) => (
+                                        <option key={workflow._id} value={workflow._id}>
+                                          {workflow.name} (current v{(workflow.effectivePublishedVersion || workflow.latestPublishedVersion)!.versionNumber})
+                                        </option>
+                                      ))}
+                                    </Select>
+                                    <Text mt={1} fontSize="xs" color="gray.500">Used before leave units are converted into a payable encashment.</Text>
                                   </FormControl>
                                 ) : null}
                               </SimpleGrid>

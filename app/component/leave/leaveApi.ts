@@ -105,6 +105,52 @@ export type LeaveCancellationRequest = {
   history?: any[];
 };
 
+export type LeaveEncashmentRequest = {
+  _id: string;
+  employee: any;
+  leaveType: any;
+  leaveTypeCodeSnapshot: string;
+  leaveTypeNameSnapshot: string;
+  leaveUnit: "days" | "hours";
+  leaveYearKey: string;
+  leaveYearStart: string;
+  leaveYearEnd: string;
+  requestedUnits: number;
+  maxEncashmentPerYearSnapshot: number;
+  availableBalanceSnapshot: number;
+  reason: string;
+  status: "submitted" | "approved" | "rejected" | "withdrawn" | "cancelled";
+  payoutStatus: "not_ready" | "pending" | "paid" | "cancelled";
+  payoutAmount?: number | null;
+  payoutCurrency?: string;
+  payoutDate?: string | null;
+  payoutReference?: string;
+  payoutNotes?: string;
+  approver?: any;
+  currentApprovers?: any[];
+  approvalInstance?: any;
+  approverNameSnapshot?: string;
+  requestedAt: string;
+  decidedAt?: string | null;
+  settledAt?: string | null;
+  settledBy?: any;
+  cancellationReason?: string;
+  history?: any[];
+};
+
+export type LeaveEncashmentEligibilityItem = {
+  leaveType: EligibleLeaveItem["leaveType"];
+  rule: any;
+  leaveYear: EligibleLeaveItem["leaveYear"];
+  balance: LeaveBalance;
+  usedUnits: number;
+  remainingAnnualUnits: number;
+  maximumRequestableUnits: number;
+  increment: number;
+  pendingRequest?: Pick<LeaveEncashmentRequest, "_id" | "requestedUnits" | "requestedAt"> | null;
+  canRequest: boolean;
+};
+
 export async function fetchEligibleLeave(params: Record<string, any> = {}) {
   const response = await axios.get("/leave/eligible", { params });
   return response.data?.data as { employee: any; at: string; items: EligibleLeaveItem[] };
@@ -213,6 +259,63 @@ export async function actOnLeaveCancellationRequest(
     payload
   );
   return response.data?.data as LeaveCancellationRequest;
+}
+
+export async function fetchLeaveEncashmentEligibility(params: Record<string, any> = {}) {
+  const response = await axios.get("/leave/encashments/eligible", { params });
+  return response.data?.data as {
+    employee: any;
+    at: string;
+    leaveYear: EligibleLeaveItem["leaveYear"];
+    items: LeaveEncashmentEligibilityItem[];
+  };
+}
+
+export async function submitLeaveEncashmentRequest(payload: Record<string, any>) {
+  const response = await axios.post("/leave/encashments", payload);
+  return response.data?.data as LeaveEncashmentRequest;
+}
+
+export async function fetchLeaveEncashmentRequests(params: Record<string, any>) {
+  const response = await axios.get("/leave/encashments", { params });
+  return {
+    items: (response.data?.data || []) as LeaveEncashmentRequest[],
+    pagination: response.data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 1 },
+  };
+}
+
+export async function actOnLeaveEncashmentRequest(
+  encashmentRequestId: string,
+  action: "approve" | "reject" | "withdraw",
+  payload: Record<string, any> = {}
+) {
+  const response = await axios.post(
+    `/leave/encashments/${encashmentRequestId}/${action}`,
+    payload
+  );
+  return response.data?.data as LeaveEncashmentRequest;
+}
+
+export async function settleLeaveEncashmentRequest(
+  encashmentRequestId: string,
+  payload: Record<string, any>
+) {
+  const response = await axios.post(
+    `/leave/encashments/${encashmentRequestId}/settle`,
+    payload
+  );
+  return response.data?.data as LeaveEncashmentRequest;
+}
+
+export async function cancelApprovedLeaveEncashmentRequest(
+  encashmentRequestId: string,
+  payload: Record<string, any>
+) {
+  const response = await axios.post(
+    `/leave/encashments/${encashmentRequestId}/cancel`,
+    payload
+  );
+  return response.data?.data as LeaveEncashmentRequest;
 }
 
 export async function adjustLeaveBalance(payload: Record<string, any>) {

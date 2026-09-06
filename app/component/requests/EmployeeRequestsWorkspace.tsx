@@ -4,15 +4,20 @@ import { getApiErrorMessage } from "@/app/config/utils/apiError";
 import {
   EligibleLeaveItem,
   LeaveAttachment,
+  LeaveEncashmentEligibilityItem,
   addLeaveRequestDocuments,
+  actOnLeaveEncashmentRequest,
   actOnLeaveCancellationRequest,
   actOnLeaveRequest,
   fetchEligibleLeave,
+  fetchLeaveEncashmentEligibility,
+  fetchLeaveEncashmentRequests,
   fetchLeaveRequests,
   fetchLeaveTransactions,
   previewLeaveRequest,
   submitLeaveRequest,
   submitLeaveCancellationRequest,
+  submitLeaveEncashmentRequest,
   uploadLeaveAttachment,
 } from "@/app/component/leave/leaveApi";
 import {
@@ -77,6 +82,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FiCalendar,
   FiClock,
+  FiDollarSign,
   FiFile,
   FiPlus,
   FiRefreshCw,
@@ -124,17 +130,19 @@ const formatDate = (value: string) => new Intl.DateTimeFormat("en-IN", {
   timeZone: "UTC",
 }).format(new Date(`${value.slice(0, 10)}T00:00:00Z`));
 
-type RequestKind = "leave" | "wfh" | "comp_off";
+type RequestKind = "leave" | "wfh" | "comp_off" | "encashment";
 type UnifiedRequest = { kind: RequestKind; request: any; submittedAt: string };
 
 function requestTitle(item: UnifiedRequest) {
   if (item.kind === "wfh") return "Work from home";
   if (item.kind === "comp_off") return `${item.request.leaveType?.name || "Comp-off"} claim`;
+  if (item.kind === "encashment") return `${item.request.leaveTypeNameSnapshot || "Leave"} encashment`;
   return item.request.leaveTypeNameSnapshot || "Leave";
 }
 
 function requestDateText(item: UnifiedRequest) {
   if (item.kind === "comp_off") return `Worked ${formatDate(item.request.attendanceDate)}`;
+  if (item.kind === "encashment") return `Requested ${formatDate(item.request.requestedAt)}`;
   const from = formatDate(item.request.fromDate);
   return item.request.fromDate === item.request.toDate
     ? from
@@ -149,12 +157,21 @@ function requestDetail(item: UnifiedRequest) {
   if (item.kind === "comp_off") {
     return `${item.request.requestedUnits} ${item.request.requestedUnits === 1 ? "day" : "days"} credit | Approver: ${approver}`;
   }
+  if (item.kind === "encashment") {
+    if (item.request.payoutStatus === "paid") {
+      return `${item.request.requestedUnits} ${item.request.leaveUnit} | Paid ${item.request.payoutCurrency || ""} ${item.request.payoutAmount || 0}`;
+    }
+    return item.request.status === "approved"
+      ? `${item.request.requestedUnits} ${item.request.leaveUnit} | Awaiting HR payout`
+      : `${item.request.requestedUnits} ${item.request.leaveUnit} | Approver: ${approver}`;
+  }
   return `${item.request.chargedUnits} ${item.request.leaveUnit} charged | Approver: ${approver}`;
 }
 
 export default function EmployeeRequestsWorkspace() {
   const toast = useToast();
   const drawer = useDisclosure();
+  const encashmentDrawer = useDisclosure();
   const cancellationDialog = useDisclosure();
   const cancellationCancelRef = useRef<HTMLButtonElement>(null);
   const pageBg = useColorModeValue("gray.50", "gray.900");
@@ -162,11 +179,13 @@ export default function EmployeeRequestsWorkspace() {
   const border = useColorModeValue("gray.200", "gray.700");
   const muted = useColorModeValue("gray.600", "gray.400");
   const [eligible, setEligible] = useState<EligibleLeaveItem[]>([]);
+  const [encashmentEligibility, setEncashmentEligibility] = useState<LeaveEncashmentEligibilityItem[]>([]);
   const [requestEligible, setRequestEligible] = useState<EligibleLeaveItem[]>([]);
   const [eligibleError, setEligibleError] = useState("");
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
   const [remoteWorkRequests, setRemoteWorkRequests] = useState<any[]>([]);
   const [compOffClaims, setCompOffClaims] = useState<any[]>([]);
+  const [encashmentRequests, setEncashmentRequests] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [form, setForm] = useState(initialForm);
   const [attachments, setAttachments] = useState<LeaveAttachment[]>([]);
@@ -182,6 +201,10 @@ export default function EmployeeRequestsWorkspace() {
   const [cancellationTarget, setCancellationTarget] = useState<any>(null);
   const [cancellationReason, setCancellationReason] = useState("");
   const [cancellationSubmitting, setCancellationSubmitting] = useState(false);
+  const [encashmentTarget, setEncashmentTarget] = useState<LeaveEncashmentEligibilityItem | null>(null);
+  const [encashmentUnits, setEncashmentUnits] = useState("");
+  const [encashmentReason, setEncashmentReason] = useState("");
+  const [encashmentSubmitting, setEncashmentSubmitting] = useState(false);
 
   const isWfh = form.leaveTypeId === WFH_OPTION;
   const isCompOffClaim = form.leaveTypeId === COMP_OFF_CLAIM_OPTION;
@@ -201,31 +224,38 @@ export default function EmployeeRequestsWorkspace() {
     ...leaveRequests.map((request) => ({ kind: "leave" as const, request, submittedAt: request.submittedAt })),
     ...remoteWorkRequests.map((request) => ({ kind: "wfh" as const, request, submittedAt: request.submittedAt })),
     ...compOffClaims.map((request) => ({ kind: "comp_off" as const, request, submittedAt: request.submittedAt })),
+    ...encashmentRequests.map((request) => ({ kind: "encashment" as const, request, submittedAt: request.requestedAt })),
   ].sort(
     (left, right) => new Date(right.submittedAt).getTime() - new Date(left.submittedAt).getTime()
-  ), [compOffClaims, leaveRequests, remoteWorkRequests]);
+  ), [compOffClaims, encashmentRequests, leaveRequests, remoteWorkRequests]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [eligibleResult, leaveResult, transactionResult, remoteResult, compOffResult] = await Promise.all([
+      const [eligibleResult, encashmentEligibilityResult, leaveResult, transactionResult, remoteResult, compOffResult, encashmentResult] = await Promise.all([
         fetchEligibleLeave({ at: localToday() })
           .then((data) => ({ data, error: "" }))
           .catch((error) => ({
             data: { items: [] as EligibleLeaveItem[] } as any,
             error: getApiErrorMessage(error?.response?.data || error, "No effective leave policy is assigned"),
           })),
+        fetchLeaveEncashmentEligibility({ at: localToday() })
+          .then((data) => data.items || [])
+          .catch(() => [] as LeaveEncashmentEligibilityItem[]),
         fetchLeaveRequests({ scope: "mine", page: 1, limit: 50 }),
         fetchLeaveTransactions({ page: 1, limit: 50 }),
         fetchRemoteWorkRequests({ scope: "mine", page: 1, limit: 50 }),
         fetchCompOffClaims({ scope: "self", page: 1, limit: 50 }),
+        fetchLeaveEncashmentRequests({ scope: "mine", page: 1, limit: 50 }),
       ]);
       setEligible(eligibleResult.data.items || []);
+      setEncashmentEligibility(encashmentEligibilityResult);
       setEligibleError(eligibleResult.error);
       setLeaveRequests(leaveResult.items || []);
       setTransactions(transactionResult.items || []);
       setRemoteWorkRequests(remoteResult.items || []);
       setCompOffClaims(compOffResult.items || []);
+      setEncashmentRequests(encashmentResult.items || []);
     } catch (error: any) {
       toast({ title: getApiErrorMessage(error?.response?.data || error, "Could not load requests"), status: "error" });
     } finally {
@@ -427,6 +457,8 @@ export default function EmployeeRequestsWorkspace() {
         await actOnRemoteWorkRequest(item.request._id, "withdraw", { comment: "Withdrawn by employee" });
       } else if (item.kind === "comp_off") {
         await actOnCompOffClaim(item.request._id, "withdraw", { comment: "Withdrawn by employee" });
+      } else if (item.kind === "encashment") {
+        await actOnLeaveEncashmentRequest(item.request._id, "withdraw", { comment: "Withdrawn by employee" });
       } else {
         await actOnLeaveRequest(item.request._id, "withdraw", { comment: "Withdrawn by employee" });
       }
@@ -487,6 +519,42 @@ export default function EmployeeRequestsWorkspace() {
     }
   };
 
+  const openEncashment = (item: LeaveEncashmentEligibilityItem) => {
+    setEncashmentTarget(item);
+    setEncashmentUnits("");
+    setEncashmentReason("");
+    encashmentDrawer.onOpen();
+  };
+
+  const submitEncashment = async () => {
+    if (!encashmentTarget) return;
+    setEncashmentSubmitting(true);
+    try {
+      const created = await submitLeaveEncashmentRequest({
+        leaveTypeId: encashmentTarget.leaveType._id,
+        requestedUnits: Number(encashmentUnits),
+        reason: encashmentReason.trim(),
+      });
+      toast({
+        title: created.status === "approved"
+          ? "Encashment approved and sent for payout"
+          : "Leave encashment request submitted",
+        status: "success",
+      });
+      encashmentDrawer.onClose();
+      setEncashmentTarget(null);
+      await load();
+    } catch (error: any) {
+      toast({
+        title: getApiErrorMessage(error?.response?.data || error, "Could not submit leave encashment"),
+        status: "error",
+        duration: 5000,
+      });
+    } finally {
+      setEncashmentSubmitting(false);
+    }
+  };
+
   const wfhRules = remoteEligibility?.policy?.version?.rules;
   const wfhMinimumReason = Number(wfhRules?.minimumReasonLength || 0);
   const wfhReasonValid = wfhRules?.requireReason === false || form.reason.trim().length >= wfhMinimumReason;
@@ -504,6 +572,16 @@ export default function EmployeeRequestsWorkspace() {
     documentRequirement.submissionMode === "with_request" &&
     attachments.length === 0
   );
+  const encashmentUnitsNumber = Number(encashmentUnits);
+  const canSubmitEncashment = Boolean(
+    encashmentTarget &&
+    encashmentUnits !== "" &&
+    Number.isFinite(encashmentUnitsNumber) &&
+    encashmentUnitsNumber > 0 &&
+    encashmentUnitsNumber <= encashmentTarget.maximumRequestableUnits + 0.000001 &&
+    Number.isInteger(Math.round((encashmentUnitsNumber / encashmentTarget.increment) * 1000000) / 1000000) &&
+    encashmentReason.trim().length >= 3
+  );
 
   return (
     <Box minH="100dvh" bg={pageBg} px={{ base: 3, md: 6 }} py={{ base: 4, md: 6 }}>
@@ -511,7 +589,7 @@ export default function EmployeeRequestsWorkspace() {
         <Flex direction={{ base: "column", md: "row" }} justify="space-between" align={{ md: "center" }} gap={3}>
           <Box>
             <Heading size="lg">My requests</Heading>
-            <Text mt={1} color={muted} fontSize="sm">Apply and track leave, work-from-home, and comp-off requests.</Text>
+            <Text mt={1} color={muted} fontSize="sm">Apply and track leave, work-from-home, comp-off, and encashment requests.</Text>
           </Box>
           <HStack>
             <Button variant="outline" leftIcon={<FiRefreshCw />} onClick={load} isLoading={loading}>Refresh</Button>
@@ -527,17 +605,34 @@ export default function EmployeeRequestsWorkspace() {
             <Alert status="warning" borderRadius="md"><AlertIcon /><AlertDescription>{eligibleError || "No effective leave policy is assigned for today."}</AlertDescription></Alert>
           ) : (
             <SimpleGrid columns={{ base: 1, sm: 2, xl: 4 }} spacing={3}>
-              {eligible.map((item) => (
-                <Box key={item.leaveType._id} bg={surface} borderWidth="1px" borderColor={border} borderRadius="md" p={4}>
-                  <Flex justify="space-between" gap={3}>
-                    <HStack><Box boxSize="10px" borderRadius="sm" bg={item.leaveType.color} /><Text fontWeight="800">{item.leaveType.name}</Text></HStack>
-                    <Badge>{item.leaveType.code}</Badge>
-                  </Flex>
-                  <Text mt={4} fontSize="2xl" fontWeight="800">{Number(item.balance.availableUnits || 0).toFixed(2).replace(/\.00$/, "")}</Text>
-                  <Text fontSize="xs" color={muted}>Available {item.leaveType.unit}</Text>
-                  <HStack mt={3} fontSize="xs" color={muted} justify="space-between"><Text>{item.balance.pendingUnits || 0} pending</Text><Text>{item.balance.balanceUnits || 0} posted</Text></HStack>
-                </Box>
-              ))}
+              {eligible.map((item) => {
+                const encashment = encashmentEligibility.find(
+                  (candidate) => candidate.leaveType._id === item.leaveType._id
+                );
+                return (
+                  <Box key={item.leaveType._id} bg={surface} borderWidth="1px" borderColor={border} borderRadius="md" p={4}>
+                    <Flex justify="space-between" gap={3}>
+                      <HStack><Box boxSize="10px" borderRadius="sm" bg={item.leaveType.color} /><Text fontWeight="800">{item.leaveType.name}</Text></HStack>
+                      <Badge>{item.leaveType.code}</Badge>
+                    </Flex>
+                    <Text mt={4} fontSize="2xl" fontWeight="800">{Number(item.balance.availableUnits || 0).toFixed(2).replace(/\.00$/, "")}</Text>
+                    <Text fontSize="xs" color={muted}>Available {item.leaveType.unit}</Text>
+                    <HStack mt={3} fontSize="xs" color={muted} justify="space-between"><Text>{item.balance.pendingUnits || 0} pending</Text><Text>{item.balance.balanceUnits || 0} posted</Text></HStack>
+                    {encashment ? (
+                      <Button
+                        mt={3}
+                        size="xs"
+                        variant="outline"
+                        leftIcon={<FiDollarSign />}
+                        onClick={() => openEncashment(encashment)}
+                        isDisabled={!encashment.canRequest}
+                      >
+                        {encashment.pendingRequest ? "Encashment pending" : "Encash balance"}
+                      </Button>
+                    ) : null}
+                  </Box>
+                );
+              })}
             </SimpleGrid>
           )}
         </Box>
@@ -557,8 +652,13 @@ export default function EmployeeRequestsWorkspace() {
                         <Box>
                           <HStack flexWrap="wrap">
                             <Text fontWeight="800">{requestTitle(item)}</Text>
-                            <Badge variant="outline">{item.kind === "wfh" ? "WFH" : item.kind === "comp_off" ? "Comp-off claim" : item.request.leaveTypeCodeSnapshot}</Badge>
+                            <Badge variant="outline">{item.kind === "wfh" ? "WFH" : item.kind === "comp_off" ? "Comp-off claim" : item.kind === "encashment" ? "Encashment" : item.request.leaveTypeCodeSnapshot}</Badge>
                             <Badge colorScheme={statusColor(item.request.status)}>{formatStatus(item.request.status)}</Badge>
+                            {item.kind === "encashment" && item.request.status === "approved" ? (
+                              <Badge colorScheme={item.request.payoutStatus === "paid" ? "green" : "orange"}>
+                                Payout {formatStatus(item.request.payoutStatus)}
+                              </Badge>
+                            ) : null}
                             {item.kind === "leave" && item.request.documentRequirementSnapshot?.required ? (
                               <Badge colorScheme={item.request.documentStatus === "pending" ? "red" : item.request.documentStatus === "submitted" ? "orange" : "green"}>
                                 Document {formatStatus(item.request.documentStatus || "pending")}
@@ -748,6 +848,84 @@ export default function EmployeeRequestsWorkspace() {
             ) : (
               <Button colorScheme="blue" onClick={review} isLoading={submitting || checking || uploading} isDisabled={!canReview}>{isCompOffClaim ? "Check eligibility" : "Review request"}</Button>
             )}
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+      <Drawer isOpen={encashmentDrawer.isOpen} placement="right" size="md" onClose={encashmentDrawer.onClose}>
+        <DrawerOverlay />
+        <DrawerContent>
+          <DrawerCloseButton />
+          <DrawerHeader borderBottomWidth="1px">Encash leave balance</DrawerHeader>
+          <DrawerBody py={5}>
+            {encashmentTarget ? (
+              <Stack spacing={5}>
+                <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}>
+                  <HStack justify="space-between" align="start">
+                    <Box>
+                      <Text fontWeight="800">{encashmentTarget.leaveType.name}</Text>
+                      <Text mt={1} fontSize="sm" color={muted}>{encashmentTarget.leaveType.code}</Text>
+                    </Box>
+                    <Badge colorScheme="blue">{encashmentTarget.leaveYear.leaveYearStart.slice(0, 4)} leave year</Badge>
+                  </HStack>
+                  <SimpleGrid mt={4} columns={2} spacing={4}>
+                    <Box>
+                      <Text fontSize="xs" color={muted}>Available balance</Text>
+                      <Text fontWeight="800">{encashmentTarget.balance.availableUnits} {encashmentTarget.leaveType.unit}</Text>
+                    </Box>
+                    <Box>
+                      <Text fontSize="xs" color={muted}>Can encash now</Text>
+                      <Text fontWeight="800">{encashmentTarget.maximumRequestableUnits} {encashmentTarget.leaveType.unit}</Text>
+                    </Box>
+                    <Box>
+                      <Text fontSize="xs" color={muted}>Annual limit</Text>
+                      <Text fontWeight="700">{encashmentTarget.rule.maxEncashmentPerYear} {encashmentTarget.leaveType.unit}</Text>
+                    </Box>
+                    <Box>
+                      <Text fontSize="xs" color={muted}>Already requested</Text>
+                      <Text fontWeight="700">{encashmentTarget.usedUnits} {encashmentTarget.leaveType.unit}</Text>
+                    </Box>
+                  </SimpleGrid>
+                </Box>
+                <FormControl isRequired>
+                  <FormLabel>Units to encash</FormLabel>
+                  <Input
+                    type="number"
+                    min={encashmentTarget.increment}
+                    max={encashmentTarget.maximumRequestableUnits}
+                    step={encashmentTarget.increment}
+                    value={encashmentUnits}
+                    placeholder={`Up to ${encashmentTarget.maximumRequestableUnits}`}
+                    onChange={(event) => setEncashmentUnits(event.target.value)}
+                  />
+                  <FormHelperText>Use increments of {encashmentTarget.increment} {encashmentTarget.leaveType.unit}.</FormHelperText>
+                </FormControl>
+                <FormControl isRequired>
+                  <FormLabel>Reason</FormLabel>
+                  <Textarea
+                    value={encashmentReason}
+                    onChange={(event) => setEncashmentReason(event.target.value)}
+                    placeholder="Enter the reason for encashing this balance"
+                  />
+                </FormControl>
+                <Alert status="info" borderRadius="md">
+                  <AlertIcon />
+                  <AlertDescription>
+                    Requested units are reserved during approval. After final approval, HR records the payout amount and payment reference.
+                  </AlertDescription>
+                </Alert>
+              </Stack>
+            ) : null}
+          </DrawerBody>
+          <DrawerFooter borderTopWidth="1px" gap={3}>
+            <Button variant="outline" onClick={encashmentDrawer.onClose}>Cancel</Button>
+            <Button
+              colorScheme="blue"
+              onClick={submitEncashment}
+              isLoading={encashmentSubmitting}
+              isDisabled={!canSubmitEncashment}
+            >
+              Submit encashment
+            </Button>
           </DrawerFooter>
         </DrawerContent>
       </Drawer>

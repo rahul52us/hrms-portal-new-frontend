@@ -91,6 +91,9 @@ export interface LeavePolicyRule {
   carryForwardExpiryMonths: number;
   encashmentEnabled: boolean;
   maxEncashmentPerYear: number;
+  encashmentApprovalWorkflow?: string | null;
+  encashmentApprovalWorkflowVersion?: string | null;
+  encashmentApprovalWorkflowVersionNumber?: number | null;
   negativeBalanceAllowed: boolean;
   maxNegativeBalance: number;
   allowHalfDay: boolean;
@@ -114,7 +117,7 @@ export interface LeavePolicyRule {
   compOffClaimApprovalWorkflowVersionNumber?: number | null;
 }
 
-export type ApprovalRequestType = "leave_request" | "remote_work_request" | "comp_off_claim";
+export type ApprovalRequestType = "leave_request" | "leave_encashment_request" | "remote_work_request" | "comp_off_claim";
 export type ApprovalStepType =
   | "reporting_manager"
   | "manager_manager"
