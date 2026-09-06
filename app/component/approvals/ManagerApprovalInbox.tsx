@@ -2,8 +2,11 @@
 
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
 import {
+  LeaveCancellationRequest,
   LeaveRequest,
+  actOnLeaveCancellationRequest,
   actOnLeaveRequest,
+  fetchLeaveCancellationRequests,
   fetchLeaveRequests,
 } from "@/app/component/leave/leaveApi";
 import {
@@ -44,6 +47,7 @@ import { FiCheck, FiClock, FiEye, FiRefreshCw, FiX } from "react-icons/fi";
 
 type ApprovalItem =
   | { kind: "leave"; request: LeaveRequest }
+  | { kind: "leave_cancellation"; request: LeaveCancellationRequest }
   | { kind: "remote_work"; request: RemoteWorkRequest }
   | { kind: "comp_off"; request: CompOffClaim };
 
@@ -63,6 +67,9 @@ function requestEmployee(item: ApprovalItem) {
 }
 
 function requestTitle(item: ApprovalItem) {
+  if (item.kind === "leave_cancellation") {
+    return `Cancel ${item.request.leaveRequest?.leaveTypeNameSnapshot || "approved leave"}`;
+  }
   if (item.kind === "leave") {
     return `${item.request.leaveTypeNameSnapshot} (${item.request.leaveTypeCodeSnapshot})`;
   }
@@ -73,6 +80,13 @@ function requestTitle(item: ApprovalItem) {
 }
 
 function requestUnits(item: ApprovalItem) {
+  if (item.kind === "leave_cancellation") {
+    const leave = item.request.leaveRequest;
+    const unit = Number(leave?.chargedUnits) === 1
+      ? String(leave?.leaveUnit || "days").replace(/s$/, "")
+      : leave?.leaveUnit || "days";
+    return `${leave?.chargedUnits || 0} ${unit}`;
+  }
   if (item.kind === "leave") {
     const unit = item.request.chargedUnits === 1
       ? item.request.leaveUnit.replace(/s$/, "")
@@ -86,6 +100,12 @@ function requestUnits(item: ApprovalItem) {
 }
 
 function requestDates(item: ApprovalItem) {
+  if (item.kind === "leave_cancellation") {
+    return {
+      from: item.request.leaveRequest?.fromDate,
+      to: item.request.leaveRequest?.toDate,
+    };
+  }
   if (item.kind === "comp_off") {
     return { from: item.request.attendanceDate, to: item.request.attendanceDate };
   }
@@ -99,10 +119,25 @@ function approvalStage(item: ApprovalItem) {
 }
 
 const kindLabel = (kind: ApprovalItem["kind"]) =>
-  kind === "leave" ? "Leave" : kind === "remote_work" ? "WFH" : "Comp-off";
+  kind === "leave"
+    ? "Leave"
+    : kind === "leave_cancellation"
+      ? "Leave cancellation"
+      : kind === "remote_work"
+        ? "WFH"
+        : "Comp-off";
 
 const kindColor = (kind: ApprovalItem["kind"]) =>
-  kind === "leave" ? "blue" : kind === "remote_work" ? "purple" : "teal";
+  kind === "leave"
+    ? "blue"
+    : kind === "leave_cancellation"
+      ? "red"
+      : kind === "remote_work"
+        ? "purple"
+        : "teal";
+
+const requestSubmittedAt = (item: ApprovalItem) =>
+  item.kind === "leave_cancellation" ? item.request.requestedAt : item.request.submittedAt;
 
 export default function ManagerApprovalInbox() {
   const toast = useToast();
@@ -111,6 +146,7 @@ export default function ManagerApprovalInbox() {
   const border = useColorModeValue("gray.200", "whiteAlpha.200");
   const muted = useColorModeValue("gray.600", "gray.400");
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [leaveCancellations, setLeaveCancellations] = useState<LeaveCancellationRequest[]>([]);
   const [remoteWorkRequests, setRemoteWorkRequests] = useState<RemoteWorkRequest[]>([]);
   const [compOffClaims, setCompOffClaims] = useState<CompOffClaim[]>([]);
   const [total, setTotal] = useState(0);
@@ -122,16 +158,19 @@ export default function ManagerApprovalInbox() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [leaveResult, remoteWorkResult, compOffResult] = await Promise.all([
+      const [leaveResult, cancellationResult, remoteWorkResult, compOffResult] = await Promise.all([
         fetchLeaveRequests({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
+        fetchLeaveCancellationRequests({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
         fetchRemoteWorkRequests({ scope: "approvals", page: 1, limit: 20 }),
         fetchCompOffClaims({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
       ]);
       setLeaveRequests(leaveResult.items || []);
+      setLeaveCancellations(cancellationResult.items || []);
       setRemoteWorkRequests(remoteWorkResult.items || []);
       setCompOffClaims(compOffResult.items || []);
       setTotal(
         Number(leaveResult.pagination?.total || 0) +
+        Number(cancellationResult.pagination?.total || 0) +
         Number(remoteWorkResult.pagination?.total || 0) +
         Number(compOffResult.pagination?.total || 0)
       );
@@ -151,11 +190,12 @@ export default function ManagerApprovalInbox() {
 
   const items = useMemo<ApprovalItem[]>(() => [
     ...leaveRequests.map((request) => ({ kind: "leave" as const, request })),
+    ...leaveCancellations.map((request) => ({ kind: "leave_cancellation" as const, request })),
     ...remoteWorkRequests.map((request) => ({ kind: "remote_work" as const, request })),
     ...compOffClaims.map((request) => ({ kind: "comp_off" as const, request })),
   ].sort((left, right) => (
-    new Date(right.request.submittedAt).getTime() - new Date(left.request.submittedAt).getTime()
-  )), [compOffClaims, leaveRequests, remoteWorkRequests]);
+    new Date(requestSubmittedAt(right)).getTime() - new Date(requestSubmittedAt(left)).getTime()
+  )), [compOffClaims, leaveCancellations, leaveRequests, remoteWorkRequests]);
 
   const open = (item: ApprovalItem) => {
     setSelected(item);
@@ -171,9 +211,11 @@ export default function ManagerApprovalInbox() {
     }
     setSubmitting(true);
     try {
-      let updated: LeaveRequest | RemoteWorkRequest | CompOffClaim;
+      let updated: LeaveRequest | LeaveCancellationRequest | RemoteWorkRequest | CompOffClaim;
       if (selected.kind === "leave") {
         updated = await actOnLeaveRequest(selected.request._id, action, { comment: comment.trim() || undefined });
+      } else if (selected.kind === "leave_cancellation") {
+        updated = await actOnLeaveCancellationRequest(selected.request._id, action, { comment: comment.trim() || undefined });
       } else if (selected.kind === "remote_work") {
         updated = await actOnRemoteWorkRequest(selected.request._id, action, { comment: comment.trim() || undefined });
       } else {
@@ -222,7 +264,7 @@ export default function ManagerApprovalInbox() {
               <Heading size="md">Needs your approval</Heading>
               <Badge colorScheme="orange" borderRadius="full" px={2.5}>{total}</Badge>
             </HStack>
-            <Text mt={1} fontSize="sm" color={muted}>Leave, work-from-home, and comp-off requests assigned to you.</Text>
+            <Text mt={1} fontSize="sm" color={muted}>Leave, leave cancellation, work-from-home, and comp-off requests assigned to you.</Text>
           </Box>
           <Button size="sm" variant="outline" leftIcon={<FiRefreshCw />} onClick={load}>Refresh</Button>
         </Flex>

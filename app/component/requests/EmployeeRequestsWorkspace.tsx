@@ -5,12 +5,14 @@ import {
   EligibleLeaveItem,
   LeaveAttachment,
   addLeaveRequestDocuments,
+  actOnLeaveCancellationRequest,
   actOnLeaveRequest,
   fetchEligibleLeave,
   fetchLeaveRequests,
   fetchLeaveTransactions,
   previewLeaveRequest,
   submitLeaveRequest,
+  submitLeaveCancellationRequest,
   uploadLeaveAttachment,
 } from "@/app/component/leave/leaveApi";
 import {
@@ -29,6 +31,12 @@ import {
 } from "@/app/component/comp-off/compOffApi";
 import {
   Alert,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogOverlay,
   AlertDescription,
   AlertIcon,
   Badge,
@@ -65,7 +73,7 @@ import {
   useDisclosure,
   useToast,
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FiCalendar,
   FiClock,
@@ -147,6 +155,8 @@ function requestDetail(item: UnifiedRequest) {
 export default function EmployeeRequestsWorkspace() {
   const toast = useToast();
   const drawer = useDisclosure();
+  const cancellationDialog = useDisclosure();
+  const cancellationCancelRef = useRef<HTMLButtonElement>(null);
   const pageBg = useColorModeValue("gray.50", "gray.900");
   const surface = useColorModeValue("white", "gray.800");
   const border = useColorModeValue("gray.200", "gray.700");
@@ -169,6 +179,9 @@ export default function EmployeeRequestsWorkspace() {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [postUploadingRequestId, setPostUploadingRequestId] = useState("");
+  const [cancellationTarget, setCancellationTarget] = useState<any>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [cancellationSubmitting, setCancellationSubmitting] = useState(false);
 
   const isWfh = form.leaveTypeId === WFH_OPTION;
   const isCompOffClaim = form.leaveTypeId === COMP_OFF_CLAIM_OPTION;
@@ -424,6 +437,56 @@ export default function EmployeeRequestsWorkspace() {
     }
   };
 
+  const openCancellationRequest = (request: any) => {
+    setCancellationTarget(request);
+    setCancellationReason("");
+    cancellationDialog.onOpen();
+  };
+
+  const submitCancellationRequest = async () => {
+    if (!cancellationTarget || cancellationReason.trim().length < 3) return;
+    setCancellationSubmitting(true);
+    try {
+      const created = await submitLeaveCancellationRequest(cancellationTarget._id, {
+        reason: cancellationReason.trim(),
+      });
+      toast({
+        title: created.status === "approved"
+          ? "Leave cancellation approved"
+          : "Leave cancellation request submitted",
+        status: "success",
+      });
+      cancellationDialog.onClose();
+      setCancellationTarget(null);
+      await load();
+    } catch (error: any) {
+      toast({
+        title: getApiErrorMessage(error?.response?.data || error, "Could not request leave cancellation"),
+        status: "error",
+        duration: 5000,
+      });
+    } finally {
+      setCancellationSubmitting(false);
+    }
+  };
+
+  const withdrawCancellationRequest = async (request: any) => {
+    const cancellation = request.cancellationRequest;
+    if (!cancellation?._id) return;
+    setCancellationSubmitting(true);
+    try {
+      await actOnLeaveCancellationRequest(cancellation._id, "withdraw", {
+        comment: "Cancellation request withdrawn by employee",
+      });
+      toast({ title: "Cancellation request withdrawn", status: "success" });
+      await load();
+    } catch (error: any) {
+      toast({ title: getApiErrorMessage(error?.response?.data || error), status: "error" });
+    } finally {
+      setCancellationSubmitting(false);
+    }
+  };
+
   const wfhRules = remoteEligibility?.policy?.version?.rules;
   const wfhMinimumReason = Number(wfhRules?.minimumReasonLength || 0);
   const wfhReasonValid = wfhRules?.requireReason === false || form.reason.trim().length >= wfhMinimumReason;
@@ -501,6 +564,11 @@ export default function EmployeeRequestsWorkspace() {
                                 Document {formatStatus(item.request.documentStatus || "pending")}
                               </Badge>
                             ) : null}
+                            {item.kind === "leave" && item.request.cancellationStatus && item.request.cancellationStatus !== "none" ? (
+                              <Badge colorScheme={item.request.cancellationStatus === "submitted" ? "orange" : item.request.cancellationStatus === "rejected" ? "red" : "gray"}>
+                                Cancellation {formatStatus(item.request.cancellationStatus)}
+                              </Badge>
+                            ) : null}
                           </HStack>
                           <Text mt={1} fontSize="sm">{requestDateText(item)}</Text>
                           <Text mt={1} fontSize="xs" color={muted}>{requestDetail(item)}</Text>
@@ -532,6 +600,12 @@ export default function EmployeeRequestsWorkspace() {
                             </Button>
                           ) : null}
                           {canWithdraw ? <Button size="sm" variant="outline" colorScheme="red" onClick={() => withdraw(item)}>Withdraw</Button> : null}
+                          {item.kind === "leave" && item.request.status === "approved" && item.request.cancellationStatus === "submitted" ? (
+                            <Button size="sm" variant="outline" colorScheme="red" isLoading={cancellationSubmitting} onClick={() => withdrawCancellationRequest(item.request)}>Withdraw cancellation</Button>
+                          ) : null}
+                          {item.kind === "leave" && item.request.status === "approved" && item.request.cancellationStatus !== "submitted" ? (
+                            <Button size="sm" variant="outline" colorScheme="red" onClick={() => openCancellationRequest(item.request)}>Request cancellation</Button>
+                          ) : null}
                         </HStack>
                       </Flex>
                     );
@@ -677,6 +751,41 @@ export default function EmployeeRequestsWorkspace() {
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+      <AlertDialog
+        isOpen={cancellationDialog.isOpen}
+        leastDestructiveRef={cancellationCancelRef}
+        onClose={cancellationDialog.onClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="800">Request leave cancellation</AlertDialogHeader>
+            <AlertDialogBody>
+              <Text fontSize="sm" color={muted}>
+                The approved leave remains active until the cancellation request receives final approval.
+              </Text>
+              <FormControl mt={4} isRequired>
+                <FormLabel>Cancellation reason</FormLabel>
+                <Textarea
+                  value={cancellationReason}
+                  onChange={(event) => setCancellationReason(event.target.value)}
+                  placeholder="Explain why this approved leave should be cancelled"
+                />
+              </FormControl>
+            </AlertDialogBody>
+            <AlertDialogFooter gap={3}>
+              <Button ref={cancellationCancelRef} variant="ghost" onClick={cancellationDialog.onClose}>Close</Button>
+              <Button
+                colorScheme="red"
+                onClick={submitCancellationRequest}
+                isLoading={cancellationSubmitting}
+                isDisabled={cancellationReason.trim().length < 3}
+              >
+                Submit cancellation
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Box>
   );
 }

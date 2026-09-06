@@ -83,6 +83,26 @@ export type LeaveRequest = {
   history?: any[];
   submittedAt: string;
   decisionComment?: string;
+  cancellationRequest?: LeaveCancellationRequest | string | null;
+  cancellationStatus?: "none" | "submitted" | "approved" | "rejected" | "withdrawn";
+  cancellationReason?: string;
+};
+
+export type LeaveCancellationRequest = {
+  _id: string;
+  leaveRequest: LeaveRequest | any;
+  employee: any;
+  reason: string;
+  status: "submitted" | "approved" | "rejected" | "withdrawn";
+  approver?: any;
+  currentApprovers?: any[];
+  approvalInstance?: any;
+  approverNameSnapshot?: string;
+  requestedAt: string;
+  decidedAt?: string | null;
+  decidedBy?: any;
+  decisionComment?: string;
+  history?: any[];
 };
 
 export async function fetchEligibleLeave(params: Record<string, any> = {}) {
@@ -162,6 +182,37 @@ export async function actOnLeaveRequest(
 ) {
   const response = await axios.post(`/leave/requests/${requestId}/${action}`, payload);
   return response.data?.data as LeaveRequest;
+}
+
+export async function submitLeaveCancellationRequest(
+  leaveRequestId: string,
+  payload: Record<string, any>
+) {
+  const response = await axios.post(
+    `/leave/requests/${leaveRequestId}/cancellation-requests`,
+    payload
+  );
+  return response.data?.data as LeaveCancellationRequest;
+}
+
+export async function fetchLeaveCancellationRequests(params: Record<string, any>) {
+  const response = await axios.get("/leave/cancellation-requests", { params });
+  return {
+    items: (response.data?.data || []) as LeaveCancellationRequest[],
+    pagination: response.data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 1 },
+  };
+}
+
+export async function actOnLeaveCancellationRequest(
+  cancellationRequestId: string,
+  action: "approve" | "reject" | "withdraw",
+  payload: Record<string, any> = {}
+) {
+  const response = await axios.post(
+    `/leave/cancellation-requests/${cancellationRequestId}/${action}`,
+    payload
+  );
+  return response.data?.data as LeaveCancellationRequest;
 }
 
 export async function adjustLeaveBalance(payload: Record<string, any>) {

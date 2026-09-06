@@ -61,6 +61,9 @@ export default function LeaveRequestsPanel({ companyId, borderColor, muted }: { 
         : true
     )
   );
+  const selectedCancellation = selected?.cancellationRequest && typeof selected.cancellationRequest === "object"
+    ? selected.cancellationRequest
+    : null;
 
   const load = useCallback(async () => {
     if (!companyId) return;
@@ -168,6 +171,11 @@ export default function LeaveRequestsPanel({ companyId, borderColor, muted }: { 
                   <Text fontWeight="800">{request.employee?.name || "Employee"}</Text>
                   <Text fontSize="sm" color={muted}>{request.employee?.code || request.employee?.username}</Text>
                   <Badge colorScheme={color(request.status)}>{request.status}</Badge>
+                  {request.cancellationStatus && request.cancellationStatus !== "none" ? (
+                    <Badge colorScheme={request.cancellationStatus === "submitted" ? "orange" : request.cancellationStatus === "rejected" ? "red" : "gray"}>
+                      Cancellation {request.cancellationStatus}
+                    </Badge>
+                  ) : null}
                   {request.documentRequirementSnapshot?.required ? (
                     <Badge colorScheme={request.documentStatus === "pending" ? "red" : request.documentStatus === "submitted" ? "orange" : "green"}>
                       Document {String(request.documentStatus || "pending").replace(/_/g, " ")}
@@ -207,6 +215,14 @@ export default function LeaveRequestsPanel({ companyId, borderColor, muted }: { 
                   <Text mt={1} color={muted} fontSize="sm">{selected.chargedUnits} {selected.leaveUnit} charged</Text>
                 </Box>
                 <Box><Text fontSize="sm" color={muted}>Reason</Text><Text>{selected.reason}</Text></Box>
+                {selected.cancellationStatus && selected.cancellationStatus !== "none" ? (
+                  <Box borderWidth="1px" borderColor={borderColor} borderRadius="md" p={4}>
+                    <HStack justify="space-between"><Text fontWeight="800">Cancellation request</Text><Badge colorScheme={selected.cancellationStatus === "submitted" ? "orange" : selected.cancellationStatus === "rejected" ? "red" : "gray"}>{selected.cancellationStatus}</Badge></HStack>
+                    {selectedCancellation?.reason ? <Text mt={2}>{selectedCancellation.reason}</Text> : null}
+                    {selectedCancellation?.currentApprovers?.length ? <Text mt={2} fontSize="xs" color={muted}>Awaiting {selectedCancellation.currentApprovers.map((item: any) => item.name || item.username).join(", ")}</Text> : null}
+                    {selectedCancellation?.decisionComment ? <Text mt={2} fontSize="xs" color={muted}>Decision: {selectedCancellation.decisionComment}</Text> : null}
+                  </Box>
+                ) : null}
                 <Box>
                   <Text fontSize="sm" fontWeight="700" mb={2}>Date calculation</Text>
                   <Stack spacing={0} borderWidth="1px" borderColor={borderColor} borderRadius="md" overflow="hidden">
@@ -273,7 +289,7 @@ export default function LeaveRequestsPanel({ companyId, borderColor, muted }: { 
                 <Button colorScheme="green" leftIcon={<FiCheck />} onClick={() => act("approve")} isLoading={submitting}>Approve</Button>
               </>
             ) : null}
-            {canApprove && selected?.status === "approved" ? <Button colorScheme="red" variant="outline" onClick={() => act("cancel")} isLoading={submitting}>Cancel approved leave</Button> : null}
+            {canApprove && selected?.status === "approved" && selected.cancellationStatus !== "submitted" ? <Button colorScheme="red" variant="outline" onClick={() => act("cancel")} isLoading={submitting}>Cancel immediately</Button> : null}
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
