@@ -29,6 +29,13 @@ const STEP_LABELS: Record<string, string> = {
   specific_users: "Specific users",
 };
 
+const REQUEST_LABELS: Record<string, string> = {
+  leave_request: "Leave requests",
+  leave_encashment_request: "Leave encashment",
+  remote_work_request: "WFH requests",
+  comp_off_claim: "Comp-off claims",
+};
+
 type Props = {
   isOpen: boolean;
   onClose: () => void;
@@ -91,6 +98,13 @@ export default function ApprovalWorkflowHistoryDrawer({ isOpen, onClose, company
               <HStack justify="space-between" align="start">
                 <Box><Text fontWeight="800">Version {version.versionNumber}</Text><Text fontSize="xs" color="gray.500">Effective from {version.effectiveFrom ? new Date(version.effectiveFrom).toLocaleDateString() : "publication date"}</Text><Text fontSize="xs" color="gray.500">{version.changeReason || "No change reason recorded"}</Text></Box>
                 <Badge colorScheme={version.status === "published" ? "green" : version.status === "draft" ? "yellow" : "gray"}>{version.status}</Badge>
+              </HStack>
+              <HStack mt={3} spacing={1} flexWrap="wrap">
+                {(version.applicableTo?.length ? version.applicableTo : workflow?.applicableTo || []).map((requestType) => (
+                  <Badge key={`${version._id}-${requestType}`} colorScheme="purple">
+                    {REQUEST_LABELS[requestType] || requestType}
+                  </Badge>
+                ))}
               </HStack>
               {version.autoApprove ? <Text mt={3} fontSize="sm">Automatic approval, no human levels.</Text> : (
                 <Stack mt={3} spacing={2}>

@@ -151,6 +151,45 @@ export type LeaveEncashmentEligibilityItem = {
   canRequest: boolean;
 };
 
+export type LeaveYearEndRun = {
+  _id: string;
+  asOf: string;
+  trigger: "manual" | "scheduler";
+  employee?: any;
+  status: "running" | "completed" | "partial" | "failed";
+  processedBalances: number;
+  completedClosures: number;
+  partialClosures: number;
+  configurationErrors: number;
+  carriedUnits: number;
+  lapsedUnits: number;
+  expiredUnits: number;
+  deferredExpiryLots: number;
+  failedItems: number;
+  failures?: Array<{ employee?: string; leaveType?: string; message: string }>;
+  startedAt: string;
+  completedAt?: string | null;
+  triggeredBy?: any;
+};
+
+export type LeaveYearEndClosure = {
+  _id: string;
+  employee: any;
+  leaveType: any;
+  sourceLeaveYearKey: string;
+  sourceLeaveYearStart: string;
+  sourceLeaveYearEnd: string;
+  destinationLeaveYearKey?: string;
+  carriedUnits: number;
+  lapsedUnits: number;
+  pendingUnits: number;
+  remainingBalanceUnits: number;
+  status: "partial" | "completed" | "not_applicable" | "configuration_error";
+  message?: string;
+  lastProcessedAt: string;
+  updatedBy?: any;
+};
+
 export async function fetchEligibleLeave(params: Record<string, any> = {}) {
   const response = await axios.get("/leave/eligible", { params });
   return response.data?.data as { employee: any; at: string; items: EligibleLeaveItem[] };
@@ -326,4 +365,25 @@ export async function adjustLeaveBalance(payload: Record<string, any>) {
 export async function rebuildLeaveBalance(payload: Record<string, any>) {
   const response = await axios.post("/leave/balances/rebuild", payload);
   return response.data?.data;
+}
+
+export async function runLeaveYearEnd(payload: Record<string, any>) {
+  const response = await axios.post("/leave/year-end/run", payload);
+  return response.data?.data as LeaveYearEndRun;
+}
+
+export async function fetchLeaveYearEndRuns(params: Record<string, any>) {
+  const response = await axios.get("/leave/year-end/runs", { params });
+  return {
+    items: (response.data?.data || []) as LeaveYearEndRun[],
+    pagination: response.data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 1 },
+  };
+}
+
+export async function fetchLeaveYearEndClosures(params: Record<string, any>) {
+  const response = await axios.get("/leave/year-end/closures", { params });
+  return {
+    items: (response.data?.data || []) as LeaveYearEndClosure[],
+    pagination: response.data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 1 },
+  };
 }

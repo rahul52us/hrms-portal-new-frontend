@@ -58,6 +58,7 @@ import LeaveRequestsPanel from "./components/LeaveRequestsPanel";
 import LeaveBalancesPanel from "./components/LeaveBalancesPanel";
 import CompOffClaimsPanel from "./components/CompOffClaimsPanel";
 import LeaveEncashmentsPanel from "./components/LeaveEncashmentsPanel";
+import LeaveYearEndPanel from "./components/LeaveYearEndPanel";
 
 const LEAVE_RESOURCE_TYPES = ["leave_policy"] as const;
 
@@ -90,6 +91,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
   const canViewConfiguration = hasPermission(auth.user, PERMISSION_KEYS.VIEW_WORKFORCE_POLICIES);
   const canViewOperations = hasPermission(auth.user, PERMISSION_KEYS.VIEW_LEAVE_REQUESTS);
   const canSettleEncashments = hasPermission(auth.user, PERMISSION_KEYS.MANAGE_LEAVE_BALANCES);
+  const canManageBalances = hasPermission(auth.user, PERMISSION_KEYS.MANAGE_LEAVE_BALANCES);
   const canView = canViewConfiguration || canViewOperations;
   const canManage = ["superadmin", "admin", "hradmin"].includes(role) &&
     hasPermission(auth.user, PERMISSION_KEYS.MANAGE_WORKFORCE_POLICIES);
@@ -393,6 +395,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
                     {canViewOperations ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Encashments</Tab> : null}
                     {canViewOperations ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Comp-off claims</Tab> : null}
                     {canViewOperations ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Balances</Tab> : null}
+                    {canManageBalances ? <Tab whiteSpace="nowrap" fontWeight="medium" color={muted} fontSize="sm" px={{ base: 4, md: 6 }} py={2} borderRadius="full" _selected={{ bgGradient: "linear(to-r, blue.500, purple.600)", color: "white", boxShadow: "md" }} transition="all 0.2s">Year-end</Tab> : null}
                   </TabList>
                   <HStack>
                     {canViewConfiguration && tabIndex < 2 ? <InputGroup size="sm" maxW="250px"><InputLeftElement><FiSearch /></InputLeftElement><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" borderRadius="lg" /></InputGroup> : null}
@@ -413,6 +416,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
                 {canViewOperations ? <TabPanel><LeaveEncashmentsPanel companyId={companyId} canSettle={canSettleEncashments} borderColor={borderColor} muted={muted} /></TabPanel> : null}
                 {canViewOperations ? <TabPanel><CompOffClaimsPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel> : null}
                 {canViewOperations ? <TabPanel><LeaveBalancesPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel> : null}
+                {canManageBalances ? <TabPanel><LeaveYearEndPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel> : null}
               </TabPanels>
             </Tabs>
           </Box>

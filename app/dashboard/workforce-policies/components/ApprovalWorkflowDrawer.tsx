@@ -118,7 +118,13 @@ export default function ApprovalWorkflowDrawer({
     setName(workflow?.name || "");
     setCode(workflow?.code || "");
     setDescription(workflow?.description || "");
-    setApplicableTo(workflow?.applicableTo?.length ? workflow.applicableTo : ["leave_request"]);
+    setApplicableTo(
+      source?.applicableTo?.length
+        ? source.applicableTo
+        : workflow?.applicableTo?.length
+          ? workflow.applicableTo
+          : ["leave_request"]
+    );
     setEffectiveFrom(
       mode === "new_version"
         ? localDateValue()
@@ -185,6 +191,7 @@ export default function ApprovalWorkflowDrawer({
     const payload = {
       companyId,
       effectiveFrom,
+      applicableTo,
       autoApprove,
       steps: autoApprove ? [] : normalizeSteps(steps),
       changeReason: changeReason.trim(),
@@ -255,7 +262,7 @@ export default function ApprovalWorkflowDrawer({
           {mode === "create" ? <FormControl mt={5}><FormLabel>Description</FormLabel><Textarea value={description} onChange={(event) => setDescription(event.target.value)} bg={useColorModeValue("gray.50", "gray.900")} /></FormControl> : null}
         </Box>
         <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
-          <FormControl isDisabled={mode !== "create"} mb={6}>
+          <FormControl mb={6}>
             <FormLabel fontWeight="800">Used for</FormLabel>
             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={3} mt={3}>
               {REQUEST_TYPES.map((item) => (
@@ -264,13 +271,22 @@ export default function ApprovalWorkflowDrawer({
                   id={`approval-workflow-request-type-${item.value}`}
                   name={`approval-workflow-request-type-${item.value}`}
                   isChecked={applicableTo.includes(item.value)}
-                  isDisabled={mode !== "create"}
+                  isDisabled={
+                    mode !== "create" &&
+                    Boolean(workflow?.latestPublishedVersion) &&
+                    Boolean(workflow?.applicableTo?.includes(item.value))
+                  }
                   onChange={(event) => toggleRequestType(item.value, event.target.checked)}
                 >
                   {item.label}
                 </Checkbox>
               ))}
             </SimpleGrid>
+            {mode !== "create" && workflow?.latestPublishedVersion ? (
+              <FormHelperText>
+                Published request types stay enabled. You can add more types with this version.
+              </FormHelperText>
+            ) : null}
           </FormControl>
           
           <Box h="1px" bg={borderColor} my={5} mx={-5} />

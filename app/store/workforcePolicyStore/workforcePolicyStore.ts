@@ -139,6 +139,7 @@ export interface ApprovalWorkflowVersion {
   versionNumber: number;
   status: PolicyVersionStatus;
   effectiveFrom?: string | null;
+  applicableTo?: ApprovalRequestType[];
   autoApprove: boolean;
   steps: ApprovalWorkflowStep[];
   changeReason?: string;
@@ -157,6 +158,18 @@ export interface ApprovalWorkflowItem {
   draftVersion?: ApprovalWorkflowVersion | null;
   latestPublishedVersion?: ApprovalWorkflowVersion | null;
   effectivePublishedVersion?: ApprovalWorkflowVersion | null;
+}
+
+export function approvalWorkflowSupportsRequestType(
+  workflow: ApprovalWorkflowItem,
+  requestType: ApprovalRequestType
+) {
+  const version = workflow.effectivePublishedVersion || workflow.latestPublishedVersion;
+  if (workflow.status !== "active" || !version) return false;
+  const requestTypes = version.applicableTo?.length
+    ? version.applicableTo
+    : workflow.applicableTo;
+  return requestTypes.includes(requestType);
 }
 
 export interface PolicyVersion {

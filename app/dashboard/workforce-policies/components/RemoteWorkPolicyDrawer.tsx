@@ -26,6 +26,7 @@ import {
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 import {
+  approvalWorkflowSupportsRequestType,
   PolicyVersion,
   RemoteWorkRules,
   WorkforcePolicyItem,
@@ -71,7 +72,7 @@ export default function RemoteWorkPolicyDrawer({ isOpen, onClose, companyId, mod
   const [changeReason, setChangeReason] = useState("");
   const [rules, setRules] = useState<RemoteWorkRules>(DEFAULT_RULES);
   const approvalOptions = workforcePolicyStore.approvalWorkflows.filter(
-    (workflow) => workflow.status === "active" && workflow.applicableTo.includes("remote_work_request") && (workflow.effectivePublishedVersion || workflow.latestPublishedVersion)
+    (workflow) => approvalWorkflowSupportsRequestType(workflow, "remote_work_request")
   );
 
   useEffect(() => {

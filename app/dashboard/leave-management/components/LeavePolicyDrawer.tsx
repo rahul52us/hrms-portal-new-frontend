@@ -35,6 +35,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { FiPlus, FiTrash2 } from "react-icons/fi";
 import {
+  approvalWorkflowSupportsRequestType,
   LeaveCreditComponent,
   LeavePolicyRule,
   LeaveTypeItem,
@@ -375,13 +376,13 @@ export default function LeavePolicyDrawer({
     (item) => !rules.some((rule) => rule.leaveType === item._id)
   );
   const leaveApprovalWorkflows = workforcePolicyStore.approvalWorkflows.filter(
-    (workflow) => workflow.status === "active" && workflow.applicableTo.includes("leave_request") && (workflow.effectivePublishedVersion || workflow.latestPublishedVersion)
+    (workflow) => approvalWorkflowSupportsRequestType(workflow, "leave_request")
   );
   const compOffApprovalWorkflows = workforcePolicyStore.approvalWorkflows.filter(
-    (workflow) => workflow.status === "active" && workflow.applicableTo.includes("comp_off_claim") && (workflow.effectivePublishedVersion || workflow.latestPublishedVersion)
+    (workflow) => approvalWorkflowSupportsRequestType(workflow, "comp_off_claim")
   );
   const encashmentApprovalWorkflows = workforcePolicyStore.approvalWorkflows.filter(
-    (workflow) => workflow.status === "active" && workflow.applicableTo.includes("leave_encashment_request") && (workflow.effectivePublishedVersion || workflow.latestPublishedVersion)
+    (workflow) => approvalWorkflowSupportsRequestType(workflow, "leave_encashment_request")
   );
 
   const validationError = useMemo(() => {
@@ -1242,7 +1243,7 @@ export default function LeavePolicyDrawer({
                                         <FormLabel mb={1} fontSize="xs">Expires after (months)</FormLabel>
                                         <OptionalPositiveNumberInput
                                           min={1}
-                                          max={120}
+                                          max={12}
                                           step={1}
                                           value={rule.carryForwardExpiryMonths}
                                           onValueChange={(value) => updateRule(index, { carryForwardExpiryMonths: value })}
