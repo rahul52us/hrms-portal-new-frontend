@@ -11,6 +11,7 @@ import {
   HStack,
   Text,
   Badge,
+  useToast,
   useColorModeValue,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
@@ -27,6 +28,7 @@ type Props = {
 
 const ChangeManagerModal = observer(({ isOpen, onClose, user, onRefresh }: Props) => {
   const { userStore, auth } = stores;
+  const toast = useToast();
   const [selectedManager, setSelectedManager] = useState<any>(null);
   
   const borderColor = useColorModeValue("gray.200", "gray.700");
@@ -49,11 +51,28 @@ const ChangeManagerModal = observer(({ isOpen, onClose, user, onRefresh }: Props
     if (!user?._id) return;
     try {
       const managerId = typeof selectedManager === 'object' ? (selectedManager?.value || selectedManager?._id) : selectedManager;
+      if (managerId && String(managerId) === String(user._id)) {
+        toast({
+          title: "Invalid reporting manager",
+          description: "An employee cannot be their own reporting manager.",
+          status: "error",
+          duration: 4000,
+          isClosable: true,
+        });
+        return;
+      }
+
       await userStore.updateReportingManager(user._id, managerId || null);
       onRefresh();
       onClose();
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      toast({
+        title: "Unable to update reporting manager",
+        description: error?.error || error?.message || "Please try again.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
     }
   };
 
@@ -88,6 +107,7 @@ const ChangeManagerModal = observer(({ isOpen, onClose, user, onRefresh }: Props
             <ManagerHierarchy
               selectedManager={selectedManager}
               managerCompanyId={getCompanyId(user)}
+              currentUserId={String(user?._id || "")}
               createCompany={false}
               muted={muted}
               borderColor={borderColor}
