@@ -1,18 +1,19 @@
 "use client";
+
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
+  Badge,
   Box,
+  Button,
   Flex,
   IconButton,
-  Button,
-  Text,
   Menu,
   MenuButton,
-  MenuList,
   MenuItem,
-  Badge,
-  Image,
+  MenuList,
   Portal,
+  Text,
 } from "@chakra-ui/react";
 import { BellIcon, CheckIcon, ChevronDownIcon } from "@chakra-ui/icons";
 import { observer } from "mobx-react-lite";
@@ -21,67 +22,73 @@ import { formatDate } from "../../../../../../component/config/utils/dateUtils";
 import { paginationLimit } from "../../../../../../component/config/utils/variable";
 
 interface Notification {
-  _id: any;
-  userName: string;
-  userAvatar: string;
+  _id: string;
+  title?: string;
   message: string;
-  target: string;
-  createdAt: Date;
-  designation: string;
+  createdAt: string;
   isRead: boolean;
-  type: string;
+  type?: string;
+  category?: string;
+  eventType?: string;
+  actionUrl?: string;
 }
+
+const notificationLabel = (item: Notification) =>
+  String(item.category || item.eventType || item.type || "Update")
+    .split(".")
+    .pop()
+    ?.replace(/_/g, " ") || "Update";
 
 const NotificationComponent = observer(() => {
   const {
-    dashboardStore: { getNotifications, notification, markAsReadNotifications },
+    dashboardStore: {
+      getNotifications,
+      notification,
+      markAsReadNotifications,
+      markAllNotificationsAsRead,
+    },
   } = stores;
-
+  const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState("All");
   const [page, setPage] = useState(1);
   const [notificationsList, setNotificationsList] = useState<Notification[]>([]);
-  const [loadingId, setLoadingId] = useState<any>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
 
-  const fetchNotifications = useCallback(async (pageNumber: number, reset: boolean = false) => {
-    const lists = {
+  const fetchNotifications = useCallback(async (pageNumber: number, reset = false) => {
+    const filters: Record<string, boolean | string> = {
       Unread: false,
       Read: true,
       All: "All",
     };
-
-    const result = await getNotifications(lists[selectedItem], pageNumber, paginationLimit);
-
+    const result = await getNotifications(filters[selectedItem], pageNumber, paginationLimit);
     if (reset) {
       setNotificationsList(result?.data || []);
       setPage(1);
-    } else {
-      setNotificationsList((prev) => [...prev, ...(result?.data || [])]);
-      setPage(pageNumber);
+      return;
     }
-  }, [getNotifications]);
+    setNotificationsList((previous) => [...previous, ...(result?.data || [])]);
+    setPage(pageNumber);
+  }, [getNotifications, selectedItem]);
 
   useEffect(() => {
-    fetchNotifications(1, true);
-  }, [selectedItem, fetchNotifications]);
+    void fetchNotifications(1, true);
+  }, [fetchNotifications]);
 
   const handleLoadMore = async () => {
     setLoadingMore(true);
-    await fetchNotifications(page + 1);
-    setLoadingMore(false);
-  };
-
-  const filteredNotifications = notificationsList;
-  const unreadCount = filteredNotifications.filter((n) => !n.isRead).length;
-
-  const handleModalClose = () => {
-    setDropdownOpen(false);
-  };
-
-  const handleMarkAsRead = async (id: any) => {
     try {
-      setLoadingId(id);
+      await fetchNotifications(page + 1);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const handleMarkAsRead = async (id: string) => {
+    setLoadingId(id);
+    try {
       await markAsReadNotifications(id);
       await fetchNotifications(1, true);
     } finally {
@@ -89,75 +96,46 @@ const NotificationComponent = observer(() => {
     }
   };
 
-  const renderNotificationItem = (notification: Notification, index: number) => (
-    <MenuItem
-      key={index}
-      display="flex"
-      flexDirection="column"
-      alignItems="start"
-      gap={2}
-      py={3}
-      px={{ base: 4, md: 5 }}
-      borderBottom="1px solid"
-      borderColor="gray.200"
-      bg={notification.isRead ? "white" : "gray.50"}
-      _hover={{ bg: "gray.100" }}
-    >
-      <Box width="100%">
-        <Text fontSize="sm" color="gray.800">
-          {notification?.userName && (
-            <Text as="span" fontWeight="bold">
-              {`${notification.userName} - `}
-            </Text>
-          )}
-          {notification.message && (
-            <Text as="span" fontWeight="bold" color="gray.700">
-              {notification.message}
-            </Text>
-          )}
-          .
-        </Text>
-        <Flex gap={2} fontSize="xs" color="gray.500" mt={1}>
-          <Text>{formatDate(notification.createdAt)}</Text>•<Text>{notification.type}</Text>
-        </Flex>
+  const handleMarkAllAsRead = async () => {
+    setMarkingAll(true);
+    try {
+      await markAllNotificationsAsRead();
+      await fetchNotifications(1, true);
+    } finally {
+      setMarkingAll(false);
+    }
+  };
 
-        {!notification.isRead && (
-          <Button
-            size="xs"
-            mt={2}
-            colorScheme="blue"
-            variant="solid"
-            onClick={() => handleMarkAsRead(notification._id)}
-            isLoading={loadingId === notification._id}
-            loadingText="Marking..."
-          >
-            Mark as Read
-          </Button>
-        )}
-      </Box>
-    </MenuItem>
-  );
+  const handleNotificationOpen = async (item: Notification) => {
+    if (!item.isRead) await handleMarkAsRead(item._id);
+    if (item.actionUrl) {
+      setDropdownOpen(false);
+      router.push(item.actionUrl);
+    }
+  };
+
+  const unreadCount = Number(notification?.unreadCount || 0);
 
   return (
     <Flex position="relative" justifyContent="center" alignItems="center" mr={1} zIndex={9999}>
-      <Menu isOpen={dropdownOpen} onClose={handleModalClose}>
+      <Menu isOpen={dropdownOpen} onClose={() => setDropdownOpen(false)}>
         <MenuButton
           as={IconButton}
           icon={<BellIcon />}
           isRound
-          bg="gray.700"          
-          fontSize="xl"           
+          bg="gray.700"
+          fontSize="xl"
           color="white"
-          w="40px"                
+          w="40px"
           h="40px"
           minW="40px"
           _hover={{ bg: "blue.500", transform: "scale(1.05)" }}
           _active={{ bg: "blue.600", transform: "scale(0.97)" }}
           transition="all 0.2s ease"
-          aria-label="notifications"
-          onClick={() => setDropdownOpen(!dropdownOpen)}
+          aria-label="Notifications"
+          onClick={() => setDropdownOpen((open) => !open)}
         />
-        {unreadCount > 0 && (
+        {unreadCount > 0 ? (
           <Badge
             colorScheme="red"
             borderRadius="full"
@@ -168,89 +146,134 @@ const NotificationComponent = observer(() => {
             px={1.5}
             fontSize="xs"
           >
-            {unreadCount}
+            {unreadCount > 99 ? "99+" : unreadCount}
           </Badge>
-        )}
+        ) : null}
         <Portal>
           <MenuList
             py={0}
-            borderRadius="10px"
+            borderRadius="8px"
             mx={1}
             width={{ base: "22rem", md: "24rem" }}
+            maxW="calc(100vw - 1rem)"
             zIndex={99999}
             boxShadow="xl"
             overflow="hidden"
           >
             <Flex
               p={3}
-              gap={4}
+              gap={3}
               align="center"
               justify="space-between"
               borderBottom="1px solid"
               borderColor="gray.200"
               bg="gray.100"
             >
-              <Text fontSize="lg" fontWeight="bold" color="gray.800">
-                Notifications
-              </Text>
-              <Menu>
-                <MenuButton fontSize="sm">
-                  {selectedItem} <ChevronDownIcon />
-                </MenuButton>
-                <MenuList minW="8rem" fontSize="sm">
-                  {["All", "Unread", "Read"].map((item) => (
-                    <MenuItem
-                      key={item}
-                      justifyContent="space-between"
-                      onClick={() => setSelectedItem(item)}
-                      gap={6}
-                    >
-                      {item}
-                      {selectedItem === item && <CheckIcon fontSize="sm" />}
-                    </MenuItem>
-                  ))}
-                </MenuList>
-              </Menu>
+              <Box>
+                <Text fontSize="lg" fontWeight="bold" color="gray.800">
+                  Notifications
+                </Text>
+                {unreadCount > 0 ? (
+                  <Text fontSize="xs" color="gray.600">
+                    {unreadCount} unread
+                  </Text>
+                ) : null}
+              </Box>
+              <Flex align="center" gap={2}>
+                {unreadCount > 0 ? (
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    colorScheme="blue"
+                    onClick={() => void handleMarkAllAsRead()}
+                    isLoading={markingAll}
+                  >
+                    Mark all read
+                  </Button>
+                ) : null}
+                <Menu>
+                  <MenuButton fontSize="sm">
+                    {selectedItem} <ChevronDownIcon />
+                  </MenuButton>
+                  <MenuList minW="8rem" fontSize="sm">
+                    {["All", "Unread", "Read"].map((item) => (
+                      <MenuItem
+                        key={item}
+                        justifyContent="space-between"
+                        onClick={() => setSelectedItem(item)}
+                        gap={6}
+                      >
+                        {item}
+                        {selectedItem === item ? <CheckIcon fontSize="sm" /> : null}
+                      </MenuItem>
+                    ))}
+                  </MenuList>
+                </Menu>
+              </Flex>
             </Flex>
 
-            <Box
-              py={3}
-              borderTop="1px solid"
-              borderColor="gray.200"
-              maxH="18rem"
-              overflowY="auto"
-              className="customScrollBar"
-            >
-              {filteredNotifications.length > 0 ? (
+            <Box maxH="22rem" overflowY="auto" className="customScrollBar">
+              {notificationsList.length ? (
                 <>
-                  {filteredNotifications.map((notification, index) =>
-                    renderNotificationItem(notification, index)
-                  )}
-
-                  {notification?.totalPages > page && (
-                    <Flex justify="center" my={2}>
-                      <Button
-                        size="sm"
-                        onClick={handleLoadMore}
-                        isLoading={loadingMore}
-                        loadingText="Loading..."
-                        variant="outline"
-                      >
-                        Load More
+                  {notificationsList.map((item) => (
+                    <MenuItem
+                      key={item._id}
+                      display="flex"
+                      flexDirection="column"
+                      alignItems="start"
+                      gap={2}
+                      py={3}
+                      px={{ base: 4, md: 5 }}
+                      borderBottom="1px solid"
+                      borderColor="gray.200"
+                      bg={item.isRead ? "white" : "blue.50"}
+                      _hover={{ bg: "gray.100" }}
+                      cursor={item.actionUrl ? "pointer" : "default"}
+                      onClick={() => void handleNotificationOpen(item)}
+                    >
+                      <Box width="100%">
+                        {item.title ? (
+                          <Text fontSize="sm" fontWeight="800" color="gray.800">
+                            {item.title}
+                          </Text>
+                        ) : null}
+                        <Text mt={item.title ? 1 : 0} fontSize="sm" color="gray.700">
+                          {item.message}
+                        </Text>
+                        <Flex gap={2} fontSize="xs" color="gray.500" mt={1}>
+                          <Text>{formatDate(new Date(item.createdAt))}</Text>
+                          <Text>-</Text>
+                          <Text textTransform="capitalize">{notificationLabel(item)}</Text>
+                        </Flex>
+                        {!item.isRead ? (
+                          <Button
+                            size="xs"
+                            mt={2}
+                            colorScheme="blue"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleMarkAsRead(item._id);
+                            }}
+                            isLoading={loadingId === item._id}
+                          >
+                            Mark as read
+                          </Button>
+                        ) : null}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                  {notification?.totalPages > page ? (
+                    <Flex justify="center" my={3}>
+                      <Button size="sm" onClick={() => void handleLoadMore()} isLoading={loadingMore} variant="outline">
+                        Load more
                       </Button>
                     </Flex>
-                  )}
+                  ) : null}
                 </>
               ) : (
-                <Flex flexDirection="column" alignItems="center" justifyContent="center" py={8}>
-                  <Image
-                    src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png"
-                    alt="No notifications"
-                    width="120px"
-                    mb={3}
-                  />
-                  <Text fontSize="md" fontWeight="600" color="gray.500">
-                    No Notifications
+                <Flex alignItems="center" justifyContent="center" py={10} px={4}>
+                  <Text fontSize="sm" fontWeight="600" color="gray.500">
+                    No notifications
                   </Text>
                 </Flex>
               )}

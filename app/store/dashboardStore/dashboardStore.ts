@@ -61,7 +61,8 @@ class DashboardStore {
   notification : any = {
     data : [],
     loading : false,
-    totalPages : 0
+    totalPages : 0,
+    unreadCount: 0,
   }
 
   constructor() {
@@ -121,6 +122,7 @@ class DashboardStore {
 
       this.notification.data = data?.data || [];
       this.notification.totalPages = data?.totalPages || 0;
+      this.notification.unreadCount = data?.unreadCount || 0;
 
       return data;
     } catch (err: any) {
@@ -133,11 +135,20 @@ class DashboardStore {
 
   markAsReadNotifications = async (id : any) => {
     try {
-      const { data } = await axios.put(`/notification`, {_id : id});
+      const { data } = await axios.patch(`/notification/${id}/read`);
       return data.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err);
     } finally {
+    }
+  };
+
+  markAllNotificationsAsRead = async () => {
+    try {
+      const { data } = await axios.patch("/notification/read-all");
+      return data.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err);
     }
   };
 
