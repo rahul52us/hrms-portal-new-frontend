@@ -1,0 +1,23 @@
+.workforce-calendar .fc {
+  --fc-border-color: var(--chakra-colors-gray-200);
+  --fc-today-bg-color: var(--chakra-colors-blue-50);
+  font-size: 13px;
+}
+.workforce-calendar .fc .fc-col-header-cell-cushion { padding: 12px 4px; font-weight: 600; }
+.workforce-calendar .fc .fc-daygrid-day-frame { min-height: 120px; }
+.workforce-calendar .fc .fc-daygrid-day-number { padding: 8px; }
+.workforce-calendar .fc .fc-event {
+  padding: 3px 5px;
+  margin: 3px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  font-weight: 500;
+}
+.workforce-calendar .fc .fc-daygrid-more-link { margin: 3px 5px; cursor: pointer; }
+.workforce-calendar .fc .fc-daygrid-day { cursor: pointer; }
+.workforce-calendar .fc .fc-daygrid-day:hover { background: var(--chakra-colors-blue-50); }
+.chakra-ui-dark .workforce-calendar .fc { --fc-border-color: var(--chakra-colors-gray-700); --fc-today-bg-color: var(--chakra-colors-gray-700); }
+.chakra-ui-dark .workforce-calendar .fc .fc-daygrid-day:hover { background: var(--chakra-colors-gray-700); }

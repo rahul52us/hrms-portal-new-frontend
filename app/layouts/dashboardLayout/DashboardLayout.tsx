@@ -191,5 +191,9 @@ const ContentContainer = styled.div<{ $isMobile: boolean }>`
   min-height: calc(100dvh - calc(${headerHeight} + var(--safe-area-top, env(safe-area-inset-top, 0px))));
   transition: all 0.3s ease-in-out;
   margin-top: calc(${headerHeight} + var(--safe-area-top, env(safe-area-inset-top, 0px)));
+  @media (max-width: 768px) {
+    margin-top: calc(${headerHeight} + max(env(safe-area-inset-top, 0px), 36px));
+    min-height: calc(100dvh - (${headerHeight} + max(env(safe-area-inset-top, 0px), 36px)));
+  }
   box-sizing: border-box;
 `;

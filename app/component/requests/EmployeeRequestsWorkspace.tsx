@@ -205,6 +205,7 @@ export default function EmployeeRequestsWorkspace() {
   const [encashmentUnits, setEncashmentUnits] = useState("");
   const [encashmentReason, setEncashmentReason] = useState("");
   const [encashmentSubmitting, setEncashmentSubmitting] = useState(false);
+  const calendarApplyHandled = useRef(false);
 
   const isWfh = form.leaveTypeId === WFH_OPTION;
   const isCompOffClaim = form.leaveTypeId === COMP_OFF_CLAIM_OPTION;
@@ -307,8 +308,9 @@ export default function EmployeeRequestsWorkspace() {
     }
   };
 
-  const openRequest = () => {
+  const openRequest = (applyDate?: string) => {
     const next = initialForm();
+    if (applyDate) { next.fromDate = applyDate; next.toDate = applyDate; }
     next.leaveTypeId = eligible[0]?.leaveType._id || WFH_OPTION;
     setRequestEligible(eligible);
     setForm(next);
@@ -318,8 +320,22 @@ export default function EmployeeRequestsWorkspace() {
     setEligibilityErrorMessage("");
     setPreview(null);
     drawer.onOpen();
+    if (applyDate && next.leaveTypeId !== WFH_OPTION) void refreshLeaveEligibility(applyDate);
     if (next.leaveTypeId === WFH_OPTION) void loadRemoteEligibility(next.fromDate);
   };
+
+  useEffect(() => {
+    if (loading || calendarApplyHandled.current) return;
+    const url = new URL(window.location.href);
+    const applyDate = url.searchParams.get("applyDate");
+    if (!applyDate || !/^\d{4}-\d{2}-\d{2}$/.test(applyDate)) return;
+    const parsed = new Date(`${applyDate}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== applyDate) return;
+    calendarApplyHandled.current = true;
+    openRequest(applyDate);
+    url.searchParams.delete("applyDate");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [loading]);
 
   const selectRequestOption = (value: string) => {
     setForm((current) => ({
@@ -593,7 +609,7 @@ export default function EmployeeRequestsWorkspace() {
           </Box>
           <HStack>
             <Button variant="outline" leftIcon={<FiRefreshCw />} onClick={load} isLoading={loading}>Refresh</Button>
-            <Button colorScheme="blue" leftIcon={<FiPlus />} onClick={openRequest} isDisabled={loading}>New request</Button>
+            <Button colorScheme="blue" leftIcon={<FiPlus />} onClick={() => openRequest()} isDisabled={loading}>New request</Button>
           </HStack>
         </Flex>
 

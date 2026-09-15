@@ -109,6 +109,13 @@ const sidebarDatas: SidebarItem[] = [
     permissionKey: PERMISSION_KEYS.VIEW_LEAVE_REQUESTS,
   },
   {
+    id: 108,
+    name: "Calendar",
+    icon: <FiCalendar />,
+    url: "/dashboard/calendar",
+    role: ["admin", "departmenthead", "hradmin", "hr", "user"],
+  },
+  {
     id: 35,
     name: "Master Settings",
     icon: <FiDatabase />,
