@@ -14,6 +14,7 @@ export const PERMISSION_KEYS = {
   MANAGE_LOCATIONS: "manage_locations",
   VIEW_WORKFORCE_POLICIES: "view_workforce_policies",
   MANAGE_WORKFORCE_POLICIES: "manage_workforce_policies",
+  VIEW_ATTENDANCE: "view_attendance",
   VIEW_LEAVE_REQUESTS: "view_leave_requests",
   APPROVE_LEAVE_REQUESTS: "approve_leave_requests",
   MANAGE_LEAVE_BALANCES: "manage_leave_balances",

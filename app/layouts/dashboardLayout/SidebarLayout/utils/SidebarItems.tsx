@@ -3,7 +3,7 @@ import { expandRoleAliases } from "@/app/config/utils/roleAccess";
 import { PERMISSION_KEYS, hasPermission } from "@/app/config/utils/permissions";
 import { LucideBriefcaseBusiness, Network } from "lucide-react";
 import { BiCategory } from "react-icons/bi";
-import { FiBell, FiCalendar, FiCamera, FiClock, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers, FiPieChart, FiDatabase } from "react-icons/fi";
+import { FiBell, FiCalendar, FiCamera, FiCheckSquare, FiClock, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers, FiPieChart, FiDatabase } from "react-icons/fi";
 
 interface SidebarItem {
   id: number;
@@ -99,6 +99,14 @@ const sidebarDatas: SidebarItem[] = [
     icon: <FiClock />,
     url: "/dashboard/my-attendance",
     role: ["admin", "departmenthead", "hradmin", "hr"],
+  },
+  {
+    id: 109,
+    name: "Attendance",
+    icon: <FiCheckSquare />,
+    url: "/dashboard/attendance",
+    role: ["admin", "departmenthead", "hradmin", "hr"],
+    permissionKey: PERMISSION_KEYS.VIEW_ATTENDANCE,
   },
   {
     id: 105,
