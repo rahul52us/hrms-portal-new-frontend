@@ -68,6 +68,7 @@ const DashboardDrawer: React.FC<DashboardDrawerProps> = ({
           <Flex align="center" justify="space-between" px={6} py={3}>
             <Flex gap={3} align="center">
               <Button
+                aria-label="Close drawer"
                 onClick={onClose}
                 variant="ghost"
                 borderRadius="full"

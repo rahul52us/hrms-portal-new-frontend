@@ -26,6 +26,24 @@ export type AttendanceRecord = {
   departmentNameSnapshot?: string;
   teamNameSnapshot?: string;
   officeLocationNameSnapshot?: string;
+  dayTypeSnapshot?: string;
+  requiresAttendanceSnapshot?: boolean | null;
+  expectedWorkMinutesSnapshot?: number | null;
+  scheduleStartTimeSnapshot?: string;
+  scheduleEndTimeSnapshot?: string;
+};
+
+export type AttendanceHistorySummary = {
+  recordedDays: number;
+  presentDays: number;
+  halfDayDays: number;
+  absentDays: number;
+  incompleteDays: number;
+  leaveDays: number;
+  holidayDays: number;
+  weeklyOffDays: number;
+  workedMinutes: number;
+  lateDays: number;
 };
 
 export type TodayAttendance = {
@@ -64,6 +82,7 @@ export async function fetchMyAttendance(params: Record<string, any>) {
   const response = await axios.get("/attendance/records", { params });
   return {
     items: (response.data?.data || []) as AttendanceRecord[],
+    summary: (response.data?.summary || {}) as AttendanceHistorySummary,
     pagination: response.data?.pagination || {
       page: 1,
       limit: 20,
@@ -84,5 +103,31 @@ export async function punchOut() {
     record: response.data?.data as AttendanceRecord,
     message: String(response.data?.message || "Punched out"),
   };
+}
+
+export async function fetchMyAttendanceDay(attendanceDate: string, signal?: AbortSignal) {
+  const response = await axios.get(`/attendance/records/${attendanceDate}`, { signal });
+  return response.data?.data as any;
+}
+
+export async function downloadMyAttendanceStatement(month: string) {
+  const response = await axios.get("/attendance/statements/monthly", {
+    params: { month },
+    responseType: "blob",
+  });
+  const disposition = String(response.headers?.["content-disposition"] || "");
+  const encodedName = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+  const regularName = /filename="?([^";]+)"?/i.exec(disposition)?.[1];
+  const filename = encodedName
+    ? decodeURIComponent(encodedName)
+    : regularName || `attendance-${month}.csv`;
+  const url = window.URL.createObjectURL(new Blob([response.data], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }
 
