@@ -7,9 +7,11 @@ import {
   AlertIcon,
   Box,
   Button,
+  Checkbox,
   DrawerOverlay,
   Flex,
   FormControl,
+  FormHelperText,
   FormLabel,
   HStack,
   Input,
@@ -26,6 +28,8 @@ import {
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 import {
+  approvalWorkflowSupportsRequestType,
+  AttendanceRegularizationType,
   AttendanceRules,
   PolicyVersion,
   WorkforcePolicyItem,
@@ -41,7 +45,33 @@ const DEFAULT_RULES: AttendanceRules = {
   missingPunchTreatment: "flag_incomplete",
   overtimeEnabled: false,
   overtimeStartsAfterMinutes: 0,
+  regularization: {
+    enabled: false,
+    allowedTypes: [
+      "missing_punch_in",
+      "missing_punch_out",
+      "time_correction",
+      "work_mode_correction",
+      "full_day_correction",
+    ],
+    requestStartDays: 0,
+    maxBackdateDays: 30,
+    monthlyRequestLimit: 3,
+    minimumReasonLength: 10,
+    documentMode: "none",
+    approvalWorkflow: null,
+    approvalWorkflowVersion: null,
+    approvalWorkflowVersionNumber: null,
+  },
 };
+
+const REGULARIZATION_TYPES: Array<{ value: AttendanceRegularizationType; label: string }> = [
+  { value: "missing_punch_in", label: "Missing punch-in" },
+  { value: "missing_punch_out", label: "Missing punch-out" },
+  { value: "time_correction", label: "Correct punch times" },
+  { value: "work_mode_correction", label: "Correct work mode" },
+  { value: "full_day_correction", label: "Add full-day attendance" },
+];
 
 type AttendanceDrawerMode = "create" | "edit_draft" | "new_version";
 
@@ -95,6 +125,10 @@ export default function AttendancePolicyDrawer({
     setRules({
       ...DEFAULT_RULES,
       ...sourceRules,
+      regularization: {
+        ...DEFAULT_RULES.regularization,
+        ...(sourceRules?.regularization || {}),
+      },
     });
   }, [isOpen, mode, resource, version]);
 
@@ -115,11 +149,54 @@ export default function AttendancePolicyDrawer({
     if (mode !== "create" && changeReason.trim().length < 3) {
       return "Describe why this version is changing.";
     }
+    if (rules.regularization.enabled && !rules.regularization.allowedTypes.length) {
+      return "Select at least one attendance correction type.";
+    }
+    if (rules.regularization.enabled && !rules.regularization.approvalWorkflowVersion) {
+      return "Select a published approval workflow for attendance corrections.";
+    }
     return "";
   }, [changeReason, code, effectiveFrom, mode, name, rules]);
 
   const setRule = (key: keyof AttendanceRules, value: any) => {
     setRules((current) => ({ ...current, [key]: value }));
+  };
+
+  const setRegularizationRule = (key: keyof AttendanceRules["regularization"], value: any) => {
+    setRules((current) => ({
+      ...current,
+      regularization: { ...current.regularization, [key]: value },
+    }));
+  };
+
+  const toggleRegularizationType = (value: AttendanceRegularizationType, checked: boolean) => {
+    setRules((current) => ({
+      ...current,
+      regularization: {
+        ...current.regularization,
+        allowedTypes: checked
+          ? Array.from(new Set([...current.regularization.allowedTypes, value]))
+          : current.regularization.allowedTypes.filter((item) => item !== value),
+      },
+    }));
+  };
+
+  const regularizationWorkflows = workforcePolicyStore.approvalWorkflows.filter((workflow) =>
+    approvalWorkflowSupportsRequestType(workflow, "attendance_regularization_request")
+  );
+
+  const selectRegularizationWorkflow = (workflowId: string) => {
+    const workflow = regularizationWorkflows.find((item) => item._id === workflowId);
+    const version = workflow?.effectivePublishedVersion || workflow?.latestPublishedVersion;
+    setRules((current) => ({
+      ...current,
+      regularization: {
+        ...current.regularization,
+        approvalWorkflow: workflow?._id || null,
+        approvalWorkflowVersion: version?._id || null,
+        approvalWorkflowVersionNumber: version?.versionNumber || null,
+      },
+    }));
   };
 
   const save = async (publish: boolean) => {
@@ -224,6 +301,81 @@ export default function AttendancePolicyDrawer({
               <FormLabel fontSize="sm" fontWeight="600">Description</FormLabel>
               <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} bg={inputBg} />
             </FormControl>
+          ) : null}
+        </Box>
+
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <HStack justify="space-between" align="start">
+            <Box>
+              <Text fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Attendance corrections</Text>
+              <Text mt={1} fontSize="sm" color="gray.500">Control when employees can correct historical attendance and who approves it.</Text>
+            </Box>
+            <Switch
+              aria-label="Enable attendance regularization"
+              isChecked={rules.regularization.enabled}
+              onChange={(event) => setRegularizationRule("enabled", event.target.checked)}
+              colorScheme="blue"
+            />
+          </HStack>
+          {rules.regularization.enabled ? (
+            <Stack mt={5} spacing={5}>
+              <FormControl isRequired>
+                <FormLabel fontSize="sm" fontWeight="600">Allowed correction types</FormLabel>
+                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
+                  {REGULARIZATION_TYPES.map((item) => (
+                    <Checkbox
+                      key={item.value}
+                      id={`attendance-regularization-${item.value}`}
+                      isChecked={rules.regularization.allowedTypes.includes(item.value)}
+                      onChange={(event) => toggleRegularizationType(item.value, event.target.checked)}
+                    >
+                      {item.label}
+                    </Checkbox>
+                  ))}
+                </SimpleGrid>
+              </FormControl>
+              <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} spacing={4}>
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600">Request after day closes</FormLabel>
+                  <NumberInput min={0} max={365} value={rules.regularization.requestStartDays} onChange={(_, value) => setRegularizationRule("requestStartDays", value || 0)}><NumberInputField bg={inputBg} /></NumberInput>
+                  <FormHelperText>0 allows same-day requests.</FormHelperText>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600">Maximum past days</FormLabel>
+                  <NumberInput min={1} max={365} value={rules.regularization.maxBackdateDays} onChange={(_, value) => setRegularizationRule("maxBackdateDays", value || 1)}><NumberInputField bg={inputBg} /></NumberInput>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600">Requests per month</FormLabel>
+                  <NumberInput min={0} max={100} value={rules.regularization.monthlyRequestLimit} onChange={(_, value) => setRegularizationRule("monthlyRequestLimit", value || 0)}><NumberInputField bg={inputBg} /></NumberInput>
+                  <FormHelperText>0 means no monthly limit.</FormHelperText>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600">Minimum reason length</FormLabel>
+                  <NumberInput min={3} max={500} value={rules.regularization.minimumReasonLength} onChange={(_, value) => setRegularizationRule("minimumReasonLength", value || 3)}><NumberInputField bg={inputBg} /></NumberInput>
+                </FormControl>
+              </SimpleGrid>
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600">Supporting document</FormLabel>
+                  <Select value={rules.regularization.documentMode} onChange={(event) => setRegularizationRule("documentMode", event.target.value)} bg={inputBg}>
+                    <option value="none">Not shown</option>
+                    <option value="optional">Optional</option>
+                    <option value="required">Required with request</option>
+                  </Select>
+                </FormControl>
+                <FormControl isRequired>
+                  <FormLabel fontSize="sm" fontWeight="600">Approval workflow</FormLabel>
+                  <Select value={String(rules.regularization.approvalWorkflow || "")} onChange={(event) => selectRegularizationWorkflow(event.target.value)} bg={inputBg}>
+                    <option value="">Select published workflow</option>
+                    {regularizationWorkflows.map((workflow) => {
+                      const published = workflow.effectivePublishedVersion || workflow.latestPublishedVersion;
+                      return <option key={workflow._id} value={workflow._id}>{workflow.name} (v{published?.versionNumber})</option>;
+                    })}
+                  </Select>
+                  {!regularizationWorkflows.length ? <FormHelperText>Create and publish an approval workflow enabled for Attendance corrections first.</FormHelperText> : null}
+                </FormControl>
+              </SimpleGrid>
+            </Stack>
           ) : null}
         </Box>
 

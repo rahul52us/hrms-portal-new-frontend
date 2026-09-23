@@ -19,6 +19,27 @@ export interface AttendanceRules {
   missingPunchTreatment: string;
   overtimeEnabled: boolean;
   overtimeStartsAfterMinutes: number;
+  regularization: AttendanceRegularizationRules;
+}
+
+export type AttendanceRegularizationType =
+  | "missing_punch_in"
+  | "missing_punch_out"
+  | "time_correction"
+  | "work_mode_correction"
+  | "full_day_correction";
+
+export interface AttendanceRegularizationRules {
+  enabled: boolean;
+  allowedTypes: AttendanceRegularizationType[];
+  requestStartDays: number;
+  maxBackdateDays: number;
+  monthlyRequestLimit: number;
+  minimumReasonLength: number;
+  documentMode: "none" | "optional" | "required";
+  approvalWorkflow?: string | null;
+  approvalWorkflowVersion?: string | null;
+  approvalWorkflowVersionNumber?: number | null;
 }
 
 export interface WorkScheduleRules {
@@ -117,7 +138,7 @@ export interface LeavePolicyRule {
   compOffClaimApprovalWorkflowVersionNumber?: number | null;
 }
 
-export type ApprovalRequestType = "leave_request" | "leave_encashment_request" | "remote_work_request" | "comp_off_claim";
+export type ApprovalRequestType = "leave_request" | "leave_encashment_request" | "remote_work_request" | "comp_off_claim" | "attendance_regularization_request";
 export type ApprovalStepType =
   | "reporting_manager"
   | "manager_manager"

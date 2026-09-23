@@ -2,6 +2,8 @@
 
 import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
+import { hasPermission, PERMISSION_KEYS } from "@/app/config/utils/permissions";
+import stores from "@/app/store/stores";
 import {
   Alert,
   AlertDescription,
@@ -9,6 +11,7 @@ import {
   Avatar,
   Badge,
   Box,
+  Button,
   Divider,
   Flex,
   HStack,
@@ -24,6 +27,10 @@ import {
   AttendanceOverviewRow,
   fetchAttendanceEmployeeDay,
 } from "./attendanceAdminApi";
+import type { AttendanceOperation } from "./attendanceAdminApi";
+import AttendanceAdjustmentDrawer from "./AttendanceAdjustmentDrawer";
+import AttendanceBulkActionDrawer from "./AttendanceBulkActionDrawer";
+import AttendanceRevisionDrawer from "./AttendanceRevisionDrawer";
 
 const titleCase = (value: string) =>
   String(value || "")
@@ -106,13 +113,22 @@ function PolicyRow({ label, value }: { label: string; value: any }) {
 export default function AttendanceDayDrawer({
   row,
   onClose,
+  onChanged,
 }: {
   row: AttendanceOverviewRow | null;
   onClose: () => void;
+  onChanged: () => void;
 }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [detailRevision, setDetailRevision] = useState(0);
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [actionOperation, setActionOperation] = useState<AttendanceOperation | null>(null);
+  const canAdjust = hasPermission(stores.auth.user, PERMISSION_KEYS.ADJUST_ATTENDANCE);
+  const canFinalize = hasPermission(stores.auth.user, PERMISSION_KEYS.FINALIZE_ATTENDANCE);
+  const canReopen = hasPermission(stores.auth.user, PERMISSION_KEYS.REOPEN_ATTENDANCE);
   const panel = useColorModeValue("gray.50", "gray.900");
   const border = useColorModeValue("gray.200", "gray.700");
 
@@ -141,12 +157,42 @@ export default function AttendanceDayDrawer({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
+  }, [detailRevision, row]);
+
+  useEffect(() => {
+    if (row) return;
+    setAdjustOpen(false);
+    setHistoryOpen(false);
+    setActionOperation(null);
   }, [row]);
+
+  const changed = () => {
+    setDetailRevision((value) => value + 1);
+    onChanged();
+  };
 
   const record = data?.record || null;
   const timezone = record?.timezone || data?.context?.timezone || row?.timezone || "Asia/Kolkata";
+  const currentRow = row && record
+    ? {
+        ...row,
+        recordId: String(record._id || row.recordId || ""),
+        state: record.state,
+        status: record.status,
+        workMode: record.workMode,
+        firstIn: (record.punchSessions || [])
+          .map((session: any) => session.punchIn)
+          .filter(Boolean)
+          .sort((left: string, right: string) => new Date(left).getTime() - new Date(right).getTime())[0] || null,
+        lastOut: (record.punchSessions || [])
+          .map((session: any) => session.punchOut)
+          .filter(Boolean)
+          .sort((left: string, right: string) => new Date(right).getTime() - new Date(left).getTime())[0] || null,
+      }
+    : row;
 
   return (
+    <>
     <DashboardDrawer
       isOpen={Boolean(row)}
       onClose={onClose}
@@ -157,7 +203,7 @@ export default function AttendanceDayDrawer({
       badgeContent={
         row ? (
           <Badge colorScheme={statusColor(row.status)} px={3} py={1.5} borderRadius="md">
-            {titleCase(row.status)}
+            {titleCase(record?.status || row.status)}
           </Badge>
         ) : undefined
       }
@@ -191,6 +237,20 @@ export default function AttendanceDayDrawer({
               </Text>
             </Box>
           </HStack>
+
+          {canAdjust || canFinalize || canReopen ? (
+            <Flex gap={2} flexWrap="wrap">
+              {canAdjust && record?.state !== "finalized" && !data.leaveRequest ? (
+                <Button size="sm" colorScheme="blue" onClick={() => setAdjustOpen(true)}>Adjust attendance</Button>
+              ) : null}
+              {canFinalize && record && record.state !== "finalized" ? (
+                <Button size="sm" variant="outline" onClick={() => setActionOperation("finalize")}>Finalize</Button>
+              ) : null}
+              {canReopen && record?.state === "finalized" ? (
+                <Button size="sm" variant="outline" onClick={() => setActionOperation("reopen")}>Reopen</Button>
+              ) : null}
+            </Flex>
+          ) : null}
 
           {data.context?.missingPolicies?.length ? (
             <Alert status="warning" borderRadius="md">
@@ -337,45 +397,43 @@ export default function AttendanceDayDrawer({
             </Stack>
           </Box>
 
-          <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}>
-            <Text fontSize="sm" fontWeight="800" mb={3}>
-              Revision history
-            </Text>
-            {data.revisions?.length ? (
-              <Stack spacing={3} divider={<Divider />}>
-                {data.revisions.map((revision: any) => (
-                  <Box key={revision._id} pb={3}>
-                    <Flex justify="space-between" gap={3} flexWrap="wrap">
-                      <Text fontSize="sm" fontWeight="700">
-                        {titleCase(revision.action)}
-                      </Text>
-                      <Text fontSize="xs" color="gray.500">
-                        {new Intl.DateTimeFormat("en-IN", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }).format(new Date(revision.createdAt))}
-                      </Text>
-                    </Flex>
-                    <Text fontSize="sm" mt={1}>
-                      {revision.reason || "Attendance record updated"}
-                    </Text>
-                    <Text fontSize="xs" color="gray.500" mt={1}>
-                      {revision.actor?.name || "System"} | Revision {revision.revisionNumber}
-                    </Text>
-                  </Box>
-                ))}
-              </Stack>
-            ) : (
-              <Text fontSize="sm" color="gray.500">
-                No revisions have been recorded.
-              </Text>
-            )}
-          </Box>
+          <Flex borderWidth="1px" borderColor={border} borderRadius="md" p={4} justify="space-between" align="center" gap={4}>
+            <Box>
+              <Text fontSize="sm" fontWeight="800">Revision history</Text>
+              <Text fontSize="sm" color="gray.500">{data.revisions?.length || 0} recorded change(s)</Text>
+            </Box>
+            <Button size="sm" variant="outline" onClick={() => setHistoryOpen(true)}>View history</Button>
+          </Flex>
         </Stack>
       ) : null}
     </DashboardDrawer>
+    <AttendanceAdjustmentDrawer
+      row={currentRow}
+      isOpen={adjustOpen}
+      onClose={() => setAdjustOpen(false)}
+      onSaved={changed}
+    />
+    <AttendanceBulkActionDrawer
+      isOpen={Boolean(actionOperation)}
+      rows={currentRow ? [currentRow] : []}
+      attendanceDate={row?.attendanceDate || ""}
+      canAdjust={false}
+      canFinalize={actionOperation === "finalize"}
+      canReopen={actionOperation === "reopen"}
+      initialOperation={actionOperation || undefined}
+      onClose={() => setActionOperation(null)}
+      onSaved={() => {
+        setActionOperation(null);
+        changed();
+      }}
+    />
+    <AttendanceRevisionDrawer
+      isOpen={historyOpen}
+      onClose={() => setHistoryOpen(false)}
+      employeeName={row?.employee.name || ""}
+      attendanceDate={row?.attendanceDate || ""}
+      revisions={data?.revisions || []}
+    />
+    </>
   );
 }

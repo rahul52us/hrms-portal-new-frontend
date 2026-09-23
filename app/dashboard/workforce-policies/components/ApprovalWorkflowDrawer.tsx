@@ -45,6 +45,7 @@ const REQUEST_TYPES: Array<{ value: ApprovalRequestType; label: string }> = [
   { value: "leave_encashment_request", label: "Leave encashment" },
   { value: "remote_work_request", label: "WFH requests" },
   { value: "comp_off_claim", label: "Comp-off claims" },
+  { value: "attendance_regularization_request", label: "Attendance corrections" },
 ];
 
 const STEP_TYPES: Array<{ value: ApprovalStepType; label: string }> = [
@@ -288,7 +289,7 @@ export default function ApprovalWorkflowDrawer({
               </FormHelperText>
             ) : null}
           </FormControl>
-          
+
           <Box h="1px" bg={borderColor} my={5} mx={-5} />
 
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5} alignItems="end">

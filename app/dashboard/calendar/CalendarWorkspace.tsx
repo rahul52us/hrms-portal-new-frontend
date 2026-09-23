@@ -86,7 +86,7 @@ function CalendarWorkspace() {
     <Stack spacing={5} maxW="1600px" mx="auto">
       <Flex justify="space-between" align="center" gap={3} flexWrap="wrap"><Heading size="lg">Calendar</Heading><HStack>
         <Tooltip label="Refresh calendar"><IconButton size={mobile ? "sm" : "md"} aria-label="Refresh calendar" icon={<FiRefreshCw />} variant="outline" isLoading={loading} onClick={() => setRevision((value) => value + 1)} /></Tooltip>
-        <Button size={mobile ? "sm" : "md"} as={Link} href={`/dashboard/requests?applyDate=${anchor}`} colorScheme="blue" leftIcon={<FiPlus />}>Apply</Button>
+        {scope === "mine" ? <Button size={mobile ? "sm" : "md"} as={Link} href={`/dashboard/requests?applyDate=${anchor}`} colorScheme="blue" leftIcon={<FiPlus />}>New request</Button> : null}
       </HStack></Flex>
       <Flex align="end" gap={3} flexWrap="wrap">
         <FormControl w={mobile && scope !== "mine" ? "calc(100% - 100px)" : { base: "100%", sm: "200px" }} minW={0}><FormLabel fontSize="sm">Calendar view</FormLabel><Select aria-label="Calendar scope" value={scope} onChange={(event) => changeScope(event.target.value as CalendarScope)}>{options.scopes.map((value) => <option key={value} value={value}>{scopeLabel[value]}</option>)}</Select></FormControl>
@@ -123,7 +123,7 @@ function CalendarWorkspace() {
         </Flex>) : <Text py={12} textAlign="center" color={muted}>No calendar items in this period.</Text>}
       </Stack> : <Box bg={surface} minW={0}><CalendarGrid anchor={anchor} mode={mode === "week" ? "week" : "month"} days={days} category={category} onDay={onDay} /></Box>)}
     </Stack>
-    <CalendarDayDrawer date={selectedDate} initialCategory={dayCategory} params={params} onClose={() => setSelectedDate(null)} onChanged={() => setRevision((value) => value + 1)} />
+    <CalendarDayDrawer date={selectedDate} initialCategory={dayCategory} params={params} canApplyForSelf={scope === "mine"} onClose={() => setSelectedDate(null)} onChanged={() => setRevision((value) => value + 1)} />
   </Box>;
 }
 export default observer(CalendarWorkspace);

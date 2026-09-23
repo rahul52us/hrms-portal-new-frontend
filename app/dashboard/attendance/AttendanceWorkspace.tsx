@@ -12,6 +12,7 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
   Collapse,
   Flex,
   HStack,
@@ -46,11 +47,15 @@ import {
   FiChevronRight,
   FiClock,
   FiFilter,
+  FiEdit3,
   FiRefreshCw,
   FiSearch,
+  FiUpload,
   FiUsers,
 } from "react-icons/fi";
 import AttendanceDayDrawer from "./AttendanceDayDrawer";
+import AttendanceBulkActionDrawer from "./AttendanceBulkActionDrawer";
+import AttendanceImportDrawer from "./AttendanceImportDrawer";
 import {
   AttendanceOverviewOptions,
   AttendanceOverviewRow,
@@ -93,6 +98,7 @@ const emptyFilters = {
   managerId: "",
   status: "all",
   workMode: "all",
+  exception: "all",
 };
 
 const dateKey = (date: Date) => {
@@ -206,6 +212,10 @@ function EmployeeIdentity({ row }: { row: AttendanceOverviewRow }) {
 
 const AttendanceWorkspace = observer(function AttendanceWorkspace() {
   const canView = hasPermission(stores.auth.user, PERMISSION_KEYS.VIEW_ATTENDANCE);
+  const canAdjust = hasPermission(stores.auth.user, PERMISSION_KEYS.ADJUST_ATTENDANCE);
+  const canFinalize = hasPermission(stores.auth.user, PERMISSION_KEYS.FINALIZE_ATTENDANCE);
+  const canReopen = hasPermission(stores.auth.user, PERMISSION_KEYS.REOPEN_ATTENDANCE);
+  const canImport = hasPermission(stores.auth.user, PERMISSION_KEYS.IMPORT_ATTENDANCE);
   const surface = useColorModeValue("white", "gray.800");
   const border = useColorModeValue("gray.200", "gray.700");
   const muted = useColorModeValue("gray.600", "gray.400");
@@ -224,6 +234,9 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   const [selectedRow, setSelectedRow] = useState<AttendanceOverviewRow | null>(null);
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const filterDisclosure = useDisclosure();
   const filtersVisible =
     useBreakpointValue({ base: filterDisclosure.isOpen, lg: true }) ?? false;
@@ -235,7 +248,8 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
 
   useEffect(() => {
     setPage(1);
-  }, [attendanceDate, debouncedSearch, filters.departmentId, filters.teamId, filters.officeLocationId, filters.managerId, filters.status, filters.workMode]);
+    setSelectedEmployeeIds(new Set());
+  }, [attendanceDate, debouncedSearch, filters.departmentId, filters.teamId, filters.officeLocationId, filters.managerId, filters.status, filters.workMode, filters.exception]);
 
   useEffect(() => {
     if (!canView) return;
@@ -264,6 +278,7 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
       managerId: filters.managerId || undefined,
       status: filters.status,
       workMode: filters.workMode,
+      exception: filters.exception,
     }),
     [attendanceDate, debouncedSearch, filters, page]
   );
@@ -303,11 +318,31 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
     (department) => department.id === filters.departmentId
   );
   const hasFilters = Object.entries(filters).some(
-    ([key, value]) => value && !(["status", "workMode"].includes(key) && value === "all")
+    ([key, value]) =>
+      value && !(["status", "workMode", "exception"].includes(key) && value === "all")
   );
   const historyWarnings =
     Number(diagnostics.currentAssignmentFallbackEmployees || 0) +
     Number(diagnostics.missingHistoryEmployees || 0);
+  const selectedRows = items.filter((row) => selectedEmployeeIds.has(row.employee.id));
+  const allPageSelected = Boolean(items.length) && selectedRows.length === items.length;
+
+  const toggleEmployee = (employeeId: string) => {
+    setSelectedEmployeeIds((current) => {
+      const next = new Set(current);
+      if (next.has(employeeId)) next.delete(employeeId);
+      else next.add(employeeId);
+      return next;
+    });
+  };
+
+  const togglePage = () => {
+    setSelectedEmployeeIds(
+      allPageSelected ? new Set() : new Set(items.map((row) => row.employee.id))
+    );
+  };
+
+  const refresh = () => setRevision((value) => value + 1);
 
   const setFilter = (key: keyof typeof emptyFilters, value: string) =>
     setFilters((current) => ({
@@ -327,7 +362,18 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
       onClick={() => setSelectedRow(row)}
     >
       <Flex justify="space-between" align="flex-start" gap={3}>
-        <EmployeeIdentity row={row} />
+        <HStack align="flex-start">
+          {(canAdjust || canFinalize || canReopen) ? (
+            <Checkbox
+              mt={2}
+              isChecked={selectedEmployeeIds.has(row.employee.id)}
+              onClick={(event) => event.stopPropagation()}
+              onChange={() => toggleEmployee(row.employee.id)}
+              aria-label={`Select ${row.employee.name}`}
+            />
+          ) : null}
+          <EmployeeIdentity row={row} />
+        </HStack>
         <Badge colorScheme={statusColor(row.status)}>{titleCase(row.status)}</Badge>
       </Flex>
       <SimpleGrid columns={2} spacing={3} mt={4}>
@@ -338,6 +384,14 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
         <Box>
           <Text fontSize="xs" color={muted}>Shift</Text>
           <Text fontSize="sm" fontWeight="600">{row.schedule.startTime && row.schedule.endTime ? `${row.schedule.startTime} - ${row.schedule.endTime}` : "Not configured"}</Text>
+        </Box>
+        <Box>
+          <Text fontSize="xs" color={muted}>Setup</Text>
+          {row.setupGaps?.length ? (
+            <Text fontSize="sm" fontWeight="600" color="red.500">Missing {row.setupGaps.map(titleCase).join(", ")}</Text>
+          ) : (
+            <Text fontSize="sm" fontWeight="600" color="green.600">Complete</Text>
+          )}
         </Box>
         <Box>
           <Text fontSize="xs" color={muted}>First in / Final out</Text>
@@ -371,6 +425,27 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
           </HStack>
         </Flex>
 
+        {canAdjust || canFinalize || canReopen || canImport ? (
+          <Flex justify="flex-end" gap={2} flexWrap="wrap">
+            {canAdjust || canFinalize || canReopen ? (
+              <Button
+                leftIcon={<FiEdit3 />}
+                colorScheme="blue"
+                variant="outline"
+                isDisabled={!selectedRows.length}
+                onClick={() => setBulkOpen(true)}
+              >
+                Bulk action{selectedRows.length ? ` (${selectedRows.length})` : ""}
+              </Button>
+            ) : null}
+            {canImport ? (
+              <Button leftIcon={<FiUpload />} colorScheme="blue" onClick={() => setImportOpen(true)}>
+                Import attendance
+              </Button>
+            ) : null}
+          </Flex>
+        ) : null}
+
         <SimpleGrid columns={{ base: 2, lg: 4 }} spacing={3}>
           <Metric label="EMPLOYEES" value={summary.employees} helper={`${summary.expected} expected`} icon={FiUsers} color="blue" />
           <Metric label="PRESENT" value={summary.present} helper={`${summary.punchedIn} punched in`} icon={FiCheckCircle} color="green" />
@@ -396,11 +471,11 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
             </HStack>
             <HStack>
               {hasFilters ? <Button size="sm" variant="ghost" onClick={() => setFilters(emptyFilters)}>Clear</Button> : null}
-              <Tooltip label="Refresh attendance"><IconButton aria-label="Refresh attendance" size="sm" variant="outline" icon={<FiRefreshCw />} isLoading={loading} onClick={() => setRevision((value) => value + 1)} /></Tooltip>
+              <Tooltip label="Refresh attendance"><IconButton aria-label="Refresh attendance" size="sm" variant="outline" icon={<FiRefreshCw />} isLoading={loading} onClick={refresh} /></Tooltip>
             </HStack>
           </Flex>
           <Collapse in={filtersVisible} animateOpacity>
-          <SimpleGrid columns={{ base: 1, sm: 2, lg: 4, xl: 7 }} spacing={3} p={4}>
+          <SimpleGrid columns={{ base: 1, sm: 2, lg: 4, xl: 8 }} spacing={3} p={4}>
             <InputGroup>
               <InputLeftElement pointerEvents="none"><FiSearch color="gray" /></InputLeftElement>
               <Input value={filters.search} onChange={(event) => setFilter("search", event.target.value)} placeholder="Employee name or code" />
@@ -440,6 +515,15 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
               <option value="hybrid">Hybrid</option>
               <option value="field">Field</option>
             </Select>
+            <Select value={filters.exception} onChange={(event) => setFilter("exception", event.target.value)}>
+              <option value="all">All exception types</option>
+              <option value="missing_punch">Missing punch</option>
+              <option value="late_arrival">Late arrival</option>
+              <option value="early_exit">Early exit</option>
+              <option value="absence">Absence</option>
+              <option value="overtime">Overtime</option>
+              <option value="setup_gap">Setup gap</option>
+            </Select>
           </SimpleGrid>
           </Collapse>
         </Box>
@@ -452,12 +536,21 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
             <Box py={16} px={4} textAlign="center"><Icon as={FiCalendar} boxSize={7} color="gray.400" /><Text mt={3} fontWeight="700">No attendance rows match these filters.</Text><Text fontSize="sm" color={muted}>Try another date or clear the active filters.</Text></Box>
           ) : <>
             <Box display={{ base: "none", lg: "block" }} overflowX="auto">
-              <Table size="sm" minW="1180px">
-                <Thead><Tr><Th>Employee</Th><Th>Organization</Th><Th>Shift</Th><Th>First in</Th><Th>Final out</Th><Th>Worked</Th><Th>Late / Early</Th><Th>Mode</Th><Th>Status</Th></Tr></Thead>
+              <Table size="sm" minW="1300px">
+                <Thead><Tr>
+                  {canAdjust || canFinalize || canReopen ? (
+                    <Th w="44px"><Checkbox isChecked={allPageSelected} isIndeterminate={selectedRows.length > 0 && !allPageSelected} onChange={togglePage} aria-label="Select employees on this page" /></Th>
+                  ) : null}
+                  <Th>Employee</Th><Th>Organization</Th><Th>Shift</Th><Th>Setup</Th><Th>First in</Th><Th>Final out</Th><Th>Worked</Th><Th>Late / Early</Th><Th>Mode</Th><Th>Status</Th>
+                </Tr></Thead>
                 <Tbody>{items.map((row) => <Tr key={row.employee.id} cursor="pointer" _hover={{ bg: rowHover }} onClick={() => setSelectedRow(row)}>
+                  {canAdjust || canFinalize || canReopen ? (
+                    <Td onClick={(event) => event.stopPropagation()}><Checkbox isChecked={selectedEmployeeIds.has(row.employee.id)} onChange={() => toggleEmployee(row.employee.id)} aria-label={`Select ${row.employee.name}`} /></Td>
+                  ) : null}
                   <Td><EmployeeIdentity row={row} /></Td>
                   <Td><Text fontSize="sm" fontWeight="600">{row.organization.department || "Not assigned"}</Text><Text fontSize="xs" color={muted}>{[row.organization.team, row.organization.officeLocation].filter(Boolean).join(" | ")}</Text></Td>
                   <Td><Text fontSize="sm">{row.schedule.startTime && row.schedule.endTime ? `${row.schedule.startTime} - ${row.schedule.endTime}` : "Not configured"}</Text><Text fontSize="xs" color={muted}>{row.timezone}</Text></Td>
+                  <Td>{row.setupGaps?.length ? <Text fontSize="xs" fontWeight="650" color="red.500">Missing {row.setupGaps.map(titleCase).join(", ")}</Text> : <Badge colorScheme="green" variant="subtle">Complete</Badge>}</Td>
                   <Td>{formatTime(row.firstIn, row.timezone)}</Td><Td>{formatTime(row.lastOut, row.timezone)}</Td><Td>{formatMinutes(row.workedMinutes)}</Td>
                   <Td><Text fontSize="sm">{formatMinutes(row.lateMinutes)} / {formatMinutes(row.earlyExitMinutes)}</Text>{row.overtimeMinutes ? <Text fontSize="xs" color="green.600">OT {formatMinutes(row.overtimeMinutes)}</Text> : null}</Td>
                   <Td><Badge variant="outline">{titleCase(row.workMode)}</Badge></Td><Td><Badge colorScheme={statusColor(row.status)}>{titleCase(row.status)}</Badge></Td>
@@ -472,7 +565,25 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
           </Flex>
         </Box>
       </Stack>
-      <AttendanceDayDrawer row={selectedRow} onClose={() => setSelectedRow(null)} />
+      <AttendanceDayDrawer row={selectedRow} onClose={() => setSelectedRow(null)} onChanged={refresh} />
+      <AttendanceBulkActionDrawer
+        isOpen={bulkOpen}
+        rows={selectedRows}
+        attendanceDate={attendanceDate}
+        canAdjust={canAdjust}
+        canFinalize={canFinalize}
+        canReopen={canReopen}
+        onClose={() => {
+          setBulkOpen(false);
+          setSelectedEmployeeIds(new Set());
+        }}
+        onSaved={refresh}
+      />
+      <AttendanceImportDrawer
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        onApplied={refresh}
+      />
     </PermissionGate>
   );
 });

@@ -7,14 +7,19 @@ import { getApiErrorMessage } from "@/app/config/utils/apiError";
 import { Alert, AlertIcon, Badge, Box, Button, Flex, FormControl, FormLabel, HStack, IconButton, Select, Skeleton, Stack, Text, Textarea, Tooltip, useToast } from "@chakra-ui/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { FiArrowLeft, FiCheck, FiChevronLeft, FiChevronRight, FiPlus, FiX } from "react-icons/fi";
+import { FiArrowLeft, FiCheck, FiChevronLeft, FiChevronRight, FiEdit3, FiPlus, FiX } from "react-icons/fi";
 import { CalendarCategory, CalendarEvent, CalendarRow, fetchCalendarDay } from "./calendarApi";
 
 export const displayDate = (value: string) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`));
 const label = (value: string) => ({ full: "Full day", first_half: "First half", second_half: "Second half" }[value] || value.replace(/_/g, " "));
+const localToday = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+};
 
-export default function CalendarDayDrawer({ date, params, initialCategory, onClose, onChanged }: {
-  date: string | null; params: Record<string, any>; initialCategory: CalendarCategory; onClose: () => void; onChanged: () => void;
+export default function CalendarDayDrawer({ date, params, initialCategory, canApplyForSelf, onClose, onChanged }: {
+  date: string | null; params: Record<string, any>; initialCategory: CalendarCategory; canApplyForSelf: boolean; onClose: () => void; onChanged: () => void;
 }) {
   const toast = useToast();
   const [category, setCategory] = useState<CalendarCategory>(initialCategory);
@@ -69,7 +74,14 @@ export default function CalendarDayDrawer({ date, params, initialCategory, onClo
         <Select aria-label="Day category" size="sm" maxW="230px" value={category} onChange={(event) => { setCategory(event.target.value as CalendarCategory); setPage(1); }}>
           <option value="all">All calendar items</option><option value="leave">Leave</option><option value="wfh">Work from home</option><option value="holiday">Holidays</option><option value="weekly_off">Weekly offs</option>
         </Select>
-        <Button as={Link} href={`/dashboard/requests?applyDate=${date || ""}`} size="sm" colorScheme="blue" leftIcon={<FiPlus />}>Apply</Button>
+        {canApplyForSelf ? (
+          <HStack flexWrap="wrap">
+            <Button as={Link} href={`/dashboard/requests?applyDate=${date || ""}`} size="sm" variant="outline" leftIcon={<FiPlus />}>New request</Button>
+            {date && date <= localToday() ? (
+              <Button as={Link} href={`/dashboard/requests?applyDate=${date}&requestType=attendance_correction`} size="sm" colorScheme="blue" leftIcon={<FiEdit3 />}>Correct attendance</Button>
+            ) : null}
+          </HStack>
+        ) : null}
       </Flex>
       {error ? <Alert status="error"><AlertIcon />{error}</Alert> : loading ? <Stack><Skeleton h="90px" /><Skeleton h="90px" /><Skeleton h="90px" /></Stack> : items.length ? <Stack spacing={0} divider={<Box borderBottomWidth="1px" />}>
         {items.map((row) => <Box key={row.employee.id} py={4}>

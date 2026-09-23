@@ -8,6 +8,7 @@ import {
   AlertIcon,
   Badge,
   Box,
+  Button,
   Divider,
   Flex,
   SimpleGrid,
@@ -16,8 +17,10 @@ import {
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { FiEdit3 } from "react-icons/fi";
 import { AttendanceRecord, fetchMyAttendanceDay } from "./attendanceApi";
 
 const titleCase = (value: string) =>
@@ -32,6 +35,12 @@ const displayDate = (value: string) =>
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(`${value}T00:00:00Z`));
+
+const localToday = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+};
 
 const formatMinutes = (value: number | null | undefined) => {
   const minutes = Math.max(0, Number(value || 0));
@@ -87,9 +96,11 @@ function PolicyRow({ label, value }: { label: string; value: any }) {
 }
 
 export default function MyAttendanceDayDrawer({
+  attendanceDate,
   record,
   onClose,
 }: {
+  attendanceDate: string | null;
   record: AttendanceRecord | null;
   onClose: () => void;
 }) {
@@ -100,7 +111,7 @@ export default function MyAttendanceDayDrawer({
   const border = useColorModeValue("gray.200", "gray.700");
 
   useEffect(() => {
-    if (!record) {
+    if (!attendanceDate) {
       setData(null);
       setError("");
       return;
@@ -108,7 +119,7 @@ export default function MyAttendanceDayDrawer({
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    fetchMyAttendanceDay(record.attendanceDate, controller.signal)
+    fetchMyAttendanceDay(attendanceDate, controller.signal)
       .then(setData)
       .catch((requestError: any) => {
         if (!controller.signal.aborted) {
@@ -119,27 +130,45 @@ export default function MyAttendanceDayDrawer({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [record]);
+  }, [attendanceDate]);
 
   const detailRecord = data?.record || record;
   const timezone = detailRecord?.timezone || data?.context?.timezone || "Asia/Kolkata";
-  const status = detailRecord?.status || record?.status || "pending";
+  const status = detailRecord?.status || record?.status || "not_marked";
+  const correctionPending = data?.regularizationRequest?.status === "submitted";
+  const canRequestCorrection = Boolean(attendanceDate && attendanceDate <= localToday());
 
   return (
     <DashboardDrawer
-      isOpen={Boolean(record)}
+      isOpen={Boolean(attendanceDate)}
       onClose={onClose}
       titlePrefix="Attendance"
-      titleSuffix={record ? displayDate(record.attendanceDate) : ""}
+      titleSuffix={attendanceDate ? displayDate(attendanceDate) : ""}
       subtitle="Punches, calculation, and configuration used"
       maxW={{ base: "100%", lg: "680px" }}
-      badgeContent={record ? <Badge colorScheme={statusColor(status)}>{titleCase(status)}</Badge> : undefined}
+      badgeContent={attendanceDate ? <Badge colorScheme={statusColor(status)}>{titleCase(status)}</Badge> : undefined}
+      footerContent={canRequestCorrection ? (
+        <Flex w="full" justify="flex-end">
+          {correctionPending ? (
+            <Button colorScheme="orange" isDisabled>Correction pending</Button>
+          ) : (
+            <Button
+              as={Link}
+              href={`/dashboard/requests?applyDate=${attendanceDate}&requestType=attendance_correction`}
+              colorScheme="blue"
+              leftIcon={<FiEdit3 />}
+            >
+              Request attendance correction
+            </Button>
+          )}
+        </Flex>
+      ) : undefined}
     >
       {loading ? (
         <Stack spacing={4}><Skeleton h="90px" /><Skeleton h="180px" /><Skeleton h="160px" /></Stack>
       ) : error ? (
         <Alert status="error" borderRadius="md"><AlertIcon /><AlertDescription>{error}</AlertDescription></Alert>
-      ) : data && record ? (
+      ) : data && attendanceDate ? (
         <Stack spacing={5}>
           <Alert status={status === "absent" || status === "incomplete" ? "warning" : "info"} borderRadius="md">
             <AlertIcon />
@@ -194,6 +223,24 @@ export default function MyAttendanceDayDrawer({
                   ? `${data.leaveRequest.leaveTypeNameSnapshot || "Leave"}: ${data.leaveRequest.reason || "No reason provided"}`
                   : `Work from home: ${data.remoteWorkRequest.reason || "No reason provided"}`}
               </Text>
+            </Box>
+          ) : null}
+
+          {data.regularizationRequest ? (
+            <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}>
+              <Flex justify="space-between" gap={3} align="start">
+                <Box>
+                  <Text fontSize="sm" fontWeight="800">Attendance correction</Text>
+                  <Text mt={1} fontSize="sm">{titleCase(data.regularizationRequest.correctionType)}</Text>
+                  <Text mt={1} fontSize="xs" color="gray.500">{data.regularizationRequest.reason}</Text>
+                  {data.regularizationRequest.status === "submitted" ? (
+                    <Text mt={2} fontSize="xs" color="orange.600" fontWeight="700">
+                      Awaiting {data.regularizationRequest.approvalInstance?.steps?.find((step: any) => step.order === data.regularizationRequest.approvalInstance?.currentStepOrder)?.nameSnapshot || data.regularizationRequest.approverNameSnapshot || "approval"}
+                    </Text>
+                  ) : null}
+                </Box>
+                <Badge colorScheme={data.regularizationRequest.status === "approved" ? "green" : data.regularizationRequest.status === "rejected" ? "red" : "orange"}>{titleCase(data.regularizationRequest.status)}</Badge>
+              </Flex>
             </Box>
           ) : null}
 

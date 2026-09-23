@@ -120,6 +120,12 @@ function currentMonthKey() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function localToday() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+}
+
 function monthRange(month: string) {
   const [year, monthNumber] = month.split("-").map(Number);
   const lastDay = new Date(year, monthNumber, 0).getDate();
@@ -167,6 +173,7 @@ export default function MyAttendanceWorkspace() {
   const [view, setView] = useState<"list" | "calendar">("list");
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
 
   const range = useMemo(
@@ -299,33 +306,47 @@ export default function MyAttendanceWorkspace() {
 
           {loading ? (
             <Stack p={4}><Skeleton h="72px" /><Skeleton h="72px" /><Skeleton h="72px" /></Stack>
-          ) : records.length === 0 ? (
-            <Box py={14} textAlign="center"><Icon as={FiClock} boxSize={6} color={muted} /><Text mt={2} fontWeight="700">No attendance records match these filters.</Text><Text fontSize="sm" color={muted}>Try another month, date, or status.</Text></Box>
           ) : view === "calendar" ? (
             <Box p={{ base: 2, md: 4 }} overflowX="auto">
               <SimpleGrid columns={7} spacing={1} minW="620px">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => <Text key={day} py={2} textAlign="center" fontSize="xs" fontWeight="800" color={muted}>{day}</Text>)}
-                {calendarDays.map((item, index) => item ? (
-                  <Box
-                    as={item.record ? "button" : "div"}
-                    key={item.date}
-                    minH="92px"
-                    p={2}
-                    textAlign="left"
-                    borderWidth="1px"
-                    borderColor={border}
-                    borderRadius="md"
-                    bg={item.record ? surface : pageBg}
-                    cursor={item.record ? "pointer" : "default"}
-                    _hover={item.record ? { borderColor: "blue.300", bg: hoverBg } : undefined}
-                    onClick={() => item.record && setSelectedRecord(item.record)}
-                  >
-                    <Text fontSize="sm" fontWeight="800">{item.day}</Text>
-                    {item.record ? <Stack mt={2} spacing={1}><Badge alignSelf="flex-start" colorScheme={statusColor(item.record.status)} fontSize="10px">{titleCase(item.record.status)}</Badge><Text fontSize="xs" color={muted}>{formatMinutes(item.record.workedMinutes)}</Text></Stack> : null}
-                  </Box>
-                ) : <Box key={`blank-${index}`} minH="92px" />)}
+                {calendarDays.map((item, index) => {
+                  if (!item) return <Box key={`blank-${index}`} minH="92px" />;
+                  const canOpen = item.date <= localToday();
+                  return (
+                    <Box
+                      as={canOpen ? "button" : "div"}
+                      key={item.date}
+                      minH="92px"
+                      p={2}
+                      textAlign="left"
+                      borderWidth="1px"
+                      borderColor={border}
+                      borderRadius="md"
+                      bg={item.record ? surface : pageBg}
+                      cursor={canOpen ? "pointer" : "default"}
+                      _hover={canOpen ? { borderColor: "blue.300", bg: hoverBg } : undefined}
+                      onClick={() => {
+                        if (!canOpen) return;
+                        setSelectedDate(item.date);
+                        setSelectedRecord(item.record);
+                      }}
+                    >
+                      <Text fontSize="sm" fontWeight="800">{item.day}</Text>
+                      {item.record ? (
+                        <Stack mt={2} spacing={1}>
+                          <Badge alignSelf="flex-start" colorScheme={statusColor(item.record.status)} fontSize="10px">{titleCase(item.record.status)}</Badge>
+                          {item.record.regularization ? <Badge alignSelf="flex-start" colorScheme={item.record.regularization.status === "approved" ? "green" : item.record.regularization.status === "rejected" ? "red" : "orange"} fontSize="9px">Correction {titleCase(item.record.regularization.status)}</Badge> : null}
+                          <Text fontSize="xs" color={muted}>{formatMinutes(item.record.workedMinutes)}</Text>
+                        </Stack>
+                      ) : canOpen ? <Text mt={2} fontSize="xs" color={muted}>Review day</Text> : null}
+                    </Box>
+                  );
+                })}
               </SimpleGrid>
             </Box>
+          ) : records.length === 0 ? (
+            <Box py={14} textAlign="center"><Icon as={FiClock} boxSize={6} color={muted} /><Text mt={2} fontWeight="700">No attendance records match these filters.</Text><Text fontSize="sm" color={muted}>Try another month, date, or status.</Text></Box>
           ) : (
             <Stack spacing={0}>
               {records.map((item, index) => (
@@ -342,7 +363,8 @@ export default function MyAttendanceWorkspace() {
                   </SimpleGrid>
                   <HStack justify={{ base: "space-between", md: "flex-end" }} minW={{ md: "155px" }}>
                     <Badge colorScheme={statusColor(item.status)}>{titleCase(item.status)}</Badge>
-                    <Tooltip label="View attendance details"><IconButton aria-label={`View attendance for ${item.attendanceDate}`} size="sm" variant="ghost" icon={<FiEye />} onClick={() => setSelectedRecord(item)} /></Tooltip>
+                    {item.regularization ? <Badge colorScheme={item.regularization.status === "approved" ? "green" : item.regularization.status === "rejected" ? "red" : "orange"}>Correction {titleCase(item.regularization.status)}</Badge> : null}
+                    <Tooltip label="View attendance details"><IconButton aria-label={`View attendance for ${item.attendanceDate}`} size="sm" variant="ghost" icon={<FiEye />} onClick={() => { setSelectedDate(item.attendanceDate); setSelectedRecord(item); }} /></Tooltip>
                   </HStack>
                 </Flex>
               ))}
@@ -358,7 +380,11 @@ export default function MyAttendanceWorkspace() {
         </Box>
       </Stack>
 
-      <MyAttendanceDayDrawer record={selectedRecord} onClose={() => setSelectedRecord(null)} />
+      <MyAttendanceDayDrawer
+        attendanceDate={selectedDate}
+        record={selectedRecord}
+        onClose={() => { setSelectedDate(null); setSelectedRecord(null); }}
+      />
     </Box>
   );
 }

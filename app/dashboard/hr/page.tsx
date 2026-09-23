@@ -18,11 +18,10 @@ import {
   Icon,
   Progress,
   SimpleGrid,
-  Spinner,
   Stack,
   Text,
   VStack,
-  useColorModeValue,
+  useColorMode,
   Skeleton
 } from "@chakra-ui/react";
 import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
@@ -35,7 +34,6 @@ import {
   FiCalendar,
   FiCheckCircle,
   FiClock,
-  FiInbox,
   FiMapPin,
   FiPieChart,
   FiPlus,
@@ -46,15 +44,8 @@ import {
 } from "react-icons/fi";
 
 const numberValue = (value: any) => Number(value || 0);
-
-const formatRole = (role: string) => {
-  const normalized = String(role || "").toLowerCase();
-  if (normalized === "hradmin") return "HR Admin";
-  if (normalized === "hr") return "HR";
-  if (normalized === "departmenthead") return "Department Head";
-  if (/^l\d+[-\s]?manager$/i.test(normalized)) return "Employee";
-  return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : "User";
-};
+const colorValue = <T,>(colorMode: string, lightValue: T, darkValue: T) =>
+  colorMode === "light" ? lightValue : darkValue;
 
 const formatDate = (value: any) => {
   if (!value) return "Not set";
@@ -68,10 +59,11 @@ const formatDate = (value: any) => {
 };
 
 const Section = ({ title, helper, children, action }: any) => {
-  const cardBg = useColorModeValue("white", "gray.800");
-  const shadow = useColorModeValue("0 4px 24px -6px rgba(0,0,0,0.06)", "0 4px 24px -6px rgba(0,0,0,0.5)");
-  const muted = useColorModeValue("gray.500", "gray.400");
-  const brandColor = useColorModeValue("blue.500", "blue.400");
+  const { colorMode } = useColorMode();
+  const cardBg = colorValue(colorMode, "white", "gray.800");
+  const shadow = colorValue(colorMode, "0 4px 24px -6px rgba(0,0,0,0.06)", "0 4px 24px -6px rgba(0,0,0,0.5)");
+  const muted = colorValue(colorMode, "gray.500", "gray.400");
+  const brandColor = colorValue(colorMode, "blue.500", "blue.400");
 
   return (
     <Box
@@ -86,10 +78,10 @@ const Section = ({ title, helper, children, action }: any) => {
           <HStack spacing={3} align="center" mb={1.5}>
             <Box w="5px" h="20px" bg={brandColor} borderRadius="full" />
             <Text fontSize="xl" fontWeight="900" letterSpacing="-0.5px">
-              <Box as="span" color={useColorModeValue("gray.900", "white")}>
+              <Box as="span" color={colorValue(colorMode, "gray.900", "white")}>
                 {title.split(" ")[0]}{" "}
               </Box>
-              <Box as="span" bgGradient={useColorModeValue("linear(to-r, blue.600, blue.800)", "linear(to-r, blue.200, blue.400)")} bgClip="text">
+              <Box as="span" bgGradient={colorValue(colorMode, "linear(to-r, blue.600, blue.800)", "linear(to-r, blue.200, blue.400)")} bgClip="text">
                 {title.split(" ").slice(1).join(" ")}
               </Box>
             </Text>
@@ -108,31 +100,32 @@ const Section = ({ title, helper, children, action }: any) => {
 };
 
 const BreakdownList = ({ items = [], total = 0, emptyText = "No data yet", colorScheme = "blue", icon = FiPieChart }: any) => {
-  const muted = useColorModeValue("gray.500", "gray.400");
+  const { colorMode } = useColorMode();
+  const muted = colorValue(colorMode, "gray.500", "gray.400");
 
   if (!items.length) {
     return (
       <Center
         py={8}
         px={4}
-        bg={useColorModeValue(`${colorScheme}.50`, `color-mix(in srgb, var(--chakra-colors-${colorScheme}-400) 15%, transparent)`)}
+        bg={colorValue(colorMode, `${colorScheme}.50`, `color-mix(in srgb, var(--chakra-colors-${colorScheme}-400) 15%, transparent)`)}
         borderRadius="2xl"
         borderWidth="1px"
-        borderColor={useColorModeValue(`${colorScheme}.200`, `color-mix(in srgb, var(--chakra-colors-${colorScheme}-400) 30%, transparent)`)}
+        borderColor={colorValue(colorMode, `${colorScheme}.200`, `color-mix(in srgb, var(--chakra-colors-${colorScheme}-400) 30%, transparent)`)}
       >
         <VStack spacing={3}>
           <Center
             boxSize={12}
-            bg={useColorModeValue("white", `color-mix(in srgb, var(--chakra-colors-${colorScheme}-400) 25%, transparent)`)}
+            bg={colorValue(colorMode, "white", `color-mix(in srgb, var(--chakra-colors-${colorScheme}-400) 25%, transparent)`)}
             borderRadius="full"
             boxShadow="sm"
-            color={useColorModeValue(`${colorScheme}.500`, `${colorScheme}.300`)}
+            color={colorValue(colorMode, `${colorScheme}.500`, `${colorScheme}.300`)}
             borderWidth="1px"
-            borderColor={useColorModeValue(`${colorScheme}.100`, "transparent")}
+            borderColor={colorValue(colorMode, `${colorScheme}.100`, "transparent")}
           >
             <Icon as={icon} boxSize={5} />
           </Center>
-          <Text fontSize="sm" fontWeight="700" color={useColorModeValue(`${colorScheme}.800`, `${colorScheme}.200`)}>
+          <Text fontSize="sm" fontWeight="700" color={colorValue(colorMode, `${colorScheme}.800`, `${colorScheme}.200`)}>
             {emptyText}
           </Text>
         </VStack>
@@ -164,30 +157,31 @@ const BreakdownList = ({ items = [], total = 0, emptyText = "No data yet", color
 };
 
 const PersonList = ({ items = [], emptyText }: any) => {
-  const muted = useColorModeValue("gray.500", "gray.400");
-  const borderColor = useColorModeValue("gray.100", "gray.700");
+  const { colorMode } = useColorMode();
+  const muted = colorValue(colorMode, "gray.500", "gray.400");
+  const borderColor = colorValue(colorMode, "gray.100", "gray.700");
 
   if (!items.length) {
     return (
       <Center
         py={8}
         px={4}
-        bg={useColorModeValue("purple.50", "purple.900/20")}
+        bg={colorValue(colorMode, "purple.50", "purple.900/20")}
         borderRadius="2xl"
         borderWidth="1px"
-        borderColor={useColorModeValue("purple.100", "purple.800/50")}
+        borderColor={colorValue(colorMode, "purple.100", "purple.800/50")}
       >
         <VStack spacing={3}>
           <Center
             boxSize={12}
-            bg={useColorModeValue("white", "purple.800")}
+            bg={colorValue(colorMode, "white", "purple.800")}
             borderRadius="full"
             boxShadow="sm"
-            color={useColorModeValue("purple.500", "purple.300")}
+            color={colorValue(colorMode, "purple.500", "purple.300")}
           >
             <Icon as={FiUsers} boxSize={5} />
           </Center>
-          <Text fontSize="sm" fontWeight="700" color={useColorModeValue("purple.800", "purple.200")}>
+          <Text fontSize="sm" fontWeight="700" color={colorValue(colorMode, "purple.800", "purple.200")}>
             {emptyText}
           </Text>
         </VStack>
@@ -230,9 +224,10 @@ const PersonList = ({ items = [], emptyText }: any) => {
 const HrDashboardPage = observer(() => {
   const { auth, dashboardStore } = stores;
   const router = useRouter();
-  const cardBg = useColorModeValue("white", "gray.800");
-  const borderColor = useColorModeValue("gray.200", "gray.700");
-  const muted = useColorModeValue("gray.500", "gray.400");
+  const { colorMode } = useColorMode();
+  const cardBg = colorValue(colorMode, "white", "gray.800");
+  const borderColor = colorValue(colorMode, "gray.200", "gray.700");
+  const muted = colorValue(colorMode, "gray.500", "gray.400");
   const canViewDashboard = hasPermission(auth.user, PERMISSION_KEYS.VIEW_DASHBOARD);
   const summary = dashboardStore.hrSummary || {};
   const stats = summary.summary || {};
@@ -380,11 +375,11 @@ const HrDashboardPage = observer(() => {
                             height="auto"
                             p={4}
                             borderWidth="1px"
-                            borderColor={useColorModeValue(
+                            borderColor={colorValue(colorMode, 
                               `${scheme}.200`,
                               `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 40%, transparent)`
                             )}
-                            bg={useColorModeValue(
+                            bg={colorValue(colorMode, 
                               `${scheme}.50`,
                               `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 25%, transparent)`
                             )}
@@ -397,8 +392,8 @@ const HrDashboardPage = observer(() => {
                             _hover={hasWork ? {
                               transform: "translateY(-2px)",
                               boxShadow: "sm",
-                              borderColor: useColorModeValue(`${scheme}.300`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 60%, transparent)`),
-                              bg: useColorModeValue(`${scheme}.100`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 35%, transparent)`)
+                              borderColor: colorValue(colorMode, `${scheme}.300`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 60%, transparent)`),
+                              bg: colorValue(colorMode, `${scheme}.100`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 35%, transparent)`)
                             } : undefined}
                             transition="all 0.2s"
                             _disabled={{ opacity: 0.75, cursor: "not-allowed" }}
@@ -410,10 +405,10 @@ const HrDashboardPage = observer(() => {
                               width="full"
                             >
                               <Box minW={0} textAlign="left">
-                                <Text fontSize="sm" fontWeight="800" color={useColorModeValue(`${scheme}.800`, `${scheme}.100`)} noOfLines={1}>
+                                <Text fontSize="sm" fontWeight="800" color={colorValue(colorMode, `${scheme}.800`, `${scheme}.100`)} noOfLines={1}>
                                   {item.label}
                                 </Text>
-                                <Text fontSize="xs" color={useColorModeValue(`${scheme}.700`, `${scheme}.300`)} mt={1}>
+                                <Text fontSize="xs" color={colorValue(colorMode, `${scheme}.700`, `${scheme}.300`)} mt={1}>
                                   {hasWork
                                     ? "Open employee work queue"
                                     : "No action required"}
@@ -476,25 +471,25 @@ const HrDashboardPage = observer(() => {
                             px={4}
                             borderRadius="xl"
                             borderWidth="1px"
-                            borderColor={useColorModeValue(`${scheme}.200`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 40%, transparent)`)}
-                            bg={useColorModeValue(`${scheme}.50`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 25%, transparent)`)}
+                            borderColor={colorValue(colorMode, `${scheme}.200`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 40%, transparent)`)}
+                            bg={colorValue(colorMode, `${scheme}.50`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 25%, transparent)`)}
                             leftIcon={
-                              <Center boxSize={8} borderRadius="md" bg={useColorModeValue(`${scheme}.100`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 35%, transparent)`)} color={useColorModeValue(`${scheme}.600`, `${scheme}.200`)} mr={2}>
+                              <Center boxSize={8} borderRadius="md" bg={colorValue(colorMode, `${scheme}.100`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 35%, transparent)`)} color={colorValue(colorMode, `${scheme}.600`, `${scheme}.200`)} mr={2}>
                                 <Icon as={action.icon} boxSize={4} />
                               </Center>
                             }
                             onClick={() => router.push(action.href)}
                             _hover={{
-                              bg: useColorModeValue(`${scheme}.100`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 35%, transparent)`),
+                              bg: colorValue(colorMode, `${scheme}.100`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 35%, transparent)`),
                               transform: "translateX(4px)",
-                              borderColor: useColorModeValue(`${scheme}.300`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 60%, transparent)`),
+                              borderColor: colorValue(colorMode, `${scheme}.300`, `color-mix(in srgb, var(--chakra-colors-${scheme}-400) 60%, transparent)`),
                             }}
                             transition="all 0.2s"
                             fontWeight="700"
                             fontSize="sm"
                             display="flex"
                             alignItems="center"
-                            color={useColorModeValue(`${scheme}.800`, `${scheme}.100`)}
+                            color={colorValue(colorMode, `${scheme}.800`, `${scheme}.100`)}
                           >
                             {action.label}
                           </Button>
@@ -506,17 +501,17 @@ const HrDashboardPage = observer(() => {
                     <Section title="Scope" helper={scope.mode === "scoped" ? "This HR user is limited to the scope below." : "This account can work across the company."}>
                       <Stack spacing={4}>
                         <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={3}>
-                          <Box bg={useColorModeValue("purple.50", "color-mix(in srgb, var(--chakra-colors-purple-400) 15%, transparent)")} p={3} borderRadius="xl" borderWidth="1px" borderColor={useColorModeValue("purple.200", "color-mix(in srgb, var(--chakra-colors-purple-400) 30%, transparent)")}>
-                            <Text fontSize="xs" fontWeight="800" color={useColorModeValue("purple.600", "purple.300")} textTransform="uppercase">Depts</Text>
-                            <Text fontSize="xl" fontWeight="900" mt={1} color={useColorModeValue("purple.900", "purple.100")}>{numberValue(stats.departments)}</Text>
+                          <Box bg={colorValue(colorMode, "purple.50", "color-mix(in srgb, var(--chakra-colors-purple-400) 15%, transparent)")} p={3} borderRadius="xl" borderWidth="1px" borderColor={colorValue(colorMode, "purple.200", "color-mix(in srgb, var(--chakra-colors-purple-400) 30%, transparent)")}>
+                            <Text fontSize="xs" fontWeight="800" color={colorValue(colorMode, "purple.600", "purple.300")} textTransform="uppercase">Depts</Text>
+                            <Text fontSize="xl" fontWeight="900" mt={1} color={colorValue(colorMode, "purple.900", "purple.100")}>{numberValue(stats.departments)}</Text>
                           </Box>
-                          <Box bg={useColorModeValue("teal.50", "color-mix(in srgb, var(--chakra-colors-teal-400) 15%, transparent)")} p={3} borderRadius="xl" borderWidth="1px" borderColor={useColorModeValue("teal.200", "color-mix(in srgb, var(--chakra-colors-teal-400) 30%, transparent)")}>
-                            <Text fontSize="xs" fontWeight="800" color={useColorModeValue("teal.600", "teal.300")} textTransform="uppercase">Teams</Text>
-                            <Text fontSize="xl" fontWeight="900" mt={1} color={useColorModeValue("teal.900", "teal.100")}>{numberValue(stats.teams)}</Text>
+                          <Box bg={colorValue(colorMode, "teal.50", "color-mix(in srgb, var(--chakra-colors-teal-400) 15%, transparent)")} p={3} borderRadius="xl" borderWidth="1px" borderColor={colorValue(colorMode, "teal.200", "color-mix(in srgb, var(--chakra-colors-teal-400) 30%, transparent)")}>
+                            <Text fontSize="xs" fontWeight="800" color={colorValue(colorMode, "teal.600", "teal.300")} textTransform="uppercase">Teams</Text>
+                            <Text fontSize="xl" fontWeight="900" mt={1} color={colorValue(colorMode, "teal.900", "teal.100")}>{numberValue(stats.teams)}</Text>
                           </Box>
-                          <Box bg={useColorModeValue("blue.50", "color-mix(in srgb, var(--chakra-colors-blue-400) 15%, transparent)")} p={3} borderRadius="xl" borderWidth="1px" borderColor={useColorModeValue("blue.200", "color-mix(in srgb, var(--chakra-colors-blue-400) 30%, transparent)")}>
-                            <Text fontSize="xs" fontWeight="800" color={useColorModeValue("blue.600", "blue.300")} textTransform="uppercase">Locations</Text>
-                            <Text fontSize="xl" fontWeight="900" mt={1} color={useColorModeValue("blue.900", "blue.100")}>{numberValue(stats.locations)}</Text>
+                          <Box bg={colorValue(colorMode, "blue.50", "color-mix(in srgb, var(--chakra-colors-blue-400) 15%, transparent)")} p={3} borderRadius="xl" borderWidth="1px" borderColor={colorValue(colorMode, "blue.200", "color-mix(in srgb, var(--chakra-colors-blue-400) 30%, transparent)")}>
+                            <Text fontSize="xs" fontWeight="800" color={colorValue(colorMode, "blue.600", "blue.300")} textTransform="uppercase">Locations</Text>
+                            <Text fontSize="xl" fontWeight="900" mt={1} color={colorValue(colorMode, "blue.900", "blue.100")}>{numberValue(stats.locations)}</Text>
                           </Box>
                         </SimpleGrid>
                         {scope.mode === "scoped" ? (
@@ -545,7 +540,7 @@ const HrDashboardPage = observer(() => {
                         <Box pl={4} py={1} borderLeftWidth="3px" borderLeftColor="green.400">
                           <HStack mb={2}>
                             <Icon as={FiTrendingUp} color="green.500" />
-                            <Text fontSize="sm" fontWeight="800" color={useColorModeValue("gray.800", "white")}>New Joiners</Text>
+                            <Text fontSize="sm" fontWeight="800" color={colorValue(colorMode, "gray.800", "white")}>New Joiners</Text>
                           </HStack>
                           {(summary.upcoming?.newJoiners || []).length ? (
                             <Stack spacing={1}>
@@ -562,7 +557,7 @@ const HrDashboardPage = observer(() => {
                         <Box pl={4} py={1} borderLeftWidth="3px" borderLeftColor="purple.400">
                           <HStack mb={2}>
                             <Icon as={FiCalendar} color="purple.500" />
-                            <Text fontSize="sm" fontWeight="800" color={useColorModeValue("gray.800", "white")}>Birthdays</Text>
+                            <Text fontSize="sm" fontWeight="800" color={colorValue(colorMode, "gray.800", "white")}>Birthdays</Text>
                           </HStack>
                           {(summary.upcoming?.birthdays || []).length ? (
                             <Stack spacing={1}>
@@ -579,7 +574,7 @@ const HrDashboardPage = observer(() => {
                         <Box pl={4} py={1} borderLeftWidth="3px" borderLeftColor="orange.400">
                           <HStack mb={2}>
                             <Icon as={FiClock} color="orange.500" />
-                            <Text fontSize="sm" fontWeight="800" color={useColorModeValue("gray.800", "white")}>Anniversaries</Text>
+                            <Text fontSize="sm" fontWeight="800" color={colorValue(colorMode, "gray.800", "white")}>Anniversaries</Text>
                           </HStack>
                           {(summary.upcoming?.anniversaries || []).length ? (
                             <Stack spacing={1}>

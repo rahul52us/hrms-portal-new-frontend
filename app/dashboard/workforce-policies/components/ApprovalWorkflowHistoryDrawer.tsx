@@ -34,6 +34,7 @@ const REQUEST_LABELS: Record<string, string> = {
   leave_encashment_request: "Leave encashment",
   remote_work_request: "WFH requests",
   comp_off_claim: "Comp-off claims",
+  attendance_regularization_request: "Attendance corrections",
 };
 
 type Props = {

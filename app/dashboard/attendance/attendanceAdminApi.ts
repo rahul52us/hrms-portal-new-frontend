@@ -11,6 +11,14 @@ export type AttendanceOverviewStatus =
   | "holiday"
   | "weekly_off";
 
+export type AttendanceOperation =
+  | "adjust"
+  | "set_status"
+  | "set_work_mode"
+  | "recalculate"
+  | "finalize"
+  | "reopen";
+
 export type AttendanceOverviewRow = {
   attendanceDate: string;
   recordId: string | null;
@@ -44,6 +52,7 @@ export type AttendanceOverviewRow = {
     startTime?: string | null;
     endTime?: string | null;
   };
+  setupGaps?: string[];
   holiday?: {
     name: string;
     type: string;
@@ -143,4 +152,85 @@ export async function fetchAttendanceEmployeeDay(
     signal,
   });
   return response.data?.data as any;
+}
+
+export async function updateAttendanceEmployeeDay(
+  employeeId: string,
+  input: {
+    attendanceDate: string;
+    reason: string;
+    punchInTime?: string;
+    punchOutTime?: string;
+    punchOutNextDay?: boolean;
+    clearPunches?: boolean;
+    status?: string;
+    workMode?: string;
+  }
+) {
+  const response = await axios.patch(`/attendance/employee-day/${employeeId}`, input);
+  return response.data;
+}
+
+export async function reopenAttendanceEmployeeDay(
+  employeeId: string,
+  attendanceDate: string,
+  reason: string
+) {
+  const response = await axios.post(`/attendance/employee-day/${employeeId}/reopen`, {
+    attendanceDate,
+    reason,
+  });
+  return response.data;
+}
+
+export async function runBulkAttendanceOperation(input: {
+  employeeIds: string[];
+  attendanceDate: string;
+  operation: AttendanceOperation;
+  reason: string;
+  status?: string;
+  workMode?: string;
+}) {
+  const response = await axios.post("/attendance/operations/bulk", input);
+  return response.data;
+}
+
+export type AttendanceImportPreview = {
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
+  errors: Array<{
+    rowNumber: number;
+    employeeCode: string;
+    attendanceDate: string;
+    errors: string[];
+  }>;
+  sample: Array<Record<string, string | number | boolean>>;
+};
+
+export async function previewAttendanceImport(file: File) {
+  const body = new FormData();
+  body.append("file", file);
+  const response = await axios.post("/attendance/import/preview", body);
+  return response.data?.data as AttendanceImportPreview;
+}
+
+export async function applyAttendanceImport(file: File, idempotencyKey: string) {
+  const body = new FormData();
+  body.append("file", file);
+  body.append("idempotencyKey", idempotencyKey);
+  const response = await axios.post("/attendance/import/apply", body);
+  return response.data;
+}
+
+export async function downloadAttendanceImportTemplate() {
+  const response = await axios.get("/attendance/import/template", { responseType: "blob" });
+  const url = URL.createObjectURL(response.data);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "attendance-import-template.xlsx";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
 }

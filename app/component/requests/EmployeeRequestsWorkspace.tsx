@@ -35,6 +35,14 @@ import {
   submitCompOffClaim,
 } from "@/app/component/comp-off/compOffApi";
 import {
+  AttendanceRegularizationEligibility,
+  AttendanceRegularizationType,
+  actOnAttendanceRegularizationRequest,
+  fetchAttendanceRegularizationEligibility,
+  fetchAttendanceRegularizationRequests,
+  submitAttendanceRegularizationRequest,
+} from "@/app/component/attendance/attendanceRegularizationApi";
+import {
   Alert,
   AlertDialog,
   AlertDialogBody,
@@ -47,6 +55,7 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
   Divider,
   Drawer,
   DrawerBody,
@@ -92,6 +101,15 @@ import {
 
 const WFH_OPTION = "__work_from_home__";
 const COMP_OFF_CLAIM_OPTION = "__comp_off_claim__";
+const ATTENDANCE_CORRECTION_OPTION = "__attendance_correction__";
+
+const REGULARIZATION_LABELS: Record<AttendanceRegularizationType, string> = {
+  missing_punch_in: "Missing punch-in",
+  missing_punch_out: "Missing punch-out",
+  time_correction: "Correct punch times",
+  work_mode_correction: "Correct work mode",
+  full_day_correction: "Add full-day attendance",
+};
 
 const localToday = () => {
   const now = new Date();
@@ -107,6 +125,11 @@ const initialForm = () => ({
   startPortion: "full",
   endPortion: "full",
   requestedHours: "",
+  correctionType: "missing_punch_out" as AttendanceRegularizationType,
+  punchInTime: "",
+  punchOutTime: "",
+  punchOutNextDay: false,
+  workMode: "office",
   reason: "",
 });
 
@@ -130,19 +153,21 @@ const formatDate = (value: string) => new Intl.DateTimeFormat("en-IN", {
   timeZone: "UTC",
 }).format(new Date(`${value.slice(0, 10)}T00:00:00Z`));
 
-type RequestKind = "leave" | "wfh" | "comp_off" | "encashment";
+type RequestKind = "leave" | "wfh" | "comp_off" | "encashment" | "attendance_regularization";
 type UnifiedRequest = { kind: RequestKind; request: any; submittedAt: string };
 
 function requestTitle(item: UnifiedRequest) {
   if (item.kind === "wfh") return "Work from home";
   if (item.kind === "comp_off") return `${item.request.leaveType?.name || "Comp-off"} claim`;
   if (item.kind === "encashment") return `${item.request.leaveTypeNameSnapshot || "Leave"} encashment`;
+  if (item.kind === "attendance_regularization") return REGULARIZATION_LABELS[item.request.correctionType as AttendanceRegularizationType] || "Attendance correction";
   return item.request.leaveTypeNameSnapshot || "Leave";
 }
 
 function requestDateText(item: UnifiedRequest) {
   if (item.kind === "comp_off") return `Worked ${formatDate(item.request.attendanceDate)}`;
   if (item.kind === "encashment") return `Requested ${formatDate(item.request.requestedAt)}`;
+  if (item.kind === "attendance_regularization") return formatDate(item.request.attendanceDate);
   const from = formatDate(item.request.fromDate);
   return item.request.fromDate === item.request.toDate
     ? from
@@ -165,12 +190,19 @@ function requestDetail(item: UnifiedRequest) {
       ? `${item.request.requestedUnits} ${item.request.leaveUnit} | Awaiting HR payout`
       : `${item.request.requestedUnits} ${item.request.leaveUnit} | Approver: ${approver}`;
   }
+  if (item.kind === "attendance_regularization") {
+    return `Attendance correction | Approver: ${approver}`;
+  }
   return `${item.request.chargedUnits} ${item.request.leaveUnit} charged | Approver: ${approver}`;
 }
 
 export default function EmployeeRequestsWorkspace() {
   const toast = useToast();
-  const drawer = useDisclosure();
+  const {
+    isOpen: isRequestDrawerOpen,
+    onOpen: openRequestDrawer,
+    onClose: closeRequestDrawer,
+  } = useDisclosure();
   const encashmentDrawer = useDisclosure();
   const cancellationDialog = useDisclosure();
   const cancellationCancelRef = useRef<HTMLButtonElement>(null);
@@ -186,11 +218,13 @@ export default function EmployeeRequestsWorkspace() {
   const [remoteWorkRequests, setRemoteWorkRequests] = useState<any[]>([]);
   const [compOffClaims, setCompOffClaims] = useState<any[]>([]);
   const [encashmentRequests, setEncashmentRequests] = useState<any[]>([]);
+  const [regularizationRequests, setRegularizationRequests] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [form, setForm] = useState(initialForm);
   const [attachments, setAttachments] = useState<LeaveAttachment[]>([]);
   const [remoteEligibility, setRemoteEligibility] = useState<any>(null);
   const [compOffEligibility, setCompOffEligibility] = useState<CompOffEligibility | null>(null);
+  const [regularizationEligibility, setRegularizationEligibility] = useState<AttendanceRegularizationEligibility | null>(null);
   const [eligibilityErrorMessage, setEligibilityErrorMessage] = useState("");
   const [preview, setPreview] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -209,7 +243,8 @@ export default function EmployeeRequestsWorkspace() {
 
   const isWfh = form.leaveTypeId === WFH_OPTION;
   const isCompOffClaim = form.leaveTypeId === COMP_OFF_CLAIM_OPTION;
-  const isLeave = !isWfh && !isCompOffClaim;
+  const isRegularization = form.leaveTypeId === ATTENDANCE_CORRECTION_OPTION;
+  const isLeave = !isWfh && !isCompOffClaim && !isRegularization;
 
   const selectedLeave = useMemo(
     () => requestEligible.find((item) => item.leaveType._id === form.leaveTypeId) || null,
@@ -226,14 +261,15 @@ export default function EmployeeRequestsWorkspace() {
     ...remoteWorkRequests.map((request) => ({ kind: "wfh" as const, request, submittedAt: request.submittedAt })),
     ...compOffClaims.map((request) => ({ kind: "comp_off" as const, request, submittedAt: request.submittedAt })),
     ...encashmentRequests.map((request) => ({ kind: "encashment" as const, request, submittedAt: request.requestedAt })),
+    ...regularizationRequests.map((request) => ({ kind: "attendance_regularization" as const, request, submittedAt: request.submittedAt })),
   ].sort(
     (left, right) => new Date(right.submittedAt).getTime() - new Date(left.submittedAt).getTime()
-  ), [compOffClaims, encashmentRequests, leaveRequests, remoteWorkRequests]);
+  ), [compOffClaims, encashmentRequests, leaveRequests, regularizationRequests, remoteWorkRequests]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [eligibleResult, encashmentEligibilityResult, leaveResult, transactionResult, remoteResult, compOffResult, encashmentResult] = await Promise.all([
+      const [eligibleResult, encashmentEligibilityResult, leaveResult, transactionResult, remoteResult, compOffResult, encashmentResult, regularizationResult] = await Promise.all([
         fetchEligibleLeave({ at: localToday() })
           .then((data) => ({ data, error: "" }))
           .catch((error) => ({
@@ -248,6 +284,7 @@ export default function EmployeeRequestsWorkspace() {
         fetchRemoteWorkRequests({ scope: "mine", page: 1, limit: 50 }),
         fetchCompOffClaims({ scope: "self", page: 1, limit: 50 }),
         fetchLeaveEncashmentRequests({ scope: "mine", page: 1, limit: 50 }),
+        fetchAttendanceRegularizationRequests({ scope: "mine", page: 1, limit: 50 }),
       ]);
       setEligible(eligibleResult.data.items || []);
       setEncashmentEligibility(encashmentEligibilityResult);
@@ -257,6 +294,7 @@ export default function EmployeeRequestsWorkspace() {
       setRemoteWorkRequests(remoteResult.items || []);
       setCompOffClaims(compOffResult.items || []);
       setEncashmentRequests(encashmentResult.items || []);
+      setRegularizationRequests(regularizationResult.items || []);
     } catch (error: any) {
       toast({ title: getApiErrorMessage(error?.response?.data || error, "Could not load requests"), status: "error" });
     } finally {
@@ -266,7 +304,7 @@ export default function EmployeeRequestsWorkspace() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const loadRemoteEligibility = async (date: string) => {
+  const loadRemoteEligibility = useCallback(async (date: string) => {
     setChecking(true);
     setRemoteEligibility(null);
     setEligibilityErrorMessage("");
@@ -277,7 +315,7 @@ export default function EmployeeRequestsWorkspace() {
     } finally {
       setChecking(false);
     }
-  };
+  }, []);
 
   const checkCompOffEligibility = async () => {
     setChecking(true);
@@ -294,48 +332,83 @@ export default function EmployeeRequestsWorkspace() {
     }
   };
 
-  const refreshLeaveEligibility = async (date: string) => {
+  const loadRegularizationEligibility = useCallback(async (date: string) => {
+    setChecking(true);
+    setRegularizationEligibility(null);
+    setEligibilityErrorMessage("");
+    try {
+      const result = await fetchAttendanceRegularizationEligibility(date);
+      setRegularizationEligibility(result);
+      setForm((current) => ({
+        ...current,
+        correctionType: result.allowedTypes.includes(current.correctionType)
+          ? current.correctionType
+          : result.allowedTypes[0] || "missing_punch_out",
+      }));
+      return result;
+    } catch (error: any) {
+      setEligibilityErrorMessage(getApiErrorMessage(error?.response?.data || error, "Attendance correction is not available for this date"));
+      return null;
+    } finally {
+      setChecking(false);
+    }
+  }, []);
+
+  const refreshLeaveEligibility = useCallback(async (date: string) => {
     try {
       const data = await fetchEligibleLeave({ at: date });
       setRequestEligible(data.items || []);
       setForm((current) => {
-        if ([WFH_OPTION, COMP_OFF_CLAIM_OPTION].includes(current.leaveTypeId)) return current;
+        if ([WFH_OPTION, COMP_OFF_CLAIM_OPTION, ATTENDANCE_CORRECTION_OPTION].includes(current.leaveTypeId)) return current;
         const stillEligible = (data.items || []).some((item: EligibleLeaveItem) => item.leaveType._id === current.leaveTypeId);
         return { ...current, leaveTypeId: stillEligible ? current.leaveTypeId : data.items?.[0]?.leaveType._id || "" };
       });
     } catch (error: any) {
       toast({ title: getApiErrorMessage(error?.response?.data || error), status: "error" });
     }
-  };
+  }, [toast]);
 
-  const openRequest = (applyDate?: string) => {
+  const openRequest = useCallback((applyDate?: string, initialRequestOption?: string) => {
     const next = initialForm();
     if (applyDate) { next.fromDate = applyDate; next.toDate = applyDate; }
-    next.leaveTypeId = eligible[0]?.leaveType._id || WFH_OPTION;
+    next.leaveTypeId = initialRequestOption === ATTENDANCE_CORRECTION_OPTION
+      ? ATTENDANCE_CORRECTION_OPTION
+      : eligible[0]?.leaveType._id || WFH_OPTION;
     setRequestEligible(eligible);
     setForm(next);
     setAttachments([]);
     setRemoteEligibility(null);
     setCompOffEligibility(null);
+    setRegularizationEligibility(null);
     setEligibilityErrorMessage("");
     setPreview(null);
-    drawer.onOpen();
-    if (applyDate && next.leaveTypeId !== WFH_OPTION) void refreshLeaveEligibility(applyDate);
-    if (next.leaveTypeId === WFH_OPTION) void loadRemoteEligibility(next.fromDate);
-  };
+    openRequestDrawer();
+    if (next.leaveTypeId === ATTENDANCE_CORRECTION_OPTION) {
+      void loadRegularizationEligibility(next.fromDate);
+    } else if (next.leaveTypeId === WFH_OPTION) {
+      void loadRemoteEligibility(next.fromDate);
+    } else if (applyDate) {
+      void refreshLeaveEligibility(applyDate);
+    }
+  }, [eligible, loadRegularizationEligibility, loadRemoteEligibility, openRequestDrawer, refreshLeaveEligibility]);
 
   useEffect(() => {
     if (loading || calendarApplyHandled.current) return;
     const url = new URL(window.location.href);
     const applyDate = url.searchParams.get("applyDate");
+    const requestType = url.searchParams.get("requestType");
     if (!applyDate || !/^\d{4}-\d{2}-\d{2}$/.test(applyDate)) return;
     const parsed = new Date(`${applyDate}T00:00:00Z`);
     if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== applyDate) return;
     calendarApplyHandled.current = true;
-    openRequest(applyDate);
+    openRequest(
+      applyDate,
+      requestType === "attendance_correction" ? ATTENDANCE_CORRECTION_OPTION : undefined
+    );
     url.searchParams.delete("applyDate");
+    url.searchParams.delete("requestType");
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [loading]);
+  }, [loading, openRequest]);
 
   const selectRequestOption = (value: string) => {
     setForm((current) => ({
@@ -345,14 +418,19 @@ export default function EmployeeRequestsWorkspace() {
       startPortion: "full",
       endPortion: "full",
       requestedHours: "",
+      punchInTime: "",
+      punchOutTime: "",
+      punchOutNextDay: false,
     }));
     setPreview(null);
     setRemoteEligibility(null);
     setCompOffEligibility(null);
+    setRegularizationEligibility(null);
     setEligibilityErrorMessage("");
     setAttachments([]);
-    if (value !== WFH_OPTION && value !== COMP_OFF_CLAIM_OPTION) return;
+    if (value !== WFH_OPTION && value !== COMP_OFF_CLAIM_OPTION && value !== ATTENDANCE_CORRECTION_OPTION) return;
     if (value === WFH_OPTION) void loadRemoteEligibility(form.fromDate);
+    if (value === ATTENDANCE_CORRECTION_OPTION) void loadRegularizationEligibility(form.fromDate);
   };
 
   const updateFromDate = (value: string) => {
@@ -365,9 +443,11 @@ export default function EmployeeRequestsWorkspace() {
     }));
     setPreview(null);
     setCompOffEligibility(null);
+    setRegularizationEligibility(null);
     setEligibilityErrorMessage("");
     if (isLeave) void refreshLeaveEligibility(value);
     if (isWfh) void loadRemoteEligibility(value);
+    if (isRegularization) void loadRegularizationEligibility(value);
   };
 
   const leavePayload = () => ({
@@ -388,9 +468,27 @@ export default function EmployeeRequestsWorkspace() {
     reason: form.reason.trim(),
   });
 
+  const regularizationPayload = () => ({
+    attendanceDate: form.fromDate,
+    correctionType: form.correctionType,
+    punchInTime: form.punchInTime || undefined,
+    punchOutTime: form.punchOutTime || undefined,
+    punchOutNextDay: form.punchOutNextDay,
+    workMode: ["work_mode_correction", "full_day_correction"].includes(form.correctionType)
+      ? form.workMode
+      : undefined,
+    reason: form.reason.trim(),
+    attachments,
+  });
+
   const review = async () => {
     if (isCompOffClaim) {
       await checkCompOffEligibility();
+      return;
+    }
+    if (isRegularization) {
+      const result = await loadRegularizationEligibility(form.fromDate);
+      if (result) setPreview(result);
       return;
     }
     setSubmitting(true);
@@ -423,11 +521,14 @@ export default function EmployeeRequestsWorkspace() {
           reason: form.reason.trim(),
         });
         toast({ title: "Comp-off claim submitted", status: "success" });
+      } else if (isRegularization) {
+        await submitAttendanceRegularizationRequest(regularizationPayload());
+        toast({ title: "Attendance correction submitted", status: "success" });
       } else {
         await submitLeaveRequest(leavePayload());
         toast({ title: "Leave request submitted", status: "success" });
       }
-      drawer.onClose();
+      closeRequestDrawer();
       await load();
     } catch (error: any) {
       toast({ title: getApiErrorMessage(error?.response?.data || error, "Could not submit request"), status: "error", duration: 5000 });
@@ -475,6 +576,8 @@ export default function EmployeeRequestsWorkspace() {
         await actOnCompOffClaim(item.request._id, "withdraw", { comment: "Withdrawn by employee" });
       } else if (item.kind === "encashment") {
         await actOnLeaveEncashmentRequest(item.request._id, "withdraw", { comment: "Withdrawn by employee" });
+      } else if (item.kind === "attendance_regularization") {
+        await actOnAttendanceRegularizationRequest(item.request._id, "withdraw", { comment: "Withdrawn by employee" });
       } else {
         await actOnLeaveRequest(item.request._id, "withdraw", { comment: "Withdrawn by employee" });
       }
@@ -574,19 +677,32 @@ export default function EmployeeRequestsWorkspace() {
   const wfhRules = remoteEligibility?.policy?.version?.rules;
   const wfhMinimumReason = Number(wfhRules?.minimumReasonLength || 0);
   const wfhReasonValid = wfhRules?.requireReason === false || form.reason.trim().length >= wfhMinimumReason;
+  const regularizationNeedsPunchIn = ["missing_punch_in", "time_correction", "full_day_correction"].includes(form.correctionType);
+  const regularizationNeedsPunchOut = ["missing_punch_out", "time_correction", "full_day_correction"].includes(form.correctionType);
+  const regularizationReasonValid = Boolean(
+    regularizationEligibility &&
+    form.reason.trim().length >= Number(regularizationEligibility.rules.minimumReasonLength || 10)
+  );
+  const regularizationFieldsValid = Boolean(
+    regularizationEligibility?.allowedTypes.includes(form.correctionType) &&
+    (!regularizationNeedsPunchIn || form.punchInTime) &&
+    (!regularizationNeedsPunchOut || form.punchOutTime) &&
+    (form.correctionType !== "work_mode_correction" || form.workMode)
+  );
   const canReview = isWfh
     ? Boolean(form.fromDate && form.toDate && remoteEligibility?.eligible && wfhReasonValid)
     : isCompOffClaim
       ? Boolean(form.fromDate)
-      : Boolean(selectedLeave && form.reason.trim());
+      : isRegularization
+        ? Boolean(form.fromDate && regularizationEligibility && regularizationFieldsValid && regularizationReasonValid)
+        : Boolean(selectedLeave && form.reason.trim());
   const canSubmitCompOff = Boolean(
     selectedCompOff && selectedCompOff.eligibleUnits > 0 && !selectedCompOff.existingClaim && form.reason.trim().length >= 3
   );
   const documentRequirement = isLeave ? preview?.documentRequirement : null;
   const documentRequiredAtSubmission = Boolean(
-    documentRequirement?.required &&
-    documentRequirement.submissionMode === "with_request" &&
-    attachments.length === 0
+    (documentRequirement?.required && documentRequirement.submissionMode === "with_request" && attachments.length === 0) ||
+    (isRegularization && regularizationEligibility?.rules.documentMode === "required" && attachments.length === 0)
   );
   const encashmentUnitsNumber = Number(encashmentUnits);
   const canSubmitEncashment = Boolean(
@@ -605,7 +721,7 @@ export default function EmployeeRequestsWorkspace() {
         <Flex direction={{ base: "column", md: "row" }} justify="space-between" align={{ md: "center" }} gap={3}>
           <Box>
             <Heading size="lg">My requests</Heading>
-            <Text mt={1} color={muted} fontSize="sm">Apply and track leave, work-from-home, comp-off, and encashment requests.</Text>
+            <Text mt={1} color={muted} fontSize="sm">Apply and track leave, work-from-home, comp-off, attendance, and encashment requests.</Text>
           </Box>
           <HStack>
             <Button variant="outline" leftIcon={<FiRefreshCw />} onClick={load} isLoading={loading}>Refresh</Button>
@@ -668,7 +784,7 @@ export default function EmployeeRequestsWorkspace() {
                         <Box>
                           <HStack flexWrap="wrap">
                             <Text fontWeight="800">{requestTitle(item)}</Text>
-                            <Badge variant="outline">{item.kind === "wfh" ? "WFH" : item.kind === "comp_off" ? "Comp-off claim" : item.kind === "encashment" ? "Encashment" : item.request.leaveTypeCodeSnapshot}</Badge>
+                            <Badge variant="outline">{item.kind === "wfh" ? "WFH" : item.kind === "comp_off" ? "Comp-off claim" : item.kind === "encashment" ? "Encashment" : item.kind === "attendance_regularization" ? "Attendance" : item.request.leaveTypeCodeSnapshot}</Badge>
                             <Badge colorScheme={statusColor(item.request.status)}>{formatStatus(item.request.status)}</Badge>
                             {item.kind === "encashment" && item.request.status === "approved" ? (
                               <Badge colorScheme={item.request.payoutStatus === "paid" ? "green" : "orange"}>
@@ -743,7 +859,7 @@ export default function EmployeeRequestsWorkspace() {
         </Box>
       </Stack>
 
-      <Drawer isOpen={drawer.isOpen} placement="right" size="lg" onClose={drawer.onClose}>
+      <Drawer isOpen={isRequestDrawerOpen} placement="right" size="lg" onClose={closeRequestDrawer}>
         <DrawerOverlay />
         <DrawerContent>
           <DrawerCloseButton />
@@ -763,23 +879,24 @@ export default function EmployeeRequestsWorkspace() {
                   <optgroup label="Other requests">
                     <option value={WFH_OPTION}>Work from home</option>
                     <option value={COMP_OFF_CLAIM_OPTION}>Comp-off claim (earn credit)</option>
+                    <option value={ATTENDANCE_CORRECTION_OPTION}>Attendance correction</option>
                   </optgroup>
                 </Select>
                 <FormHelperText>An available Comp Off leave type uses earned credit. Comp-off claim earns that credit from off-day work.</FormHelperText>
               </FormControl>
 
-              {isWfh && eligibilityErrorMessage ? <Alert status="error" borderRadius="md"><AlertIcon /><AlertDescription>{eligibilityErrorMessage}</AlertDescription></Alert> : null}
+              {(isWfh || isRegularization) && eligibilityErrorMessage ? <Alert status="error" borderRadius="md"><AlertIcon /><AlertDescription>{eligibilityErrorMessage}</AlertDescription></Alert> : null}
               {isWfh && remoteEligibility && !remoteEligibility.eligible ? (
                 <Alert status="warning" borderRadius="md">
                   <AlertIcon /><AlertDescription>WFH is not available for the selected date.</AlertDescription>
                 </Alert>
               ) : null}
 
-              {isCompOffClaim ? (
+              {isCompOffClaim || isRegularization ? (
                 <FormControl isRequired>
-                  <FormLabel>Worked on</FormLabel>
+                  <FormLabel>{isRegularization ? "Attendance date" : "Worked on"}</FormLabel>
                   <Input type="date" max={localToday()} value={form.fromDate} onChange={(event) => updateFromDate(event.target.value)} />
-                  <FormHelperText>Select the weekly off or mandatory holiday on which you worked.</FormHelperText>
+                  <FormHelperText>{isRegularization ? "Select the attendance day that needs correction." : "Select the weekly off or mandatory holiday on which you worked."}</FormHelperText>
                 </FormControl>
               ) : (
                 <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
@@ -799,6 +916,65 @@ export default function EmployeeRequestsWorkspace() {
                 <FormControl><FormLabel>Day duration</FormLabel><Select value={form.startPortion} onChange={(event) => { setForm((current) => ({ ...current, startPortion: event.target.value })); setPreview(null); }}><option value="full">Full day</option><option value="first_half">First half</option><option value="second_half">Second half</option></Select></FormControl>
               ) : null}
 
+              {isRegularization && regularizationEligibility ? (
+                <Stack spacing={4}>
+                  <Alert status="info" borderRadius="md">
+                    <AlertIcon />
+                    <AlertDescription>
+                      {regularizationEligibility.record
+                        ? `${formatStatus(regularizationEligibility.record.status)} record found`
+                        : "No attendance record exists; only full-day correction can create one"}
+                      {regularizationEligibility.remainingThisMonth !== null
+                        ? ` | ${regularizationEligibility.remainingThisMonth} request(s) remaining this month`
+                        : ""}
+                    </AlertDescription>
+                  </Alert>
+                  <FormControl isRequired>
+                    <FormLabel>Correction needed</FormLabel>
+                    <Select
+                      value={form.correctionType}
+                      onChange={(event) => {
+                        setForm((current) => ({ ...current, correctionType: event.target.value as AttendanceRegularizationType }));
+                        setPreview(null);
+                      }}
+                    >
+                      {regularizationEligibility.allowedTypes.map((type) => (
+                        <option key={type} value={type}>{REGULARIZATION_LABELS[type]}</option>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  {regularizationNeedsPunchIn || regularizationNeedsPunchOut ? (
+                    <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                      {regularizationNeedsPunchIn ? (
+                        <FormControl isRequired><FormLabel>Correct punch-in</FormLabel><Input type="time" value={form.punchInTime} onChange={(event) => { setForm((current) => ({ ...current, punchInTime: event.target.value })); setPreview(null); }} /></FormControl>
+                      ) : null}
+                      {regularizationNeedsPunchOut ? (
+                        <FormControl isRequired><FormLabel>Correct punch-out</FormLabel><Input type="time" value={form.punchOutTime} onChange={(event) => { setForm((current) => ({ ...current, punchOutTime: event.target.value })); setPreview(null); }} /></FormControl>
+                      ) : null}
+                    </SimpleGrid>
+                  ) : null}
+                  {regularizationNeedsPunchOut ? (
+                    <Checkbox
+                      isChecked={form.punchOutNextDay}
+                      onChange={(event) => { setForm((current) => ({ ...current, punchOutNextDay: event.target.checked })); setPreview(null); }}
+                    >
+                      Punch-out was on the next calendar day
+                    </Checkbox>
+                  ) : null}
+                  {form.correctionType === "work_mode_correction" || form.correctionType === "full_day_correction" ? (
+                    <FormControl isRequired={form.correctionType === "work_mode_correction"}>
+                      <FormLabel>Correct work mode</FormLabel>
+                      <Select value={form.workMode} onChange={(event) => { setForm((current) => ({ ...current, workMode: event.target.value })); setPreview(null); }}>
+                        <option value="office">Office</option>
+                        <option value="remote">Remote</option>
+                        <option value="hybrid">Hybrid</option>
+                        <option value="field">Field</option>
+                      </Select>
+                    </FormControl>
+                  ) : null}
+                </Stack>
+              ) : null}
+
               {isCompOffClaim && compOffEligibility ? (
                 <Stack spacing={4}>
                   <Alert status={selectedCompOff && selectedCompOff.eligibleUnits > 0 && !selectedCompOff.existingClaim ? "success" : "warning"} borderRadius="md">
@@ -812,11 +988,26 @@ export default function EmployeeRequestsWorkspace() {
               ) : null}
               {isCompOffClaim && eligibilityErrorMessage ? <Alert status="warning" borderRadius="md"><AlertIcon /><AlertDescription>{eligibilityErrorMessage}</AlertDescription></Alert> : null}
 
-              <FormControl isRequired={isLeave || isCompOffClaim || wfhRules?.requireReason !== false}>
+              <FormControl isRequired={isLeave || isCompOffClaim || isRegularization || wfhRules?.requireReason !== false}>
                 <FormLabel>Reason</FormLabel>
-                <Textarea value={form.reason} placeholder={isWfh ? "Why do you need to work remotely?" : isCompOffClaim ? "Describe the off-day work completed" : "Enter the reason for leave"} onChange={(event) => { setForm((current) => ({ ...current, reason: event.target.value })); setPreview(null); }} />
+                <Textarea value={form.reason} placeholder={isWfh ? "Why do you need to work remotely?" : isCompOffClaim ? "Describe the off-day work completed" : isRegularization ? "Explain why this attendance needs correction" : "Enter the reason for leave"} onChange={(event) => { setForm((current) => ({ ...current, reason: event.target.value })); setPreview(null); }} />
                 {isWfh ? <FormHelperText>{wfhMinimumReason ? `At least ${wfhMinimumReason} characters.` : "Provide enough context for the approver."}</FormHelperText> : null}
+                {isRegularization && regularizationEligibility ? <FormHelperText>At least {regularizationEligibility.rules.minimumReasonLength} characters.</FormHelperText> : null}
               </FormControl>
+
+              {isRegularization && regularizationEligibility && regularizationEligibility.rules.documentMode !== "none" ? (
+                <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}>
+                  <FormLabel>{regularizationEligibility.rules.documentMode === "required" ? "Supporting document" : "Supporting document (optional)"}</FormLabel>
+                  <Input type="file" accept="application/pdf,image/jpeg,image/png" p={1} isDisabled={uploading || attachments.length >= 5} onChange={(event) => { void upload(event.target.files?.[0]); event.target.value = ""; }} />
+                  <Text mt={1} fontSize="xs" color={muted}>PDF, JPG or PNG, up to 5 MB each.</Text>
+                  {attachments.map((attachment, index) => (
+                    <Flex key={`${attachment.url}-${index}`} mt={2} p={2} borderWidth="1px" borderColor={border} borderRadius="md" justify="space-between" align="center">
+                      <HStack minW={0}><FiFile /><Text fontSize="sm" noOfLines={1}>{attachment.name}</Text></HStack>
+                      <Button size="xs" variant="ghost" colorScheme="red" leftIcon={<FiTrash2 />} onClick={() => setAttachments((items) => items.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button>
+                    </Flex>
+                  ))}
+                </Box>
+              ) : null}
 
               {isLeave && documentRequirement?.required ? (
                 <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}>
@@ -853,10 +1044,17 @@ export default function EmployeeRequestsWorkspace() {
                   <Divider />{(preview.dates || []).map((day: any) => <Flex key={day.attendanceDate} px={4} py={2.5} justify="space-between" borderBottomWidth="1px" _last={{ borderBottomWidth: 0 }}><Text fontSize="sm" fontWeight="600">{formatDate(day.attendanceDate)}</Text><Text fontSize="sm">{formatStatus(day.portion)} ({day.units})</Text></Flex>)}
                 </Box>
               ) : null}
+              {preview && isRegularization ? (
+                <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}>
+                  <Text fontSize="xs" color={muted}>Correction summary</Text>
+                  <Text mt={1} fontWeight="800">{REGULARIZATION_LABELS[form.correctionType]} for {formatDate(form.fromDate)}</Text>
+                  <Text mt={1} fontSize="sm" color={muted}>The attendance record changes only after the final approval.</Text>
+                </Box>
+              ) : null}
             </Stack>
           </DrawerBody>
           <DrawerFooter borderTopWidth="1px" gap={3}>
-            <Button variant="outline" onClick={drawer.onClose}>Cancel</Button>
+            <Button variant="outline" onClick={closeRequestDrawer}>Cancel</Button>
             {isCompOffClaim && compOffEligibility ? (
               <Button colorScheme="blue" onClick={submit} isLoading={submitting} isDisabled={!canSubmitCompOff}>Submit request</Button>
             ) : preview ? (

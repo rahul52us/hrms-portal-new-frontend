@@ -31,6 +31,13 @@ export type AttendanceRecord = {
   expectedWorkMinutesSnapshot?: number | null;
   scheduleStartTimeSnapshot?: string;
   scheduleEndTimeSnapshot?: string;
+  regularization?: {
+    _id: string;
+    correctionType: string;
+    status: string;
+    submittedAt: string;
+    appliedRevisionNumber?: number | null;
+  } | null;
 };
 
 export type AttendanceHistorySummary = {
