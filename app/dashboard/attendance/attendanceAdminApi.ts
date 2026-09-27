@@ -16,6 +16,7 @@ export type AttendanceOperation =
   | "set_status"
   | "set_work_mode"
   | "recalculate"
+  | "refresh_policies_recalculate"
   | "finalize"
   | "reopen";
 

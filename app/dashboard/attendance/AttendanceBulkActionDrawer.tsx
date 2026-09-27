@@ -123,6 +123,7 @@ export default function AttendanceBulkActionDrawer({
             {canAdjust ? <option value="set_status">Mark attendance status</option> : null}
             {canAdjust ? <option value="set_work_mode">Assign work mode</option> : null}
             {canAdjust ? <option value="recalculate">Recalculate from punches</option> : null}
+            {canAdjust ? <option value="refresh_policies_recalculate">Refresh effective policies and recalculate</option> : null}
             {canFinalize ? <option value="finalize">Finalize attendance</option> : null}
             {canReopen ? <option value="reopen">Reopen finalized attendance</option> : null}
           </Select>
@@ -168,6 +169,18 @@ export default function AttendanceBulkActionDrawer({
           <Alert status="info" borderRadius="md">
             <AlertIcon />
             <AlertDescription>Reopening restores the record for controlled corrections and is recorded in its audit history.</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {operation === "refresh_policies_recalculate" ? (
+          <Alert status="warning" borderRadius="md">
+            <AlertIcon />
+            <AlertDescription>
+              Punches are preserved. The employee assignment, attendance policy, work schedule,
+              and holiday calendar snapshots are replaced with the versions effective on this
+              attendance date, then the record is recalculated. Every version change is recorded
+              in attendance history.
+            </AlertDescription>
           </Alert>
         ) : null}
 

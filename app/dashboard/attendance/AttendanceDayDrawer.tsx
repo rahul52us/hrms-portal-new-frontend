@@ -252,6 +252,11 @@ export default function AttendanceDayDrawer({
               {canAdjust && record?.state !== "finalized" && !data.leaveRequest ? (
                 <Button size="sm" colorScheme="blue" onClick={() => setAdjustOpen(true)}>Adjust attendance</Button>
               ) : null}
+              {canAdjust && record?.state !== "finalized" && !data.leaveRequest ? (
+                <Button size="sm" variant="outline" onClick={() => setActionOperation("refresh_policies_recalculate")}>
+                  Refresh effective policies
+                </Button>
+              ) : null}
               {canFinalize && record && record.state !== "finalized" ? (
                 <Button size="sm" variant="outline" onClick={() => setActionOperation("finalize")}>Finalize</Button>
               ) : null}
