@@ -112,10 +112,12 @@ function PolicyRow({ label, value }: { label: string; value: any }) {
 
 export default function AttendanceDayDrawer({
   row,
+  periodLocked,
   onClose,
   onChanged,
 }: {
   row: AttendanceOverviewRow | null;
+  periodLocked?: boolean;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -238,7 +240,14 @@ export default function AttendanceDayDrawer({
             </Box>
           </HStack>
 
-          {canAdjust || canFinalize || canReopen ? (
+          {periodLocked ? (
+            <Alert status="warning" borderRadius="md">
+              <AlertIcon />
+              <AlertDescription>This date is inside a locked attendance cycle. Reopen the cycle before changing this record.</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {(canAdjust || canFinalize || canReopen) && !periodLocked ? (
             <Flex gap={2} flexWrap="wrap">
               {canAdjust && record?.state !== "finalized" && !data.leaveRequest ? (
                 <Button size="sm" colorScheme="blue" onClick={() => setAdjustOpen(true)}>Adjust attendance</Button>
@@ -328,6 +337,8 @@ export default function AttendanceDayDrawer({
                   <Field label="Late" value={formatMinutes(record.lateMinutes)} />
                   <Field label="Early exit" value={formatMinutes(record.earlyExitMinutes)} />
                   <Field label="Overtime" value={formatMinutes(record.overtimeMinutes)} />
+                  <Field label="Overtime approval" value={record.overtimeApprovalRequiredSnapshot ? titleCase(record.overtimeApprovalStatus) : "Not required"} />
+                  <Field label="Approved overtime" value={formatMinutes(record.approvedOvertimeMinutes)} />
                   <Field label="Record state" value={titleCase(record.state)} />
                 </SimpleGrid>
               </Stack>
@@ -346,6 +357,53 @@ export default function AttendanceDayDrawer({
               </Alert>
             )}
           </Box>
+
+          {data.overtimeReview || data.compOffClaim || data.compOffCredit ? (
+            <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}>
+              <Text fontSize="sm" fontWeight="800" mb={3}>Overtime and comp-off</Text>
+              <Stack spacing={4}>
+                {data.overtimeReview ? (
+                  <Flex justify="space-between" align="flex-start" gap={4} flexWrap="wrap">
+                    <Box>
+                      <Text fontWeight="700">Overtime review</Text>
+                      <Text fontSize="sm" color="gray.500">
+                        {formatMinutes(data.overtimeReview.overtimeMinutesSnapshot)} from attendance revision {data.overtimeReview.attendanceRevisionNumber}
+                      </Text>
+                    </Box>
+                    <Badge colorScheme={data.overtimeReview.status === "approved" ? "green" : data.overtimeReview.status === "rejected" ? "red" : data.overtimeReview.status === "superseded" ? "gray" : "orange"}>
+                      {titleCase(data.overtimeReview.status)}
+                    </Badge>
+                  </Flex>
+                ) : null}
+                {data.compOffClaim ? (
+                  <Flex justify="space-between" align="flex-start" gap={4} flexWrap="wrap">
+                    <Box>
+                      <Text fontWeight="700">Comp-off earning claim</Text>
+                      <Text fontSize="sm" color="gray.500">
+                        {data.compOffClaim.requestedUnits} day{Number(data.compOffClaim.requestedUnits) === 1 ? "" : "s"} | {data.compOffClaim.leaveType?.name || data.compOffClaim.leaveType?.code || "Comp-off"}
+                      </Text>
+                    </Box>
+                    <Badge colorScheme={data.compOffClaim.status === "approved" ? "green" : data.compOffClaim.status === "rejected" || data.compOffClaim.status === "revoked" ? "red" : "orange"}>
+                      {titleCase(data.compOffClaim.status)}
+                    </Badge>
+                  </Flex>
+                ) : null}
+                {data.compOffCredit ? (
+                  <Flex justify="space-between" align="flex-start" gap={4} flexWrap="wrap">
+                    <Box>
+                      <Text fontWeight="700">Earned comp-off credit</Text>
+                      <Text fontSize="sm" color="gray.500">
+                        {data.compOffCredit.availableUnits} available of {data.compOffCredit.originalUnits} | expires {data.compOffCredit.expiresOn}
+                      </Text>
+                    </Box>
+                    <Badge colorScheme={data.compOffCredit.status === "active" ? "green" : "gray"}>
+                      {titleCase(data.compOffCredit.status)}
+                    </Badge>
+                  </Flex>
+                ) : null}
+              </Stack>
+            </Box>
+          ) : null}
 
           {data.leaveRequest || data.remoteWorkRequest ? (
             <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}>

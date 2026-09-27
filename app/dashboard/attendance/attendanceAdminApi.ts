@@ -67,6 +67,9 @@ export type AttendanceOverviewRow = {
   lateMinutes: number;
   earlyExitMinutes: number;
   overtimeMinutes: number;
+  overtimeApprovalRequired: boolean;
+  overtimeApprovalStatus: "not_required" | "pending" | "approved" | "rejected";
+  approvedOvertimeMinutes: number;
   isLate: boolean;
   isEarlyExit: boolean;
   hasMissingPunch: boolean;
@@ -233,4 +236,382 @@ export async function downloadAttendanceImportTemplate() {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+export type AttendanceProcessorRun = {
+  _id: string;
+  attendanceDate: string;
+  idempotencyKey: string;
+  trigger: "manual" | "scheduled" | "cycle_preparation";
+  status: "pending" | "running" | "completed" | "completed_with_errors" | "failed";
+  counts: {
+    scanned: number;
+    processed: number;
+    created: number;
+    updated: number;
+    skipped: number;
+    notClosed: number;
+    awaitingFinalization: number;
+    autoFinalized: number;
+    reviewRequired: number;
+    setupGaps: number;
+    failures: number;
+  };
+  failures: Array<{
+    employee?: string | null;
+    employeeCode?: string;
+    message: string;
+  }>;
+  requestedBy?: { name?: string; code?: string; role?: string } | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  durationMs: number;
+  lastError?: string;
+  createdAt: string;
+};
+
+export async function fetchAttendanceProcessorRuns(attendanceDate: string) {
+  const response = await axios.get("/attendance/processor/runs", {
+    params: { attendanceDate, page: 1, limit: 10 },
+  });
+  return (response.data?.data || []) as AttendanceProcessorRun[];
+}
+
+export async function processAttendanceDay(input: {
+  attendanceDate: string;
+  idempotencyKey: string;
+  batchSize?: number;
+}) {
+  const response = await axios.post("/attendance/processor/runs", input);
+  return response.data?.data as AttendanceProcessorRun;
+}
+
+export async function fetchAttendanceProcessorRun(runId: string) {
+  const response = await axios.get(`/attendance/processor/runs/${runId}`);
+  return response.data?.data as AttendanceProcessorRun;
+}
+
+export async function resumeAttendanceProcessorRun(runId: string) {
+  const response = await axios.post(`/attendance/processor/runs/${runId}/resume`);
+  return response.data?.data as AttendanceProcessorRun;
+}
+
+export type AttendancePeriodView = {
+  period: {
+    _id: string | null;
+    periodKey: string;
+    startDate: string;
+    endDate: string;
+    status: "open" | "locked";
+    version: number;
+    lockedAt?: string | null;
+    lockedBy?: { name?: string; code?: string; role?: string } | null;
+    lockReason?: string;
+    reopenedAt?: string | null;
+    reopenedBy?: { name?: string; code?: string; role?: string } | null;
+    reopenReason?: string;
+  };
+  cycle: {
+    periodKey: string;
+    startDate: string;
+    endDate: string;
+    attendanceCutoffDay: number;
+  };
+  readiness: {
+    periodEnded: boolean;
+    totalRecords: number;
+    finalizedRecords: number;
+    unfinalizedRecords: number;
+    openRecords: number;
+    pendingRecords: number;
+    missingPunchRecords: number;
+    pendingRegularizations: number;
+    pendingOvertimeReviews: number;
+    pendingLeaveRequests: number;
+    pendingLeaveCancellations: number;
+    pendingRemoteWorkRequests: number;
+    activeProcessorRuns: number;
+    activeImportBatches: number;
+    calendarDays: number;
+    closedCalendarDays: number;
+    upcomingDays: number;
+    processedDays: number;
+    missingProcessorDays: number;
+    problemProcessorDays: number;
+    missingProcessorDates: string[];
+    problemProcessorDates: string[];
+    upcomingDates: string[];
+    blockers: string[];
+    readyToLock: boolean;
+  };
+  history: Array<{
+    _id: string;
+    action: "locked" | "reopened";
+    version: number;
+    reason: string;
+    actor?: { name?: string; code?: string; role?: string } | null;
+    createdAt: string;
+  }>;
+};
+
+export async function fetchAttendancePeriod(periodKey: string, signal?: AbortSignal) {
+  const response = await axios.get(`/attendance/periods/${periodKey}`, { signal });
+  return response.data?.data as AttendancePeriodView;
+}
+
+export async function fetchAttendancePeriodForDate(attendanceDate: string, signal?: AbortSignal) {
+  const response = await axios.get(`/attendance/periods/date/${attendanceDate}`, { signal });
+  return response.data?.data as AttendancePeriodView;
+}
+
+export async function lockAttendancePeriod(periodKey: string, reason: string, expectedVersion: number) {
+  const response = await axios.post(`/attendance/periods/${periodKey}/lock`, {
+    reason,
+    expectedVersion,
+  });
+  return response.data?.data as AttendancePeriodView;
+}
+
+export async function prepareAttendancePeriod(
+  periodKey: string,
+  reason: string,
+  idempotencyKey: string
+) {
+  const response = await axios.post(`/attendance/periods/${periodKey}/prepare`, {
+    reason,
+    idempotencyKey,
+  });
+  return response.data as {
+    success: boolean;
+    message: string;
+    data: {
+      periodKey: string;
+      startDate: string;
+      endDate: string;
+      targetDates: string[];
+      queuedRuns: number;
+    };
+  };
+}
+
+export async function reopenAttendancePeriod(periodKey: string, reason: string, expectedVersion: number) {
+  const response = await axios.post(`/attendance/periods/${periodKey}/reopen`, {
+    reason,
+    expectedVersion,
+  });
+  return response.data?.data as AttendancePeriodView;
+}
+
+export type AttendanceReportRecord = {
+  id: string;
+  attendanceDate: string;
+  employee: { id: string; name: string; code: string; designation: string };
+  organization: { department: string; team: string; location: string; manager: string };
+  status: string;
+  state: string;
+  dayType: string;
+  workMode: string;
+  firstIn?: string | null;
+  finalOut?: string | null;
+  workedMinutes: number;
+  lateMinutes: number;
+  earlyExitMinutes: number;
+  overtimeMinutes: number;
+  approvedOvertimeMinutes: number;
+  hasMissingPunch: boolean;
+  revisionNumber: number;
+};
+
+export type AttendanceMonthlySummary = {
+  _id?: string;
+  employee: string;
+  employeeNameSnapshot: string;
+  employeeCodeSnapshot: string;
+  designationSnapshot?: string;
+  departmentNameSnapshot?: string;
+  teamNameSnapshot?: string;
+  officeLocationNameSnapshot?: string;
+  calendarDays: number;
+  expectedDays: number;
+  paidDays: number;
+  unpaidDays: number;
+  presentDays: number;
+  halfDays: number;
+  absentDays: number;
+  paidLeaveDays: number;
+  unpaidLeaveDays: number;
+  holidayDays: number;
+  weeklyOffDays: number;
+  wfhDays: number;
+  incompleteDays: number;
+  workedMinutes: number;
+  approvedOvertimeMinutes: number;
+  lateDays: number;
+  earlyExitDays: number;
+  missingPunchDays: number;
+  exceptionCount: number;
+};
+
+export type AttendanceReportsDashboard = {
+  periodKey: string;
+  totals: {
+    records: number;
+    present: number;
+    absent: number;
+    late: number;
+    missingPunch: number;
+    wfh: number;
+    approvedOvertimeMinutes: number;
+  };
+  trend: Array<{
+    date: string;
+    employees: number;
+    present: number;
+    absent: number;
+    leave: number;
+    wfh: number;
+    exceptions: number;
+  }>;
+  pendingApprovals: {
+    regularizations: number;
+    overtime: number;
+    leave: number;
+    wfh: number;
+    total: number;
+  };
+};
+
+export async function fetchAttendanceReportsDashboard(
+  periodKey: string,
+  params: Record<string, unknown> = {},
+  signal?: AbortSignal
+) {
+  const response = await axios.get("/attendance/reports/dashboard", { params: { ...params, periodKey }, signal });
+  return response.data?.data as AttendanceReportsDashboard;
+}
+
+export async function fetchDailyAttendanceReport(params: Record<string, unknown>, signal?: AbortSignal) {
+  const response = await axios.get("/attendance/reports/daily", { params, signal });
+  return response.data?.data as {
+    date: string;
+    items: AttendanceReportRecord[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  };
+}
+
+export async function fetchAttendanceExceptionsReport(params: Record<string, unknown>, signal?: AbortSignal) {
+  const response = await axios.get("/attendance/reports/exceptions", { params, signal });
+  return response.data?.data as {
+    fromDate: string;
+    toDate: string;
+    type: string;
+    items: AttendanceReportRecord[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  };
+}
+
+export async function fetchMonthlyAttendanceReport(params: Record<string, unknown>, signal?: AbortSignal) {
+  const response = await axios.get("/attendance/reports/monthly", { params, signal });
+  return response.data?.data as {
+    periodKey: string;
+    source: "live" | "locked";
+    attendancePeriodVersion: number;
+    items: AttendanceMonthlySummary[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  };
+}
+
+function downloadBlob(blob: Blob, fallbackName: string, contentDisposition?: string) {
+  const match = /filename="?([^";]+)"?/i.exec(contentDisposition || "");
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = match?.[1] || fallbackName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadAttendanceReport(params: Record<string, unknown>) {
+  const response = await axios.get("/attendance/reports/export", { params, responseType: "blob" });
+  downloadBlob(response.data, `attendance-report.${params.format || "csv"}`, response.headers["content-disposition"]);
+}
+
+export type AttendancePayrollView = {
+  period: {
+    _id: string | null;
+    periodKey: string;
+    startDate: string;
+    endDate: string;
+    attendanceCutoffDay: number;
+    status: "open" | "locked";
+    version: number;
+  };
+  cycle: {
+    periodKey: string;
+    startDate: string;
+    endDate: string;
+    attendanceCutoffDay: number;
+  };
+  settings: { attendanceCutoffDay: number };
+  summaryVersion: number;
+  summaries: AttendanceMonthlySummary[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+  pendingAdjustments: Array<{
+    _id: string;
+    employeeNameSnapshot: string;
+    employeeCodeSnapshot: string;
+    sourcePeriodKey: string;
+    targetPeriodKey: string;
+    deltas: Record<string, number>;
+  }>;
+  latestInput?: {
+    _id: string;
+    version: number;
+    attendancePeriodVersion: number;
+    cycleStartDate: string;
+    cycleEndDate: string;
+    attendanceCutoffDay: number;
+    summaryCount: number;
+    adjustmentCount: number;
+    totals: Record<string, any>;
+    reason: string;
+    lockedAt: string;
+    lockedBy?: { name?: string; code?: string; role?: string } | null;
+  } | null;
+  history: Array<{
+    _id: string;
+    version: number;
+    attendancePeriodVersion: number;
+    summaryCount: number;
+    adjustmentCount: number;
+    reason: string;
+    lockedAt: string;
+    lockedBy?: { name?: string; code?: string; role?: string } | null;
+  }>;
+  canLock: boolean;
+};
+
+export async function fetchAttendancePayroll(periodKey: string, page = 1, signal?: AbortSignal) {
+  const response = await axios.get(`/attendance/payroll/${periodKey}`, { params: { page, limit: 25 }, signal });
+  return response.data?.data as AttendancePayrollView;
+}
+
+export async function updateAttendancePayrollSettings(attendanceCutoffDay: number) {
+  const response = await axios.patch("/attendance/payroll/settings", { attendanceCutoffDay });
+  return response.data?.data as { attendanceCutoffDay: number };
+}
+
+export async function lockAttendancePayroll(periodKey: string, reason: string, expectedAttendancePeriodVersion: number) {
+  const response = await axios.post(`/attendance/payroll/${periodKey}/lock`, { reason, expectedAttendancePeriodVersion });
+  return response.data?.data as AttendancePayrollView;
+}
+
+export async function downloadAttendancePayroll(periodKey: string, format: "csv" | "xlsx", version?: number) {
+  const response = await axios.get(`/attendance/payroll/${periodKey}/export`, {
+    params: { format, version },
+    responseType: "blob",
+  });
+  downloadBlob(response.data, `payroll-attendance-${periodKey}.${format}`, response.headers["content-disposition"]);
 }

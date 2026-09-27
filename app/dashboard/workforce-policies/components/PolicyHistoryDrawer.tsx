@@ -137,6 +137,16 @@ const PolicyHistoryDrawer = observer(function PolicyHistoryDrawer({
                   <Text fontSize="xs">{(version.rules as AttendanceRules).minimumFullDayMinutes} full-day minutes</Text>
                   <Text fontSize="xs">Late grace: {(version.rules as AttendanceRules).gracePeriodMinutesLate} min</Text>
                   <Text fontSize="xs">Missing punch: {(version.rules as AttendanceRules).missingPunchTreatment.replaceAll("_", " ")}</Text>
+                  <Text fontSize="xs">
+                    Overtime: {(version.rules as AttendanceRules).overtimeEnabled
+                      ? `after ${(version.rules as AttendanceRules).overtimeStartsAfterMinutes} min${(version.rules as AttendanceRules).overtimeApproval?.required ? ", approval required" : ""}`
+                      : "off"}
+                  </Text>
+                  <Text fontSize="xs">
+                    Auto-finalize: {(version.rules as AttendanceRules).autoFinalize?.enabled
+                      ? `${(version.rules as AttendanceRules).autoFinalize.mode.replaceAll("_", " ")} after ${Number((version.rules as AttendanceRules).autoFinalize.graceMinutes || 0) / 60}h`
+                      : "off"}
+                  </Text>
                 </HStack>
               ) : null}
               {resourceType === "work_schedule" && version.rules ? (

@@ -48,6 +48,8 @@ import {
   FiClock,
   FiFilter,
   FiEdit3,
+  FiLock,
+  FiPlay,
   FiRefreshCw,
   FiSearch,
   FiUpload,
@@ -56,12 +58,16 @@ import {
 import AttendanceDayDrawer from "./AttendanceDayDrawer";
 import AttendanceBulkActionDrawer from "./AttendanceBulkActionDrawer";
 import AttendanceImportDrawer from "./AttendanceImportDrawer";
+import AttendanceProcessorDrawer from "./AttendanceProcessorDrawer";
+import AttendancePeriodDrawer from "./AttendancePeriodDrawer";
 import {
+  AttendancePeriodView,
   AttendanceOverviewOptions,
   AttendanceOverviewRow,
   AttendanceOverviewSummary,
   fetchAttendanceOverview,
   fetchAttendanceOverviewOptions,
+  fetchAttendancePeriodForDate,
 } from "./attendanceAdminApi";
 
 const EMPTY_SUMMARY: AttendanceOverviewSummary = {
@@ -215,7 +221,11 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
   const canAdjust = hasPermission(stores.auth.user, PERMISSION_KEYS.ADJUST_ATTENDANCE);
   const canFinalize = hasPermission(stores.auth.user, PERMISSION_KEYS.FINALIZE_ATTENDANCE);
   const canReopen = hasPermission(stores.auth.user, PERMISSION_KEYS.REOPEN_ATTENDANCE);
+  const canLockPeriod = hasPermission(stores.auth.user, PERMISSION_KEYS.LOCK_ATTENDANCE_PERIOD);
+  const canReopenPeriod = hasPermission(stores.auth.user, PERMISSION_KEYS.REOPEN_ATTENDANCE_PERIOD);
   const canImport = hasPermission(stores.auth.user, PERMISSION_KEYS.IMPORT_ATTENDANCE);
+  const normalizedRole = String(stores.auth.user?.role || "").toLowerCase().replace(/[-\s]/g, "");
+  const canProcess = canAdjust && ["admin", "hradmin", "headhr"].includes(normalizedRole);
   const surface = useColorModeValue("white", "gray.800");
   const border = useColorModeValue("gray.200", "gray.700");
   const muted = useColorModeValue("gray.600", "gray.400");
@@ -237,6 +247,9 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [processorOpen, setProcessorOpen] = useState(false);
+  const [periodOpen, setPeriodOpen] = useState(false);
+  const [periodView, setPeriodView] = useState<AttendancePeriodView | null>(null);
   const filterDisclosure = useDisclosure();
   const filtersVisible =
     useBreakpointValue({ base: filterDisclosure.isOpen, lg: true }) ?? false;
@@ -265,6 +278,18 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
       });
     return () => controller.abort();
   }, [attendanceDate, canView]);
+
+  const periodKey = attendanceDate.slice(0, 7);
+  useEffect(() => {
+    if (!canView) return;
+    const controller = new AbortController();
+    fetchAttendancePeriodForDate(attendanceDate, controller.signal)
+      .then(setPeriodView)
+      .catch(() => {
+        if (!controller.signal.aborted) setPeriodView(null);
+      });
+    return () => controller.abort();
+  }, [attendanceDate, canView, revision]);
 
   const params = useMemo(
     () => ({
@@ -326,6 +351,9 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
     Number(diagnostics.missingHistoryEmployees || 0);
   const selectedRows = items.filter((row) => selectedEmployeeIds.has(row.employee.id));
   const allPageSelected = Boolean(items.length) && selectedRows.length === items.length;
+  const periodLocked = periodView?.period.status === "locked" &&
+    attendanceDate >= periodView.period.startDate &&
+    attendanceDate <= periodView.period.endDate;
 
   const toggleEmployee = (employeeId: string) => {
     setSelectedEmployeeIds((current) => {
@@ -342,7 +370,7 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
     );
   };
 
-  const refresh = () => setRevision((value) => value + 1);
+  const refresh = useCallback(() => setRevision((value) => value + 1), []);
 
   const setFilter = (key: keyof typeof emptyFilters, value: string) =>
     setFilters((current) => ({
@@ -363,7 +391,7 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
     >
       <Flex justify="space-between" align="flex-start" gap={3}>
         <HStack align="flex-start">
-          {(canAdjust || canFinalize || canReopen) ? (
+          {(canAdjust || canFinalize || canReopen) && !periodLocked ? (
             <Checkbox
               mt={2}
               isChecked={selectedEmployeeIds.has(row.employee.id)}
@@ -400,6 +428,11 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
         <Box>
           <Text fontSize="xs" color={muted}>Worked</Text>
           <Text fontSize="sm" fontWeight="600">{formatMinutes(row.workedMinutes)} | {titleCase(row.workMode)}</Text>
+          {row.overtimeApprovalRequired && row.overtimeApprovalStatus !== "not_required" ? (
+            <Badge mt={1} size="sm" colorScheme={row.overtimeApprovalStatus === "approved" ? "green" : row.overtimeApprovalStatus === "rejected" ? "red" : "orange"}>
+              OT {titleCase(row.overtimeApprovalStatus)}
+            </Badge>
+          ) : null}
         </Box>
       </SimpleGrid>
     </Box>
@@ -425,25 +458,47 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
           </HStack>
         </Flex>
 
-        {canAdjust || canFinalize || canReopen || canImport ? (
+        {canView ? (
           <Flex justify="flex-end" gap={2} flexWrap="wrap">
+            <Button
+              leftIcon={<FiLock />}
+              colorScheme={periodLocked ? "red" : "gray"}
+              variant="outline"
+              onClick={() => setPeriodOpen(true)}
+            >
+              {periodView?.period.status === "locked" ? "Cycle locked" : "Cycle open"}
+            </Button>
+            {canProcess ? (
+              <Button leftIcon={<FiPlay />} colorScheme="blue" variant="outline" isDisabled={periodLocked} onClick={() => setProcessorOpen(true)}>
+                Process day
+              </Button>
+            ) : null}
             {canAdjust || canFinalize || canReopen ? (
               <Button
                 leftIcon={<FiEdit3 />}
                 colorScheme="blue"
                 variant="outline"
-                isDisabled={!selectedRows.length}
+                isDisabled={periodLocked || !selectedRows.length}
                 onClick={() => setBulkOpen(true)}
               >
                 Bulk action{selectedRows.length ? ` (${selectedRows.length})` : ""}
               </Button>
             ) : null}
             {canImport ? (
-              <Button leftIcon={<FiUpload />} colorScheme="blue" onClick={() => setImportOpen(true)}>
+              <Button leftIcon={<FiUpload />} colorScheme="blue" isDisabled={periodLocked} onClick={() => setImportOpen(true)}>
                 Import attendance
               </Button>
             ) : null}
           </Flex>
+        ) : null}
+
+        {periodLocked ? (
+          <Alert status="warning" borderRadius="md">
+            <AlertIcon />
+            <AlertDescription>
+              Attendance for this date is inside the locked cycle {periodView?.period.startDate} to {periodView?.period.endDate}. Reopen the cycle before processing, importing, or correcting records.
+            </AlertDescription>
+          </Alert>
         ) : null}
 
         <SimpleGrid columns={{ base: 2, lg: 4 }} spacing={3}>
@@ -538,13 +593,13 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
             <Box display={{ base: "none", lg: "block" }} overflowX="auto">
               <Table size="sm" minW="1300px">
                 <Thead><Tr>
-                  {canAdjust || canFinalize || canReopen ? (
+                  {(canAdjust || canFinalize || canReopen) && !periodLocked ? (
                     <Th w="44px"><Checkbox isChecked={allPageSelected} isIndeterminate={selectedRows.length > 0 && !allPageSelected} onChange={togglePage} aria-label="Select employees on this page" /></Th>
                   ) : null}
                   <Th>Employee</Th><Th>Organization</Th><Th>Shift</Th><Th>Setup</Th><Th>First in</Th><Th>Final out</Th><Th>Worked</Th><Th>Late / Early</Th><Th>Mode</Th><Th>Status</Th>
                 </Tr></Thead>
                 <Tbody>{items.map((row) => <Tr key={row.employee.id} cursor="pointer" _hover={{ bg: rowHover }} onClick={() => setSelectedRow(row)}>
-                  {canAdjust || canFinalize || canReopen ? (
+                  {(canAdjust || canFinalize || canReopen) && !periodLocked ? (
                     <Td onClick={(event) => event.stopPropagation()}><Checkbox isChecked={selectedEmployeeIds.has(row.employee.id)} onChange={() => toggleEmployee(row.employee.id)} aria-label={`Select ${row.employee.name}`} /></Td>
                   ) : null}
                   <Td><EmployeeIdentity row={row} /></Td>
@@ -552,7 +607,7 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
                   <Td><Text fontSize="sm">{row.schedule.startTime && row.schedule.endTime ? `${row.schedule.startTime} - ${row.schedule.endTime}` : "Not configured"}</Text><Text fontSize="xs" color={muted}>{row.timezone}</Text></Td>
                   <Td>{row.setupGaps?.length ? <Text fontSize="xs" fontWeight="650" color="red.500">Missing {row.setupGaps.map(titleCase).join(", ")}</Text> : <Badge colorScheme="green" variant="subtle">Complete</Badge>}</Td>
                   <Td>{formatTime(row.firstIn, row.timezone)}</Td><Td>{formatTime(row.lastOut, row.timezone)}</Td><Td>{formatMinutes(row.workedMinutes)}</Td>
-                  <Td><Text fontSize="sm">{formatMinutes(row.lateMinutes)} / {formatMinutes(row.earlyExitMinutes)}</Text>{row.overtimeMinutes ? <Text fontSize="xs" color="green.600">OT {formatMinutes(row.overtimeMinutes)}</Text> : null}</Td>
+                  <Td><Text fontSize="sm">{formatMinutes(row.lateMinutes)} / {formatMinutes(row.earlyExitMinutes)}</Text>{row.overtimeMinutes ? <Text fontSize="xs" color="green.600">OT {formatMinutes(row.overtimeMinutes)}</Text> : null}{row.overtimeApprovalRequired && row.overtimeApprovalStatus !== "not_required" ? <Badge mt={1} colorScheme={row.overtimeApprovalStatus === "approved" ? "green" : row.overtimeApprovalStatus === "rejected" ? "red" : "orange"}>{titleCase(row.overtimeApprovalStatus)}</Badge> : null}</Td>
                   <Td><Badge variant="outline">{titleCase(row.workMode)}</Badge></Td><Td><Badge colorScheme={statusColor(row.status)}>{titleCase(row.status)}</Badge></Td>
                 </Tr>)}</Tbody>
               </Table>
@@ -565,7 +620,7 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
           </Flex>
         </Box>
       </Stack>
-      <AttendanceDayDrawer row={selectedRow} onClose={() => setSelectedRow(null)} onChanged={refresh} />
+      <AttendanceDayDrawer row={selectedRow} periodLocked={periodLocked} onClose={() => setSelectedRow(null)} onChanged={refresh} />
       <AttendanceBulkActionDrawer
         isOpen={bulkOpen}
         rows={selectedRows}
@@ -583,6 +638,25 @@ const AttendanceWorkspace = observer(function AttendanceWorkspace() {
         isOpen={importOpen}
         onClose={() => setImportOpen(false)}
         onApplied={refresh}
+      />
+      <AttendanceProcessorDrawer
+        isOpen={processorOpen}
+        attendanceDate={attendanceDate}
+        onClose={() => setProcessorOpen(false)}
+        onProcessed={refresh}
+      />
+      <AttendancePeriodDrawer
+        isOpen={periodOpen}
+        periodKey={periodView?.period.periodKey || periodKey}
+        canLock={canLockPeriod}
+        canPrepare={canProcess && canFinalize}
+        canReopen={canReopenPeriod}
+        onClose={() => setPeriodOpen(false)}
+        onChanged={(view) => {
+          setPeriodView(view);
+          setSelectedEmployeeIds(new Set());
+          refresh();
+        }}
       />
     </PermissionGate>
   );

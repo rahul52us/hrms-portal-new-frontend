@@ -8,7 +8,6 @@ import {
   Box,
   Button,
   Checkbox,
-  DrawerOverlay,
   Flex,
   FormControl,
   FormHelperText,
@@ -45,6 +44,17 @@ const DEFAULT_RULES: AttendanceRules = {
   missingPunchTreatment: "flag_incomplete",
   overtimeEnabled: false,
   overtimeStartsAfterMinutes: 0,
+  overtimeApproval: {
+    required: false,
+    approvalWorkflow: null,
+    approvalWorkflowVersion: null,
+    approvalWorkflowVersionNumber: null,
+  },
+  autoFinalize: {
+    enabled: false,
+    graceMinutes: 1440,
+    mode: "clean_only",
+  },
   regularization: {
     enabled: false,
     allowedTypes: [
@@ -125,6 +135,14 @@ export default function AttendancePolicyDrawer({
     setRules({
       ...DEFAULT_RULES,
       ...sourceRules,
+      autoFinalize: {
+        ...DEFAULT_RULES.autoFinalize,
+        ...(sourceRules?.autoFinalize || {}),
+      },
+      overtimeApproval: {
+        ...DEFAULT_RULES.overtimeApproval,
+        ...(sourceRules?.overtimeApproval || {}),
+      },
       regularization: {
         ...DEFAULT_RULES.regularization,
         ...(sourceRules?.regularization || {}),
@@ -132,12 +150,6 @@ export default function AttendancePolicyDrawer({
     });
   }, [isOpen, mode, resource, version]);
 
-  const title =
-    mode === "create"
-      ? "New attendance policy"
-      : mode === "new_version"
-        ? `New version of ${resource?.name || "policy"}`
-        : `Edit ${resource?.name || "policy"} draft`;
   const validationError = useMemo(() => {
     if (mode === "create" && (!name.trim() || !code.trim())) {
       return "Policy name and code are required.";
@@ -155,6 +167,12 @@ export default function AttendancePolicyDrawer({
     if (rules.regularization.enabled && !rules.regularization.approvalWorkflowVersion) {
       return "Select a published approval workflow for attendance corrections.";
     }
+    if (rules.overtimeApproval.required && !rules.overtimeEnabled) {
+      return "Enable overtime calculation before requiring overtime approval.";
+    }
+    if (rules.overtimeApproval.required && !rules.overtimeApproval.approvalWorkflowVersion) {
+      return "Select a published approval workflow for overtime reviews.";
+    }
     return "";
   }, [changeReason, code, effectiveFrom, mode, name, rules]);
 
@@ -166,6 +184,13 @@ export default function AttendancePolicyDrawer({
     setRules((current) => ({
       ...current,
       regularization: { ...current.regularization, [key]: value },
+    }));
+  };
+
+  const setOvertimeApprovalRule = (key: keyof AttendanceRules["overtimeApproval"], value: any) => {
+    setRules((current) => ({
+      ...current,
+      overtimeApproval: { ...current.overtimeApproval, [key]: value },
     }));
   };
 
@@ -184,6 +209,9 @@ export default function AttendancePolicyDrawer({
   const regularizationWorkflows = workforcePolicyStore.approvalWorkflows.filter((workflow) =>
     approvalWorkflowSupportsRequestType(workflow, "attendance_regularization_request")
   );
+  const overtimeWorkflows = workforcePolicyStore.approvalWorkflows.filter((workflow) =>
+    approvalWorkflowSupportsRequestType(workflow, "attendance_overtime_review")
+  );
 
   const selectRegularizationWorkflow = (workflowId: string) => {
     const workflow = regularizationWorkflows.find((item) => item._id === workflowId);
@@ -192,6 +220,20 @@ export default function AttendancePolicyDrawer({
       ...current,
       regularization: {
         ...current.regularization,
+        approvalWorkflow: workflow?._id || null,
+        approvalWorkflowVersion: version?._id || null,
+        approvalWorkflowVersionNumber: version?.versionNumber || null,
+      },
+    }));
+  };
+
+  const selectOvertimeWorkflow = (workflowId: string) => {
+    const workflow = overtimeWorkflows.find((item) => item._id === workflowId);
+    const version = workflow?.effectivePublishedVersion || workflow?.latestPublishedVersion;
+    setRules((current) => ({
+      ...current,
+      overtimeApproval: {
+        ...current.overtimeApproval,
         approvalWorkflow: workflow?._id || null,
         approvalWorkflowVersion: version?._id || null,
         approvalWorkflowVersionNumber: version?.versionNumber || null,
@@ -307,6 +349,58 @@ export default function AttendancePolicyDrawer({
         <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
           <HStack justify="space-between" align="start">
             <Box>
+              <Text fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Daily finalization</Text>
+              <Text mt={1} fontSize="sm" color="gray.500">Automatically lock calculated attendance after the review window.</Text>
+            </Box>
+            <Switch
+              aria-label="Enable daily attendance auto-finalization"
+              isChecked={rules.autoFinalize.enabled}
+              onChange={(event) => setRule("autoFinalize", { ...rules.autoFinalize, enabled: event.target.checked })}
+              colorScheme="blue"
+            />
+          </HStack>
+          {rules.autoFinalize.enabled ? (
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5} mt={5}>
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="600">Finalize after shift closes</FormLabel>
+                <NumberInput
+                  min={0}
+                  max={48}
+                  step={1}
+                  value={Number(rules.autoFinalize.graceMinutes || 0) / 60}
+                  onChange={(_, value) => setRule("autoFinalize", {
+                    ...rules.autoFinalize,
+                    graceMinutes: Number.isFinite(value) ? Math.round(value * 60) : 0,
+                  })}
+                >
+                  <NumberInputField bg={inputBg} />
+                </NumberInput>
+                <FormHelperText>Hours available for HR review before locking. Use 0 for immediate finalization.</FormHelperText>
+              </FormControl>
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="600">Records to finalize</FormLabel>
+                <Select
+                  value={rules.autoFinalize.mode}
+                  onChange={(event) => setRule("autoFinalize", {
+                    ...rules.autoFinalize,
+                    mode: event.target.value as AttendanceRules["autoFinalize"]["mode"],
+                  })}
+                  bg={inputBg}
+                >
+                  <option value="clean_only">Clean days only</option>
+                  <option value="all_calculated">All calculated days</option>
+                </Select>
+                <FormHelperText>
+                  Clean days excludes absent, incomplete, and half-day records so HR can review them manually.
+                </FormHelperText>
+              </FormControl>
+            </SimpleGrid>
+          ) : null}
+        </Box>
+
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <HStack justify="space-between" align="start">
+            <Box>
               <Text fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Attendance corrections</Text>
               <Text mt={1} fontSize="sm" color="gray.500">Control when employees can correct historical attendance and who approves it.</Text>
             </Box>
@@ -411,12 +505,39 @@ export default function AttendancePolicyDrawer({
                 <option value="absent">Mark absent</option>
               </Select>
             </FormControl>
-            <HStack justify="space-between" mt={2}><Text fontSize="sm" fontWeight="600">Calculate overtime</Text><Switch isChecked={rules.overtimeEnabled} onChange={(event) => setRule("overtimeEnabled", event.target.checked)} colorScheme="blue" /></HStack>
+            <HStack justify="space-between" mt={2}><Text fontSize="sm" fontWeight="600">Calculate overtime</Text><Switch isChecked={rules.overtimeEnabled} onChange={(event) => setRules((current) => ({ ...current, overtimeEnabled: event.target.checked, overtimeApproval: event.target.checked ? current.overtimeApproval : { ...current.overtimeApproval, required: false } }))} colorScheme="blue" /></HStack>
             {rules.overtimeEnabled ? (
-              <FormControl>
-                <FormLabel fontSize="sm" fontWeight="600">Overtime starts after worked minutes</FormLabel>
-                <NumberInput min={0} value={rules.overtimeStartsAfterMinutes} onChange={(_, value) => setRule("overtimeStartsAfterMinutes", value || 0)}><NumberInputField bg={inputBg} /></NumberInput>
-              </FormControl>
+              <Stack spacing={4}>
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600">Overtime starts after worked minutes</FormLabel>
+                  <NumberInput min={0} value={rules.overtimeStartsAfterMinutes} onChange={(_, value) => setRule("overtimeStartsAfterMinutes", value || 0)}><NumberInputField bg={inputBg} /></NumberInput>
+                </FormControl>
+                <HStack justify="space-between" align="start">
+                  <Box>
+                    <Text fontSize="sm" fontWeight="600">Require overtime approval</Text>
+                    <Text fontSize="xs" color="gray.500">Approved overtime is required before payroll or comp-off can use it. Off-day work reviews the full worked time.</Text>
+                  </Box>
+                  <Switch
+                    aria-label="Require overtime approval"
+                    isChecked={rules.overtimeApproval.required}
+                    onChange={(event) => setOvertimeApprovalRule("required", event.target.checked)}
+                    colorScheme="blue"
+                  />
+                </HStack>
+                {rules.overtimeApproval.required ? (
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600">Overtime approval workflow</FormLabel>
+                    <Select value={String(rules.overtimeApproval.approvalWorkflow || "")} onChange={(event) => selectOvertimeWorkflow(event.target.value)} bg={inputBg}>
+                      <option value="">Select published workflow</option>
+                      {overtimeWorkflows.map((workflow) => {
+                        const published = workflow.effectivePublishedVersion || workflow.latestPublishedVersion;
+                        return <option key={workflow._id} value={workflow._id}>{workflow.name} (v{published?.versionNumber})</option>;
+                      })}
+                    </Select>
+                    {!overtimeWorkflows.length ? <FormHelperText>Create and publish an approval workflow enabled for Overtime reviews first.</FormHelperText> : null}
+                  </FormControl>
+                ) : null}
+              </Stack>
             ) : null}
           </Stack>
         </Box>

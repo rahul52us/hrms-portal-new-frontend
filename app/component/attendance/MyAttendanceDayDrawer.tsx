@@ -210,10 +210,23 @@ export default function MyAttendanceDayDrawer({
               <Field label="Late" value={formatMinutes(detailRecord?.lateMinutes)} />
               <Field label="Early exit" value={formatMinutes(detailRecord?.earlyExitMinutes)} />
               <Field label="Overtime" value={formatMinutes(detailRecord?.overtimeMinutes)} />
+              <Field label="Overtime approval" value={detailRecord?.overtimeApprovalRequiredSnapshot ? titleCase(detailRecord?.overtimeApprovalStatus) : "Not required"} />
+              <Field label="Approved overtime" value={formatMinutes(detailRecord?.approvedOvertimeMinutes)} />
               <Field label="Missing punch" value={detailRecord?.hasMissingPunch ? "Yes" : "No"} />
               <Field label="Record state" value={titleCase(detailRecord?.state)} />
             </SimpleGrid>
           </Box>
+
+          {data.overtimeReview || data.compOffClaim || data.compOffCredit ? (
+            <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}>
+              <Text fontSize="sm" fontWeight="800" mb={3}>Overtime and comp-off</Text>
+              <Stack spacing={3}>
+                {data.overtimeReview ? <Text fontSize="sm">Overtime review: <strong>{titleCase(data.overtimeReview.status)}</strong> ({formatMinutes(data.overtimeReview.overtimeMinutesSnapshot)})</Text> : null}
+                {data.compOffClaim ? <Text fontSize="sm">Comp-off claim: <strong>{titleCase(data.compOffClaim.status)}</strong> ({data.compOffClaim.requestedUnits} day{Number(data.compOffClaim.requestedUnits) === 1 ? "" : "s"})</Text> : null}
+                {data.compOffCredit ? <Text fontSize="sm">Comp-off credit: <strong>{data.compOffCredit.availableUnits} available</strong> of {data.compOffCredit.originalUnits}, expires {data.compOffCredit.expiresOn}</Text> : null}
+              </Stack>
+            </Box>
+          ) : null}
 
           {data.leaveRequest || data.remoteWorkRequest ? (
             <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}>

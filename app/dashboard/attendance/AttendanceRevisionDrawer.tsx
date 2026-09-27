@@ -102,6 +102,8 @@ export default function AttendanceRevisionDrawer({
                       <Snapshot label="Late minutes" value={before.lateMinutes} />
                       <Snapshot label="Early exit minutes" value={before.earlyExitMinutes} />
                       <Snapshot label="Overtime minutes" value={before.overtimeMinutes} />
+                      <Snapshot label="Overtime approval" value={before.overtimeApprovalStatus} />
+                      <Snapshot label="Approved overtime" value={before.approvedOvertimeMinutes} />
                       <Snapshot label="Missing punch" value={before.hasMissingPunch} />
                     </SimpleGrid>
                   </Box>
@@ -117,6 +119,8 @@ export default function AttendanceRevisionDrawer({
                       <Snapshot label="Late minutes" value={after.lateMinutes} />
                       <Snapshot label="Early exit minutes" value={after.earlyExitMinutes} />
                       <Snapshot label="Overtime minutes" value={after.overtimeMinutes} />
+                      <Snapshot label="Overtime approval" value={after.overtimeApprovalStatus} />
+                      <Snapshot label="Approved overtime" value={after.approvedOvertimeMinutes} />
                       <Snapshot label="Missing punch" value={after.hasMissingPunch} />
                     </SimpleGrid>
                   </Box>

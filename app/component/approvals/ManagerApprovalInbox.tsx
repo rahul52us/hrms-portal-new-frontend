@@ -28,6 +28,11 @@ import {
   fetchAttendanceRegularizationRequests,
 } from "@/app/component/attendance/attendanceRegularizationApi";
 import {
+  AttendanceOvertimeReview,
+  actOnAttendanceOvertimeReview,
+  fetchAttendanceOvertimeReviews,
+} from "@/app/component/attendance/attendanceOvertimeApi";
+import {
   Badge,
   Box,
   Button,
@@ -59,7 +64,8 @@ type ApprovalItem =
   | { kind: "leave_encashment"; request: LeaveEncashmentRequest }
   | { kind: "remote_work"; request: RemoteWorkRequest }
   | { kind: "comp_off"; request: CompOffClaim }
-  | { kind: "attendance_regularization"; request: AttendanceRegularizationRequest };
+  | { kind: "attendance_regularization"; request: AttendanceRegularizationRequest }
+  | { kind: "attendance_overtime"; request: AttendanceOvertimeReview };
 
 const formatDate = (value: string) => new Intl.DateTimeFormat("en-IN", {
   day: "2-digit",
@@ -92,6 +98,7 @@ function requestTitle(item: ApprovalItem) {
   if (item.kind === "attendance_regularization") {
     return item.request.correctionType.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
   }
+  if (item.kind === "attendance_overtime") return "Overtime review";
   return "Work from home";
 }
 
@@ -119,6 +126,7 @@ function requestUnits(item: ApprovalItem) {
     return `${item.request.requestedUnits} ${item.request.requestedUnits === 1 ? "day" : "days"} credit`;
   }
   if (item.kind === "attendance_regularization") return "Attendance record correction";
+  if (item.kind === "attendance_overtime") return `${item.request.overtimeMinutesSnapshot} overtime minutes`;
   return `${item.request.requestedUnits} ${item.request.requestedUnits === 1 ? "day" : "days"}`;
 }
 
@@ -137,6 +145,9 @@ function requestDates(item: ApprovalItem) {
     return { from: item.request.attendanceDate, to: item.request.attendanceDate };
   }
   if (item.kind === "attendance_regularization") {
+    return { from: item.request.attendanceDate, to: item.request.attendanceDate };
+  }
+  if (item.kind === "attendance_overtime") {
     return { from: item.request.attendanceDate, to: item.request.attendanceDate };
   }
   return { from: item.request.fromDate, to: item.request.toDate };
@@ -159,6 +170,8 @@ const kindLabel = (kind: ApprovalItem["kind"]) =>
           ? "WFH"
           : kind === "attendance_regularization"
             ? "Attendance correction"
+            : kind === "attendance_overtime"
+              ? "Overtime"
             : "Comp-off";
 
 const kindColor = (kind: ApprovalItem["kind"]) =>
@@ -172,6 +185,8 @@ const kindColor = (kind: ApprovalItem["kind"]) =>
           ? "purple"
           : kind === "attendance_regularization"
             ? "orange"
+            : kind === "attendance_overtime"
+              ? "green"
             : "teal";
 
 const requestSubmittedAt = (item: ApprovalItem) =>
@@ -191,6 +206,7 @@ export default function ManagerApprovalInbox() {
   const [remoteWorkRequests, setRemoteWorkRequests] = useState<RemoteWorkRequest[]>([]);
   const [compOffClaims, setCompOffClaims] = useState<CompOffClaim[]>([]);
   const [regularizationRequests, setRegularizationRequests] = useState<AttendanceRegularizationRequest[]>([]);
+  const [overtimeReviews, setOvertimeReviews] = useState<AttendanceOvertimeReview[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -200,13 +216,14 @@ export default function ManagerApprovalInbox() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [leaveResult, cancellationResult, encashmentResult, remoteWorkResult, compOffResult, regularizationResult] = await Promise.all([
+      const [leaveResult, cancellationResult, encashmentResult, remoteWorkResult, compOffResult, regularizationResult, overtimeResult] = await Promise.all([
         fetchLeaveRequests({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
         fetchLeaveCancellationRequests({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
         fetchLeaveEncashmentRequests({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
         fetchRemoteWorkRequests({ scope: "approvals", page: 1, limit: 20 }),
         fetchCompOffClaims({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
         fetchAttendanceRegularizationRequests({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
+        fetchAttendanceOvertimeReviews({ scope: "approvals", status: "pending", page: 1, limit: 20 }),
       ]);
       setLeaveRequests(leaveResult.items || []);
       setLeaveCancellations(cancellationResult.items || []);
@@ -214,13 +231,15 @@ export default function ManagerApprovalInbox() {
       setRemoteWorkRequests(remoteWorkResult.items || []);
       setCompOffClaims(compOffResult.items || []);
       setRegularizationRequests(regularizationResult.items || []);
+      setOvertimeReviews(overtimeResult.items || []);
       setTotal(
         Number(leaveResult.pagination?.total || 0) +
         Number(cancellationResult.pagination?.total || 0) +
         Number(encashmentResult.pagination?.total || 0) +
         Number(remoteWorkResult.pagination?.total || 0) +
         Number(compOffResult.pagination?.total || 0) +
-        Number(regularizationResult.pagination?.total || 0)
+        Number(regularizationResult.pagination?.total || 0) +
+        Number(overtimeResult.pagination?.total || 0)
       );
     } catch (error: any) {
       toast({
@@ -243,9 +262,10 @@ export default function ManagerApprovalInbox() {
     ...remoteWorkRequests.map((request) => ({ kind: "remote_work" as const, request })),
     ...compOffClaims.map((request) => ({ kind: "comp_off" as const, request })),
     ...regularizationRequests.map((request) => ({ kind: "attendance_regularization" as const, request })),
+    ...overtimeReviews.map((request) => ({ kind: "attendance_overtime" as const, request })),
   ].sort((left, right) => (
     new Date(requestSubmittedAt(right)).getTime() - new Date(requestSubmittedAt(left)).getTime()
-  )), [compOffClaims, leaveCancellations, leaveEncashments, leaveRequests, regularizationRequests, remoteWorkRequests]);
+  )), [compOffClaims, leaveCancellations, leaveEncashments, leaveRequests, overtimeReviews, regularizationRequests, remoteWorkRequests]);
 
   const open = (item: ApprovalItem) => {
     setSelected(item);
@@ -261,7 +281,7 @@ export default function ManagerApprovalInbox() {
     }
     setSubmitting(true);
     try {
-      let updated: LeaveRequest | LeaveCancellationRequest | LeaveEncashmentRequest | RemoteWorkRequest | CompOffClaim | AttendanceRegularizationRequest;
+      let updated: LeaveRequest | LeaveCancellationRequest | LeaveEncashmentRequest | RemoteWorkRequest | CompOffClaim | AttendanceRegularizationRequest | AttendanceOvertimeReview;
       if (selected.kind === "leave") {
         updated = await actOnLeaveRequest(selected.request._id, action, { comment: comment.trim() || undefined });
       } else if (selected.kind === "leave_cancellation") {
@@ -272,10 +292,12 @@ export default function ManagerApprovalInbox() {
         updated = await actOnRemoteWorkRequest(selected.request._id, action, { comment: comment.trim() || undefined });
       } else if (selected.kind === "attendance_regularization") {
         updated = await actOnAttendanceRegularizationRequest(selected.request._id, action, { comment: comment.trim() || undefined });
+      } else if (selected.kind === "attendance_overtime") {
+        updated = await actOnAttendanceOvertimeReview(selected.request._id, action, { comment: comment.trim() || undefined });
       } else {
         updated = await actOnCompOffClaim(selected.request._id, action, { comment: comment.trim() || undefined });
       }
-      const movedToNextLevel = action === "approve" && ["submitted", "manager_approved"].includes(updated.status);
+      const movedToNextLevel = action === "approve" && ["submitted", "manager_approved", "pending"].includes(updated.status);
       toast({
         title: action === "reject"
           ? "Request rejected"
@@ -318,7 +340,7 @@ export default function ManagerApprovalInbox() {
               <Heading size="md">Needs your approval</Heading>
               <Badge colorScheme="orange" borderRadius="full" px={2.5}>{total}</Badge>
             </HStack>
-            <Text mt={1} fontSize="sm" color={muted}>Leave, cancellation, encashment, work-from-home, comp-off, and attendance requests assigned to you.</Text>
+            <Text mt={1} fontSize="sm" color={muted}>Leave, cancellation, encashment, work-from-home, comp-off, attendance corrections, and overtime assigned to you.</Text>
           </Box>
           <Button size="sm" variant="outline" leftIcon={<FiRefreshCw />} onClick={load}>Refresh</Button>
         </Flex>
@@ -390,6 +412,12 @@ export default function ManagerApprovalInbox() {
                       {selected.request.requestedChanges?.punchIn ? <Text>New punch-in: {new Date(selected.request.requestedChanges.punchIn).toLocaleString()}</Text> : null}
                       {selected.request.requestedChanges?.punchOut ? <Text>New punch-out: {new Date(selected.request.requestedChanges.punchOut).toLocaleString()}</Text> : null}
                       {selected.request.requestedChanges?.workMode ? <Text>New work mode: {selected.request.requestedChanges.workMode}</Text> : null}
+                    </Stack>
+                  ) : null}
+                  {selected.kind === "attendance_overtime" ? (
+                    <Stack mt={3} spacing={1} fontSize="sm">
+                      <Text color={muted}>Finalized attendance revision {selected.request.attendanceRevisionNumber}</Text>
+                      <Text>{selected.request.workedMinutesSnapshot} worked minutes on {selected.request.dayTypeSnapshot.replace(/_/g, " ")}</Text>
                     </Stack>
                   ) : null}
                 </Box>

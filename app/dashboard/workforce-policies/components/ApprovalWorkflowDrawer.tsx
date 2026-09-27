@@ -46,6 +46,7 @@ const REQUEST_TYPES: Array<{ value: ApprovalRequestType; label: string }> = [
   { value: "remote_work_request", label: "WFH requests" },
   { value: "comp_off_claim", label: "Comp-off claims" },
   { value: "attendance_regularization_request", label: "Attendance corrections" },
+  { value: "attendance_overtime_review", label: "Overtime reviews" },
 ];
 
 const STEP_TYPES: Array<{ value: ApprovalStepType; label: string }> = [
@@ -233,6 +234,7 @@ export default function ApprovalWorkflowDrawer({
 
   const cardBg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
+  const inputBg = useColorModeValue("gray.50", "gray.900");
 
   return (
     <DashboardDrawer
@@ -257,10 +259,10 @@ export default function ApprovalWorkflowDrawer({
         <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
           <Text mb={4} fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Workflow identity</Text>
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
-            <FormControl isRequired isDisabled={mode !== "create"}><FormLabel>Name</FormLabel><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Manager then HR" bg={useColorModeValue("gray.50", "gray.900")} /></FormControl>
-            <FormControl isRequired isDisabled={mode !== "create"}><FormLabel>Code</FormLabel><Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="MGR-HR" bg={useColorModeValue("gray.50", "gray.900")} /></FormControl>
+            <FormControl isRequired isDisabled={mode !== "create"}><FormLabel>Name</FormLabel><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Manager then HR" bg={inputBg} /></FormControl>
+            <FormControl isRequired isDisabled={mode !== "create"}><FormLabel>Code</FormLabel><Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="MGR-HR" bg={inputBg} /></FormControl>
           </SimpleGrid>
-          {mode === "create" ? <FormControl mt={5}><FormLabel>Description</FormLabel><Textarea value={description} onChange={(event) => setDescription(event.target.value)} bg={useColorModeValue("gray.50", "gray.900")} /></FormControl> : null}
+          {mode === "create" ? <FormControl mt={5}><FormLabel>Description</FormLabel><Textarea value={description} onChange={(event) => setDescription(event.target.value)} bg={inputBg} /></FormControl> : null}
         </Box>
         <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
           <FormControl mb={6}>
@@ -312,7 +314,7 @@ export default function ApprovalWorkflowDrawer({
             </Flex>
             <Stack spacing={4}>
               {steps.map((step, index) => (
-                <Box key={`${step.order}-${index}`} borderWidth="1px" borderColor={useColorModeValue("gray.200", "gray.700")} borderRadius="lg" p={5} bg={useColorModeValue("gray.50", "gray.900")}>
+                <Box key={`${step.order}-${index}`} borderWidth="1px" borderColor={borderColor} borderRadius="lg" p={5} bg={inputBg}>
                   <Flex justify="space-between" align="center" mb={4}>
                     <Text fontWeight="800">Level {index + 1}</Text>
                     <HStack spacing={1}>
@@ -345,7 +347,7 @@ export default function ApprovalWorkflowDrawer({
           </Box>
         ) : null}
         <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
-          <FormControl isRequired={mode !== "create"}><FormLabel fontWeight="800">Change reason</FormLabel><Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} placeholder="Why this approval flow is changing" bg={useColorModeValue("gray.50", "gray.900")} /></FormControl>
+          <FormControl isRequired={mode !== "create"}><FormLabel fontWeight="800">Change reason</FormLabel><Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} placeholder="Why this approval flow is changing" bg={inputBg} /></FormControl>
         </Box>
       </Stack>
     </DashboardDrawer>

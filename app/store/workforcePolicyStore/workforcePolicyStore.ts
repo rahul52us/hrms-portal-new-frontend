@@ -19,6 +19,17 @@ export interface AttendanceRules {
   missingPunchTreatment: string;
   overtimeEnabled: boolean;
   overtimeStartsAfterMinutes: number;
+  overtimeApproval: {
+    required: boolean;
+    approvalWorkflow?: string | null;
+    approvalWorkflowVersion?: string | null;
+    approvalWorkflowVersionNumber?: number | null;
+  };
+  autoFinalize: {
+    enabled: boolean;
+    graceMinutes: number;
+    mode: "clean_only" | "all_calculated";
+  };
   regularization: AttendanceRegularizationRules;
 }
 
@@ -138,7 +149,7 @@ export interface LeavePolicyRule {
   compOffClaimApprovalWorkflowVersionNumber?: number | null;
 }
 
-export type ApprovalRequestType = "leave_request" | "leave_encashment_request" | "remote_work_request" | "comp_off_claim" | "attendance_regularization_request";
+export type ApprovalRequestType = "leave_request" | "leave_encashment_request" | "remote_work_request" | "comp_off_claim" | "attendance_regularization_request" | "attendance_overtime_review";
 export type ApprovalStepType =
   | "reporting_manager"
   | "manager_manager"
