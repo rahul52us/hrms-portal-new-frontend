@@ -24,8 +24,7 @@ export const dashboard = {
   // Profile
 
   links : {
-    salaryStructure : `/${dashboardName}/salaryStructure`,
-    salarySlip:`/${dashboardName}/salary-slip`
+    payroll: `/${dashboardName}/payroll`
   },
   profile : `/${dashboardName}/profile`,
   profileEditIndex: `/${dashboardName}/profile/edit/:id`,

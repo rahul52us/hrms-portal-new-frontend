@@ -1,5 +1,6 @@
 "use client";
 
+import axios from "axios";
 import {
   Avatar,
   Badge,
@@ -22,7 +23,7 @@ import {
 } from "@chakra-ui/react";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
-import { FiFolder, FiShield, FiStar, FiUser, FiUsers, FiMail, FiBriefcase, FiMapPin } from "react-icons/fi";
+import { FiDollarSign, FiFolder, FiShield, FiStar, FiUser, FiUsers, FiMail, FiMapPin } from "react-icons/fi";
 import { MdOutlineVerified } from "react-icons/md";
 import stores from "@/app/store/stores";
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
@@ -33,6 +34,7 @@ import FamilyContactsForm from "../users/components/ProfileTabs/FamilyContactsFo
 import SkillsMappingForm from "../users/components/ProfileTabs/SkillsMappingForm";
 import StatutoryDetailsForm from "../users/components/ProfileTabs/StatutoryDetailsForm";
 import DocumentsForm from "../users/components/ProfileTabs/DocumentsForm";
+import CompensationProfilePanel, { CompensationProfileData } from "./CompensationProfilePanel";
 
 const ProfilePage: React.FC = observer(() => {
   const { userStore, auth } = stores;
@@ -42,13 +44,31 @@ const ProfilePage: React.FC = observer(() => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profileData, setProfileData] = useState<any>({});
+  const [compensationData, setCompensationData] = useState<CompensationProfileData | null>(null);
+  const [compensationLoading, setCompensationLoading] = useState(false);
+  const [compensationError, setCompensationError] = useState("");
 
 
   useEffect(() => {
     if (user?._id) {
       loadProfileDetails();
+      loadCompensationProfile();
     }
-  }, [user]);
+  }, [user?._id]);
+
+  const loadCompensationProfile = async () => {
+    setCompensationLoading(true);
+    setCompensationError("");
+    try {
+      const response = await axios.get("/payroll/compensation/me");
+      setCompensationData(response.data?.data || null);
+    } catch (error: any) {
+      setCompensationData(null);
+      setCompensationError(getApiErrorMessage(error));
+    } finally {
+      setCompensationLoading(false);
+    }
+  };
 
   const loadProfileDetails = async (showLoader = true) => {
     if (showLoader) setLoading(true);
@@ -143,6 +163,11 @@ const ProfilePage: React.FC = observer(() => {
   const cardBg = useColorModeValue("white", "gray.800");
   const cardBorder = useColorModeValue("gray.400", "gray.700");
   const muted = useColorModeValue("gray.500", "gray.400");
+  const tabBaseBg = useColorModeValue("blackAlpha.50", "whiteAlpha.100");
+  const tabSelectedBg = useColorModeValue("blue.500", "blue.400");
+  const tabHoverBg = useColorModeValue("gray.100", "whiteAlpha.200");
+  const tabSelectedHoverBg = useColorModeValue("blue.600", "blue.500");
+  const showCompensation = String(user?.role || "").trim().toLowerCase() !== "superadmin";
 
   const avatarUrl = user?.pic?.url || "";
   const fullName = user?.name || "User";
@@ -221,7 +246,7 @@ const ProfilePage: React.FC = observer(() => {
             >
               <Skeleton height="12px" width="100px" mb={6} ml={2} />
               <VStack spacing={2} align="stretch">
-                {[1, 2, 3, 4, 5].map((i) => (
+                {[1, 2, 3, 4, 5, 6].map((i) => (
                   <Skeleton key={i} height="44px" borderRadius="xl" startColor="gray.100" endColor="gray.200" _dark={{ startColor: "whiteAlpha.50", endColor: "whiteAlpha.200" }} />
                 ))}
               </VStack>
@@ -283,7 +308,8 @@ const ProfilePage: React.FC = observer(() => {
                     { name: "Family & Contacts", icon: <FiUsers size={18} /> },
                     { name: "Skills & Expertise", icon: <FiStar size={18} /> },
                     { name: "Statutory Details", icon: <FiShield size={18} /> },
-                    { name: "My Documents", icon: <FiFolder size={18} /> }
+                    { name: "My Documents", icon: <FiFolder size={18} /> },
+                    ...(showCompensation ? [{ name: "Compensation", icon: <FiDollarSign size={18} /> }] : [])
                   ].map((tab) => (
                     <Tab
                       key={tab.name}
@@ -292,17 +318,17 @@ const ProfilePage: React.FC = observer(() => {
                       py={{ base: 2, md: 3 }}
                       borderRadius="xl"
                       whiteSpace="nowrap"
-                      bg={{ base: useColorModeValue("blackAlpha.50", "whiteAlpha.100"), md: "transparent" }}
+                      bg={{ base: tabBaseBg, md: "transparent" }}
                       _selected={{
-                        bg: useColorModeValue("blue.500", "blue.400"),
+                        bg: tabSelectedBg,
                         color: "white",
                         fontWeight: "600",
                         boxShadow: "md"
                       }}
                       _hover={{
-                        bg: useColorModeValue("gray.100", "whiteAlpha.200"),
+                        bg: tabHoverBg,
                         _selected: {
-                          bg: useColorModeValue("blue.600", "blue.500"),
+                          bg: tabSelectedHoverBg,
                         }
                       }}
                       color={muted}
@@ -354,6 +380,15 @@ const ProfilePage: React.FC = observer(() => {
                     <TabPanel px={0} pt={0}>
                       {user?._id ? <DocumentsForm userId={user._id} /> : <Text>Loading...</Text>}
                     </TabPanel>
+                    {showCompensation ? (
+                      <TabPanel px={0} pt={0}>
+                        <CompensationProfilePanel
+                          data={compensationData}
+                          loading={compensationLoading}
+                          error={compensationError}
+                        />
+                      </TabPanel>
+                    ) : null}
                   </TabPanels>
                 </Box>
 

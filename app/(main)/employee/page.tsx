@@ -316,7 +316,6 @@ const EmployeePage = observer(() => {
                   <QuickLinkTile icon={FiClock} label="Requests" href="/dashboard/requests" />
                   <QuickLinkTile icon={FiShield} label="Holiday List" href="/dashboard/company/policy/holidays" />
                   <QuickLinkTile icon={FiCreditCard} label="Expense Claim" href="/dashboard/request" />
-                  <QuickLinkTile icon={FiFileText} label="Salary Slip" href="/dashboard/salary-slip" />
                   <QuickLinkTile icon={FiUsers} label="Help Desk" href="/contact-us" />
                 </SimpleGrid>
               </Box>

@@ -117,6 +117,14 @@ const sidebarDatas: SidebarItem[] = [
     permissionKey: PERMISSION_KEYS.VIEW_LEAVE_REQUESTS,
   },
   {
+    id: 110,
+    name: "Payroll",
+    icon: <FiCreditCard />,
+    url: "/dashboard/payroll",
+    role: ["admin", "hradmin"],
+    permissionKey: PERMISSION_KEYS.VIEW_PAYROLL,
+  },
+  {
     id: 108,
     name: "Calendar",
     icon: <FiCalendar />,
@@ -160,41 +168,6 @@ const sidebarDatas: SidebarItem[] = [
     role: ["user"],
     children: [
       {
-        id: 202,
-        name: "My CTC",
-        icon: <FiFileText />,
-        url: "/employee/ctc",
-        role: ["user"],
-      },
-      {
-        id: 203,
-        name: "My Salary Slip",
-        icon: <FiFileText />,
-        url: "/dashboard/salary-slip",
-        role: ["user"],
-      },
-      {
-        id: 204,
-        name: "My Investment Declaration",
-        icon: <FiFileText />,
-        url: "/employee/investment-declaration",
-        role: ["user"],
-      },
-      {
-        id: 205,
-        name: "My Tax Report",
-        icon: <FiFileText />,
-        url: "/employee/tax-report",
-        role: ["user"],
-      },
-      {
-        id: 206,
-        name: "My Annual Salary",
-        icon: <FiFileText />,
-        url: "/employee/annual-salary",
-        role: ["user"],
-      },
-      {
         id: 207,
         name: "My To Do",
         icon: <FiFileText />,
@@ -220,13 +193,6 @@ const sidebarDatas: SidebarItem[] = [
         name: "View My Process Activities",
         icon: <FiFileText />,
         url: "/employee/process-activities",
-        role: ["user"],
-      },
-      {
-        id: 211,
-        name: "My Form16",
-        icon: <FiFileText />,
-        url: "/employee/form16",
         role: ["user"],
       },
       {
