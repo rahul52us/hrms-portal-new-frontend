@@ -12,12 +12,14 @@ import SalaryComponentsWorkspace from "./SalaryComponentsWorkspace";
 import PayrollSettingsPanel from "./PayrollSettingsPanel";
 import SalaryStructuresWorkspace from "./SalaryStructuresWorkspace";
 import EmployeeCompensationWorkspace from "./EmployeeCompensationWorkspace";
+import PayrollRunsWorkspace from "./PayrollRunsWorkspace";
 
 const PayrollPage = observer(() => {
   const { auth, companyStore } = stores;
   const canViewPayroll = hasPermission(auth.user, PERMISSION_KEYS.VIEW_PAYROLL);
   const canManage = hasPermission(auth.user, PERMISSION_KEYS.MANAGE_PAYROLL_CONFIGURATION);
   const canManageCompensation = hasPermission(auth.user, PERMISSION_KEYS.MANAGE_EMPLOYEE_COMPENSATION);
+  const canManageRuns = hasPermission(auth.user, PERMISSION_KEYS.MANAGE_PAYROLL_RUNS);
   const surface = useColorModeValue("white", "gray.800");
   const border = useColorModeValue("gray.200", "gray.700");
 
@@ -51,12 +53,14 @@ const PayrollPage = observer(() => {
           />
           <Tabs isLazy variant="line" colorScheme="blue">
             <TabList bg={surface} borderWidth="1px" borderColor={border} borderRadius="md" px={3} overflowX="auto">
+              {canManageRuns ? <Tab>Payroll runs</Tab> : null}
               <Tab>Salary components</Tab>
               <Tab>Salary structures</Tab>
               {canManageCompensation ? <Tab>Employee compensation</Tab> : null}
               <Tab>Settings</Tab>
             </TabList>
             <TabPanels>
+              {canManageRuns ? <TabPanel px={0}><PayrollRunsWorkspace companyId={companyId || ""} canManage={canManageRuns} /></TabPanel> : null}
               <TabPanel px={0}><SalaryComponentsWorkspace companyId={companyId || ""} canManage={canManage} /></TabPanel>
               <TabPanel px={0}><SalaryStructuresWorkspace companyId={companyId || ""} canManage={canManage} /></TabPanel>
               {canManageCompensation ? <TabPanel px={0}><EmployeeCompensationWorkspace companyId={companyId || ""} canManage={canManageCompensation} /></TabPanel> : null}

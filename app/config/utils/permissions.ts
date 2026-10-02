@@ -27,6 +27,7 @@ export const PERMISSION_KEYS = {
   VIEW_PAYROLL: "view_payroll",
   MANAGE_PAYROLL_CONFIGURATION: "manage_payroll_configuration",
   MANAGE_EMPLOYEE_COMPENSATION: "manage_employee_compensation",
+  MANAGE_PAYROLL_RUNS: "manage_payroll_runs",
   APPROVE_ATTENDANCE_REGULARIZATIONS: "approve_attendance_regularizations",
   APPROVE_ATTENDANCE_OVERTIME: "approve_attendance_overtime",
   VIEW_LEAVE_REQUESTS: "view_leave_requests",
