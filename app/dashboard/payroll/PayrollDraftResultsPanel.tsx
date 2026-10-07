@@ -92,6 +92,19 @@ type OneTimeInput = {
   reference?: string;
 };
 
+type StatutoryContribution = {
+  moduleKey: string;
+  code: string;
+  name: string;
+  side: "employee_deduction" | "employer_contribution";
+  wageBaseMinor: number;
+  rateBps: number;
+  amountMinor: number;
+  ruleVersion: string;
+  ruleEffectiveFrom: string;
+  metadata?: Record<string, string | number | boolean>;
+};
+
 type PayrollResult = {
   _id: string;
   identity: { name: string; code: string; username?: string };
@@ -109,6 +122,7 @@ type PayrollResult = {
   };
   recurringComponents: RecurringComponent[];
   oneTimeInputs: OneTimeInput[];
+  statutoryContributions: StatutoryContribution[];
   totals: Record<string, number>;
   issues: ResultIssue[];
   hasErrors: boolean;
@@ -132,6 +146,24 @@ function formatMoney(amountMinor: unknown, currency: string, minorUnits: number)
     minimumFractionDigits: minorUnits,
     maximumFractionDigits: minorUnits,
   }).format(Number(amountMinor || 0) / 10 ** minorUnits);
+}
+
+function TaxProjection({ line, currency, minorUnits }: { line?: StatutoryContribution; currency: string; minorUnits: number }) {
+  if (!line) return null;
+  const metadata = line.metadata || {};
+  return <Box borderWidth="1px" borderRadius="md" p={4}>
+    <HStack justify="space-between" align="start"><Box><Text fontWeight="800">Income-tax projection</Text><Text fontSize="sm" color="gray.500">{String(metadata.taxYear || "Tax year")} | {String(metadata.taxRegime || "new")} regime{metadata.defaultRegimeUsed ? " | company default" : ` | declaration v${metadata.declarationVersion || "-"}`}</Text></Box><Badge colorScheme="red">TDS {formatMoney(line.amountMinor, currency, minorUnits)}</Badge></HStack>
+    <SimpleGrid mt={4} columns={{ base: 2, md: 4 }} spacing={4}>
+      <Box><Text fontSize="xs" color="gray.500">PROJECTED EMPLOYER SALARY</Text><Text fontWeight="700">{formatMoney(metadata.currentEmployerSalaryMinor, currency, minorUnits)}</Text></Box>
+      <Box><Text fontSize="xs" color="gray.500">ANNUAL TAXABLE INCOME</Text><Text fontWeight="700">{formatMoney(metadata.taxableIncomeMinor, currency, minorUnits)}</Text></Box>
+      <Box><Text fontSize="xs" color="gray.500">ANNUAL TAX LIABILITY</Text><Text fontWeight="700">{formatMoney(metadata.annualTaxLiabilityMinor, currency, minorUnits)}</Text></Box>
+      <Box><Text fontSize="xs" color="gray.500">ALREADY WITHHELD</Text><Text fontWeight="700">{formatMoney(Number(metadata.priorCurrentEmployerWithholdingMinor || 0) + Number(metadata.previousEmployerTaxWithheldMinor || 0), currency, minorUnits)}</Text></Box>
+      <Box><Text fontSize="xs" color="gray.500">STANDARD DEDUCTION</Text><Text fontWeight="700">{formatMoney(metadata.standardDeductionMinor, currency, minorUnits)}</Text></Box>
+      <Box><Text fontSize="xs" color="gray.500">OTHER VERIFIED DEDUCTIONS</Text><Text fontWeight="700">{formatMoney(Number(metadata.hraExemptionMinor || 0) + Number(metadata.oldRegimeDeductionsMinor || 0), currency, minorUnits)}</Text></Box>
+      <Box><Text fontSize="xs" color="gray.500">TAX LEFT TO WITHHOLD</Text><Text fontWeight="700">{formatMoney(metadata.remainingAnnualTaxMinor, currency, minorUnits)}</Text></Box>
+      <Box><Text fontSize="xs" color="gray.500">PAYROLLS INCLUDING THIS ONE</Text><Text fontWeight="700">{Number(metadata.remainingPayrollPeriods || 0)}</Text></Box>
+    </SimpleGrid>
+  </Box>;
 }
 
 function formatDays(value: unknown) {
@@ -226,11 +258,13 @@ export default function PayrollDraftResultsPanel({ companyId, run, onRunChanged 
         {hasResults ? <Badge alignSelf={{ base: "flex-start", md: "center" }} colorScheme={isStale ? "orange" : "green"}>{isStale ? "Recalculation required" : `Calculation v${calculationVersion}`}</Badge> : <Badge alignSelf={{ base: "flex-start", md: "center" }} colorScheme="orange">Not calculated</Badge>}
       </Flex>
 
-      <SimpleGrid columns={{ base: 2, lg: 5 }} spacing={3}>
+      <SimpleGrid columns={{ base: 2, lg: 7 }} spacing={3}>
         <Box borderWidth="1px" borderColor={border} borderRadius="md" p={3}><Text fontSize="xs" color={muted}>EMPLOYEES</Text><Text fontSize="xl" fontWeight="800">{run.payrollResultCount || 0}</Text></Box>
         <Box borderWidth="1px" borderColor={border} borderRadius="md" p={3}><Text fontSize="xs" color={muted}>WITH ERRORS</Text><Text fontSize="xl" fontWeight="800" color={run.payrollResultErrorCount ? "red.500" : undefined}>{run.payrollResultErrorCount || 0}</Text></Box>
         <Box borderWidth="1px" borderColor={border} borderRadius="md" p={3}><Text fontSize="xs" color={muted}>WITH WARNINGS</Text><Text fontSize="xl" fontWeight="800" color={run.payrollResultWarningCount ? "orange.500" : undefined}>{run.payrollResultWarningCount || 0}</Text></Box>
         <Box borderWidth="1px" borderColor={border} borderRadius="md" p={3}><Text fontSize="xs" color={muted}>GROSS EARNINGS</Text><Text fontWeight="800">{formatMoney(totals.grossEarningsMinor, run.currency, minorUnits)}</Text></Box>
+        <Box borderWidth="1px" borderColor={border} borderRadius="md" p={3}><Text fontSize="xs" color={muted}>STATUTORY DEDUCTIONS</Text><Text fontWeight="800">{formatMoney(totals.statutoryEmployeeDeductionsMinor, run.currency, minorUnits)}</Text></Box>
+        <Box borderWidth="1px" borderColor={border} borderRadius="md" p={3}><Text fontSize="xs" color={muted}>INCOME TAX / TDS</Text><Text fontWeight="800">{formatMoney(totals.incomeTaxWithholdingMinor, run.currency, minorUnits)}</Text></Box>
         <Box borderWidth="1px" borderColor={border} borderRadius="md" p={3}><Text fontSize="xs" color={muted}>NET PAY</Text><Text fontWeight="800">{formatMoney(totals.netPayMinor, run.currency, minorUnits)}</Text></Box>
       </SimpleGrid>
 
@@ -271,8 +305,10 @@ export default function PayrollDraftResultsPanel({ companyId, run, onRunChanged 
       <Modal isOpen={detailDialog.isOpen} onClose={detailDialog.onClose} size="5xl" scrollBehavior="inside">
         <ModalOverlay /><ModalContent><ModalHeader>{selectedResult ? `${selectedResult.identity.name} payroll breakdown` : "Payroll breakdown"}</ModalHeader><ModalCloseButton />
           <ModalBody>{selectedResult ? <Stack spacing={5}>
-            <SimpleGrid columns={{ base: 2, md: 4 }} spacing={3}><Box><Text fontSize="xs" color={muted}>SCHEDULED EARNINGS</Text><Text fontWeight="800">{formatMoney(selectedResult.totals.scheduledEarningsMinor, run.currency, minorUnits)}</Text></Box><Box><Text fontSize="xs" color={muted}>LOP REDUCTION</Text><Text fontWeight="800">{formatMoney(selectedResult.totals.earningProrationReductionMinor, run.currency, minorUnits)}</Text></Box><Box><Text fontSize="xs" color={muted}>TOTAL DEDUCTIONS</Text><Text fontWeight="800">{formatMoney(selectedResult.totals.totalDeductionsMinor, run.currency, minorUnits)}</Text></Box><Box><Text fontSize="xs" color={muted}>NET PAY</Text><Text fontWeight="800">{formatMoney(selectedResult.totals.netPayMinor, run.currency, minorUnits)}</Text></Box></SimpleGrid>
+            <SimpleGrid columns={{ base: 2, md: 6 }} spacing={3}><Box><Text fontSize="xs" color={muted}>SCHEDULED EARNINGS</Text><Text fontWeight="800">{formatMoney(selectedResult.totals.scheduledEarningsMinor, run.currency, minorUnits)}</Text></Box><Box><Text fontSize="xs" color={muted}>LOP REDUCTION</Text><Text fontWeight="800">{formatMoney(selectedResult.totals.earningProrationReductionMinor, run.currency, minorUnits)}</Text></Box><Box><Text fontSize="xs" color={muted}>INCOME TAX / TDS</Text><Text fontWeight="800">{formatMoney(selectedResult.totals.incomeTaxWithholdingMinor, run.currency, minorUnits)}</Text></Box><Box><Text fontSize="xs" color={muted}>STATUTORY DEDUCTIONS</Text><Text fontWeight="800">{formatMoney(selectedResult.totals.statutoryEmployeeDeductionsMinor, run.currency, minorUnits)}</Text></Box><Box><Text fontSize="xs" color={muted}>EMPLOYER STATUTORY</Text><Text fontWeight="800">{formatMoney(selectedResult.totals.statutoryEmployerContributionsMinor, run.currency, minorUnits)}</Text></Box><Box><Text fontSize="xs" color={muted}>NET PAY</Text><Text fontWeight="800">{formatMoney(selectedResult.totals.netPayMinor, run.currency, minorUnits)}</Text></Box></SimpleGrid>
             <Box><Text mb={2} fontWeight="800">Recurring components</Text><TableContainer borderWidth="1px" borderColor={border} borderRadius="md"><Table size="sm"><Thead bg={subtle}><Tr><Th>Component</Th><Th>Category</Th><Th>Monthly</Th><Th>LOP treatment</Th><Th>Payable</Th></Tr></Thead><Tbody>{selectedResult.recurringComponents.map((component) => <Tr key={component.salaryComponent}><Td><Text fontWeight="700">{component.componentName}</Text><Text fontSize="xs" color={muted}>{component.componentCode}</Text></Td><Td>{component.category.replaceAll("_", " ")}</Td><Td>{formatMoney(component.scheduledAmountMinor, run.currency, minorUnits)}</Td><Td>{component.prorateOnUnpaidDays ? `Prorated (-${formatMoney(component.prorationReductionMinor, run.currency, minorUnits)})` : "Not prorated"}</Td><Td fontWeight="700">{formatMoney(component.payableAmountMinor, run.currency, minorUnits)}</Td></Tr>)}</Tbody></Table></TableContainer></Box>
+            <Box><Text mb={2} fontWeight="800">Generated statutory contributions</Text>{selectedResult.statutoryContributions?.length ? <TableContainer borderWidth="1px" borderColor={border} borderRadius="md"><Table size="sm"><Thead bg={subtle}><Tr><Th>Contribution</Th><Th>Impact</Th><Th isNumeric>Wage base</Th><Th isNumeric>Rate</Th><Th isNumeric>Amount</Th></Tr></Thead><Tbody>{selectedResult.statutoryContributions.map((item) => <Tr key={`${item.code}-${item.side}`}><Td><Text fontWeight="700">{item.name}</Text><Text fontSize="xs" color={muted}>{item.code} | {item.ruleVersion} from {item.ruleEffectiveFrom}</Text></Td><Td><Badge colorScheme={item.side === "employee_deduction" ? "red" : "purple"}>{item.side === "employee_deduction" ? "Employee deduction" : "Employer cost"}</Badge></Td><Td isNumeric>{formatMoney(item.wageBaseMinor, run.currency, minorUnits)}</Td><Td isNumeric>{item.rateBps ? `${item.rateBps / 100}%` : item.moduleKey === "professional_tax" ? "Slab" : item.moduleKey === "labour_welfare_fund" ? "Flat" : "Calculated"}</Td><Td isNumeric fontWeight="700">{formatMoney(item.amountMinor, run.currency, minorUnits)}</Td></Tr>)}</Tbody></Table></TableContainer> : <Text fontSize="sm" color={muted}>No generated statutory contribution applies to this employee.</Text>}</Box>
+            <TaxProjection line={selectedResult.statutoryContributions.find((item) => item.moduleKey === "income_tax_withholding")} currency={run.currency} minorUnits={minorUnits} />
             <Box><Text mb={2} fontWeight="800">One-time inputs</Text>{selectedResult.oneTimeInputs.length ? <TableContainer borderWidth="1px" borderColor={border} borderRadius="md"><Table size="sm"><Thead bg={subtle}><Tr><Th>Component</Th><Th>Type</Th><Th>Reason</Th><Th>Amount</Th></Tr></Thead><Tbody>{selectedResult.oneTimeInputs.map((input) => <Tr key={input.payrollOneTimeInput}><Td><Text fontWeight="700">{input.componentName}</Text><Text fontSize="xs" color={muted}>{input.componentCode}</Text></Td><Td>{input.inputType}</Td><Td><Text maxW="340px" whiteSpace="normal">{input.reason}</Text>{input.reference ? <Text fontSize="xs" color={muted}>{input.reference}</Text> : null}</Td><Td fontWeight="700">{formatMoney(input.amountMinor, run.currency, minorUnits)}</Td></Tr>)}</Tbody></Table></TableContainer> : <Text fontSize="sm" color={muted}>No one-time inputs for this employee.</Text>}</Box>
             <Box><Text mb={2} fontWeight="800">Validation</Text>{selectedResult.issues.length ? <Stack spacing={2}>{selectedResult.issues.map((issue) => <Alert key={`${issue.category}-${issue.code}`} status={issue.severity === "error" ? "error" : "warning"} borderRadius="md"><AlertIcon /><Box><Text fontWeight="700">{issue.category.replaceAll("_", " ")}</Text><AlertDescription>{issue.message}</AlertDescription></Box></Alert>)}</Stack> : <Badge colorScheme="green">No validation issues</Badge>}</Box>
           </Stack> : null}</ModalBody>

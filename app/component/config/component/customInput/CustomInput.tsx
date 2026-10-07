@@ -70,6 +70,7 @@ interface CustomInputProps {
   error?: string | null;
   maxDate?: string; // Date string type
   minDate?: string; // Date string type
+  step?: string | number;
   disabledDates?: string[]; // Array of date strings
   name: string;
   isClear?: boolean;

@@ -40,6 +40,8 @@ const initialForm = {
   state: "",
   country: "",
   pinCode: "",
+  latitude: "",
+  longitude: "",
   is_active: true,
 };
 
@@ -72,6 +74,8 @@ const LocationModal = ({
         state: initialData.state || "",
         country: initialData.country || "",
         pinCode: initialData.pinCode || "",
+        latitude: initialData.latitude === null || initialData.latitude === undefined ? "" : String(initialData.latitude),
+        longitude: initialData.longitude === null || initialData.longitude === undefined ? "" : String(initialData.longitude),
         is_active: initialData.is_active !== false,
       });
       return;
@@ -88,10 +92,18 @@ const LocationModal = ({
     state: formData.state.trim(),
     country: formData.country.trim(),
     pinCode: formData.pinCode.trim(),
+    latitude: formData.latitude.trim() === "" ? null : Number(formData.latitude),
+    longitude: formData.longitude.trim() === "" ? null : Number(formData.longitude),
     is_active: formData.is_active,
   };
 
-  const isDisabled = !payload.name || !payload.code || !payload.city || (!isEditMode && !companyId);
+  const hasLatitude = payload.latitude !== null;
+  const hasLongitude = payload.longitude !== null;
+  const coordinatesInvalid =
+    hasLatitude !== hasLongitude ||
+    (hasLatitude && (!Number.isFinite(payload.latitude) || payload.latitude! < -90 || payload.latitude! > 90)) ||
+    (hasLongitude && (!Number.isFinite(payload.longitude) || payload.longitude! < -180 || payload.longitude! > 180));
+  const isDisabled = !payload.name || !payload.code || !payload.city || coordinatesInvalid || (!isEditMode && !companyId);
 
   const handleSave = async () => {
     if (isDisabled) return;
@@ -228,6 +240,42 @@ const LocationModal = ({
                 setFormData((previous) => ({ ...previous, address: event.target.value }))
               }
             />
+
+            <Box p={3} bg={softBg} borderRadius="xl" borderWidth="1px" borderColor={borderColor}>
+              <Text fontSize="sm" fontWeight="700" color={titleColor}>Attendance coordinates</Text>
+              <Text mt={1} mb={3} fontSize="xs" color={muted}>
+                Optional until an attendance policy enables office geofencing. Enter both values together.
+              </Text>
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                <CustomInput
+                  type="number"
+                  label="Latitude"
+                  name="latitude"
+                  placeholder="e.g. 28.6139"
+                  value={formData.latitude}
+                  step="any"
+                  onChange={(event: any) =>
+                    setFormData((previous) => ({ ...previous, latitude: event.target.value }))
+                  }
+                />
+                <CustomInput
+                  type="number"
+                  label="Longitude"
+                  name="longitude"
+                  placeholder="e.g. 77.2090"
+                  value={formData.longitude}
+                  step="any"
+                  onChange={(event: any) =>
+                    setFormData((previous) => ({ ...previous, longitude: event.target.value }))
+                  }
+                />
+              </SimpleGrid>
+              {coordinatesInvalid ? (
+                <Text mt={2} fontSize="xs" color="red.500">
+                  Enter valid latitude (-90 to 90) and longitude (-180 to 180), or leave both empty.
+                </Text>
+              ) : null}
+            </Box>
 
             <Checkbox
               isChecked={formData.is_active}

@@ -4,8 +4,10 @@ import { getApiErrorMessage } from "@/app/config/utils/apiError";
 import {
   TodayAttendance,
   fetchTodayAttendance,
+  getAttendanceDeviceIdentity,
   punchIn,
   punchOut,
+  registerAttendanceDevice,
 } from "./attendanceApi";
 import {
   Alert,
@@ -79,6 +81,7 @@ async function browserLocation() {
         resolve({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
+          accuracyMeters: position.coords.accuracy,
         }),
       () => resolve({}),
       { enableHighAccuracy: false, timeout: 5000, maximumAge: 60_000 }
@@ -105,13 +108,14 @@ export default function TodayPunchCard({
   const [today, setToday] = useState<TodayAttendance | null>(null);
   const [loading, setLoading] = useState(true);
   const [punching, setPunching] = useState(false);
+  const [registeringDevice, setRegisteringDevice] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      setToday(await fetchTodayAttendance());
+      setToday(await fetchTodayAttendance(getAttendanceDeviceIdentity().deviceId));
     } catch (requestError: any) {
       setError(
         getApiErrorMessage(
@@ -131,11 +135,16 @@ export default function TodayPunchCard({
   const act = async (action: "in" | "out") => {
     setPunching(true);
     try {
+      const collectLocation = action === "in"
+        ? today?.officeGeofence?.collectOnPunchIn
+        : today?.officeGeofence?.collectOnPunchOut;
+      const location = collectLocation ? await browserLocation() : {};
+      const device = getAttendanceDeviceIdentity();
       if (action === "in") {
-        await punchIn(await browserLocation());
+        await punchIn({ ...location, ...device });
         toast({ title: "Punched in", status: "success" });
       } else {
-        const result = await punchOut();
+        const result = await punchOut({ ...location, ...device });
         toast({ title: result.message, status: "success" });
       }
 
@@ -154,6 +163,23 @@ export default function TodayPunchCard({
       });
     } finally {
       setPunching(false);
+    }
+  };
+
+  const registerBrowser = async () => {
+    setRegisteringDevice(true);
+    try {
+      const result = await registerAttendanceDevice(getAttendanceDeviceIdentity());
+      toast({ title: result.message, status: result.device?.status === "trusted" ? "success" : "info" });
+      await load();
+    } catch (requestError: any) {
+      toast({
+        title: getApiErrorMessage(requestError?.response?.data || requestError, "Could not register this browser"),
+        status: "error",
+        duration: 5000,
+      });
+    } finally {
+      setRegisteringDevice(false);
     }
   };
 
@@ -270,6 +296,38 @@ export default function TodayPunchCard({
                   Attendance setup is incomplete:{" "}
                   {today.context.missingPolicies.map(titleCase).join(", ")}.
                 </AlertDescription>
+              </Alert>
+            ) : null}
+            {today.officeGeofence?.setupError ? (
+              <Alert status="warning" borderRadius="md">
+                <AlertIcon />
+                <AlertDescription>{today.officeGeofence.setupError} Ask HR to update the office location.</AlertDescription>
+              </Alert>
+            ) : today.officeGeofence?.enabled && !today.officeGeofence.remoteWorkBypass ? (
+              <Alert status="info" borderRadius="md">
+                <AlertIcon />
+                <AlertDescription>
+                  Location verification applies within {today.officeGeofence.radiusMeters} meters of {today.officeGeofence.officeLocationName || "your assigned office"}
+                  {today.officeGeofence.validateOn === "punch_in_and_out" ? " for punch-in and punch-out" : " for punch-in"}.
+                  {today.officeGeofence.unavailableAction === "allow" ? " A denied or unavailable location is recorded but does not block the punch." : " Browser location access is required."}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {today.punchAccess?.network?.applies && !today.punchAccess.network.allowed ? (
+              <Alert status="error" borderRadius="md">
+                <AlertIcon />
+                <AlertDescription>{today.punchAccess.network.reason}</AlertDescription>
+              </Alert>
+            ) : null}
+            {today.punchAccess?.trustedDevice?.applies && today.punchAccess.trustedDevice.status !== "trusted" ? (
+              <Alert status={today.punchAccess.trustedDevice.status === "revoked" ? "error" : "warning"} borderRadius="md" alignItems="center">
+                <AlertIcon />
+                <AlertDescription flex="1">{today.punchAccess.trustedDevice.reason}</AlertDescription>
+                {["missing", "invalid", "unregistered"].includes(today.punchAccess.trustedDevice.status) ? (
+                  <Button ml={3} size="sm" colorScheme="blue" onClick={registerBrowser} isLoading={registeringDevice}>
+                    Register browser
+                  </Button>
+                ) : null}
               </Alert>
             ) : null}
 

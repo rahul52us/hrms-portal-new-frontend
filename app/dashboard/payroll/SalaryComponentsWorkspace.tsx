@@ -53,6 +53,7 @@ import {
 
 type ComponentCategory = "earning" | "deduction" | "employer_contribution" | "reimbursement";
 type ComponentStatus = "active" | "archived";
+type StatutoryWageBase = "provident_fund" | "employee_state_insurance";
 
 type SalaryComponent = {
   _id: string;
@@ -62,6 +63,7 @@ type SalaryComponent = {
   category: ComponentCategory;
   taxable: boolean;
   prorateOnUnpaidDays: boolean;
+  statutoryWageBases: StatutoryWageBase[];
   status: ComponentStatus;
   displayOrder: number;
   archiveReason?: string;
@@ -85,6 +87,7 @@ const emptyForm = {
   category: "earning" as ComponentCategory,
   taxable: true,
   prorateOnUnpaidDays: true,
+  statutoryWageBases: [] as StatutoryWageBase[],
   displayOrder: 0,
 };
 
@@ -211,6 +214,7 @@ export default function SalaryComponentsWorkspace({ companyId, canManage }: Prop
       category: component.category,
       taxable: component.taxable,
       prorateOnUnpaidDays: component.prorateOnUnpaidDays,
+      statutoryWageBases: component.statutoryWageBases || [],
       displayOrder: component.displayOrder || 0,
     });
     componentDrawer.onOpen();
@@ -377,6 +381,8 @@ export default function SalaryComponentsWorkspace({ companyId, canManage }: Prop
                       <HStack spacing={1} wrap="wrap">
                         {component.taxable ? <Badge variant="outline">Taxable</Badge> : null}
                         {component.prorateOnUnpaidDays ? <Badge variant="outline">Prorated for LOP</Badge> : <Badge variant="outline">Not prorated</Badge>}
+                        {component.statutoryWageBases?.includes("provident_fund") ? <Badge colorScheme="purple" variant="outline">PF wage</Badge> : null}
+                        {component.statutoryWageBases?.includes("employee_state_insurance") ? <Badge colorScheme="cyan" variant="outline">ESI wage</Badge> : null}
                       </HStack>
                     </Td>
                     <Td><Badge colorScheme={component.status === "active" ? "green" : "gray"}>{component.status}</Badge></Td>
@@ -437,7 +443,12 @@ export default function SalaryComponentsWorkspace({ companyId, canManage }: Prop
                   <FormLabel>Category</FormLabel>
                   <Select value={form.category} isDisabled={Boolean(selected)} onChange={(event) => {
                     const nextCategory = event.target.value as ComponentCategory;
-                    setForm((value) => ({ ...value, category: nextCategory, taxable: ["earning", "reimbursement"].includes(nextCategory) ? value.taxable : false }));
+                    setForm((value) => ({
+                      ...value,
+                      category: nextCategory,
+                      taxable: ["earning", "reimbursement"].includes(nextCategory) ? value.taxable : false,
+                      statutoryWageBases: nextCategory === "earning" ? value.statutoryWageBases : [],
+                    }));
                   }}>
                     {Object.entries(categoryLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                   </Select>
@@ -463,6 +474,32 @@ export default function SalaryComponentsWorkspace({ companyId, canManage }: Prop
                   <Checkbox isChecked={form.prorateOnUnpaidDays} onChange={(event) => setForm((value) => ({ ...value, prorateOnUnpaidDays: event.target.checked }))}>
                     Prorate when the employee has loss-of-pay days
                   </Checkbox>
+                  <Box borderTopWidth="1px" borderColor={border} pt={4}>
+                    <Text fontWeight="700">Statutory wage bases</Text>
+                    <Text mt={1} mb={3} fontSize="sm" color={muted}>Select the contributions for which this earning counts as wages. Generated contributions use the payable amount after LOP proration.</Text>
+                    <Stack spacing={3}>
+                      <Checkbox
+                        isChecked={form.statutoryWageBases.includes("provident_fund")}
+                        isDisabled={form.category !== "earning"}
+                        onChange={(event) => setForm((value) => ({
+                          ...value,
+                          statutoryWageBases: event.target.checked
+                            ? Array.from(new Set([...value.statutoryWageBases, "provident_fund" as StatutoryWageBase]))
+                            : value.statutoryWageBases.filter((item) => item !== "provident_fund"),
+                        }))}
+                      >Include in provident-fund wage</Checkbox>
+                      <Checkbox
+                        isChecked={form.statutoryWageBases.includes("employee_state_insurance")}
+                        isDisabled={form.category !== "earning"}
+                        onChange={(event) => setForm((value) => ({
+                          ...value,
+                          statutoryWageBases: event.target.checked
+                            ? Array.from(new Set([...value.statutoryWageBases, "employee_state_insurance" as StatutoryWageBase]))
+                            : value.statutoryWageBases.filter((item) => item !== "employee_state_insurance"),
+                        }))}
+                      >Include in ESI wage</Checkbox>
+                    </Stack>
+                  </Box>
                 </Stack>
               </Box>
             </Stack>

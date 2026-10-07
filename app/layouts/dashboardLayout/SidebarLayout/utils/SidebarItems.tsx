@@ -101,6 +101,13 @@ const sidebarDatas: SidebarItem[] = [
     role: ["admin", "departmenthead", "hradmin", "hr"],
   },
   {
+    id: 111,
+    name: "My Payslips",
+    icon: <FiCreditCard />,
+    url: "/dashboard/my-payslips",
+    role: ["admin", "departmenthead", "hradmin", "hr"],
+  },
+  {
     id: 109,
     name: "Attendance",
     icon: <FiCheckSquare />,
@@ -295,6 +302,13 @@ const sidebarDatas: SidebarItem[] = [
     name: "My Attendance",
     icon: <FiCalendar />,
     url: "/dashboard/my-attendance",
+    role: ["user"],
+  },
+  {
+    id: 218,
+    name: "My Payslips",
+    icon: <FiCreditCard />,
+    url: "/dashboard/my-payslips",
     role: ["user"],
   },
   {

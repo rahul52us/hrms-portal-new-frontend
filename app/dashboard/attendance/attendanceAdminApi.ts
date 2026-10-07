@@ -604,6 +604,43 @@ export async function updateAttendancePayrollSettings(attendanceCutoffDay: numbe
   return response.data?.data as { attendanceCutoffDay: number };
 }
 
+export type AttendanceTrustedDeviceItem = {
+  _id: string;
+  employee: { _id: string; name?: string; username?: string; code?: string; designation?: string };
+  deviceIdSuffix: string;
+  deviceName: string;
+  platform: string;
+  userAgent: string;
+  status: "pending" | "trusted" | "revoked";
+  firstSeenAt: string;
+  lastSeenAt: string;
+  lastSeenIp?: string;
+  trustedAt?: string | null;
+  revokedAt?: string | null;
+  decisions?: Array<{ status: "trusted" | "revoked"; reason: string; decidedAt: string }>;
+};
+
+export async function fetchAttendanceTrustedDevices(params: {
+  status?: "all" | "pending" | "trusted" | "revoked";
+  page?: number;
+  limit?: number;
+}) {
+  const response = await axios.get("/attendance/trusted-devices", { params });
+  return {
+    items: (response.data?.data || []) as AttendanceTrustedDeviceItem[],
+    pagination: response.data?.pagination || { page: 1, limit: 25, total: 0, totalPages: 0 },
+  };
+}
+
+export async function updateAttendanceTrustedDeviceStatus(
+  deviceId: string,
+  status: "trusted" | "revoked",
+  reason: string
+) {
+  const response = await axios.patch(`/attendance/trusted-devices/${deviceId}/status`, { status, reason });
+  return response.data?.data as AttendanceTrustedDeviceItem;
+}
+
 export async function lockAttendancePayroll(periodKey: string, reason: string, expectedAttendancePeriodVersion: number) {
   const response = await axios.post(`/attendance/payroll/${periodKey}/lock`, { reason, expectedAttendancePeriodVersion });
   return response.data?.data as AttendancePayrollView;

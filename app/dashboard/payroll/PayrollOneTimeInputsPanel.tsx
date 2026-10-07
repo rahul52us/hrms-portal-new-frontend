@@ -65,6 +65,9 @@ type OneTimeInput = {
   currencyMinorUnits: number;
   reason: string;
   reference?: string;
+  sourceType?: "manual" | "finalized_correction";
+  sourcePeriodKey?: string;
+  sourceFinalizationVersion?: number;
   status: "active" | "cancelled";
   createdBy?: { name?: string; username?: string; code?: string };
   cancelledBy?: { name?: string; username?: string; code?: string };
@@ -338,7 +341,7 @@ export default function PayrollOneTimeInputsPanel({ companyId, run, onRunChanged
             <Td><Badge colorScheme={["deduction", "recovery"].includes(input.inputType) ? "red" : input.inputType === "reimbursement" ? "purple" : "green"}>{inputLabel(input.inputType)}</Badge></Td>
             <Td><Text>{input.componentNameSnapshot}</Text><Text fontSize="xs" color={muted}>{input.componentCodeSnapshot}</Text></Td>
             <Td isNumeric fontWeight="700">{formatMoney(input.amountMinor, input.currency, input.currencyMinorUnits)}</Td>
-            <Td><Text maxW="320px" whiteSpace="normal">{input.reason}</Text><Text fontSize="xs" color={muted}>{input.reference || "No reference"} | Added by {actorName(input.createdBy)}</Text>{input.cancellationReason ? <Text fontSize="xs" color="red.500">Cancelled: {input.cancellationReason}</Text> : null}</Td>
+            <Td><Text maxW="320px" whiteSpace="normal">{input.reason}</Text><Text fontSize="xs" color={muted}>{input.reference || "No reference"} | Added by {actorName(input.createdBy)}</Text>{input.sourceType === "finalized_correction" ? <Text fontSize="xs" color="blue.500">Correction from {input.sourcePeriodKey} finalization v{input.sourceFinalizationVersion}</Text> : null}{input.cancellationReason ? <Text fontSize="xs" color="red.500">Cancelled: {input.cancellationReason}</Text> : null}</Td>
             <Td><Badge colorScheme={input.status === "active" ? "green" : "gray"}>{input.status}</Badge></Td>
             <Td textAlign="right">{input.status === "active" && run.status === "draft" ? <IconButton aria-label={`Cancel ${inputLabel(input.inputType)} for ${input.employeeNameSnapshot}`} title="Cancel input" icon={<FiXCircle />} size="sm" variant="ghost" colorScheme="red" onClick={() => openCancellation(input)} /> : "-"}</Td>
           </Tr>)}</Tbody></Table></TableContainer>

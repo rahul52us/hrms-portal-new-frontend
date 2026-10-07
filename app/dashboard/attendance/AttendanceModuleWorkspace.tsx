@@ -7,6 +7,7 @@ import { Box, Tab, TabList, TabPanel, TabPanels, Tabs } from "@chakra-ui/react";
 import { observer } from "mobx-react-lite";
 import AttendancePayrollPanel from "./AttendancePayrollPanel";
 import AttendanceReportsPanel from "./AttendanceReportsPanel";
+import AttendanceTrustedDevicesPanel from "./AttendanceTrustedDevicesPanel";
 import AttendanceWorkspace from "./AttendanceWorkspace";
 
 const AttendanceModuleWorkspace = observer(function AttendanceModuleWorkspace() {
@@ -14,10 +15,12 @@ const AttendanceModuleWorkspace = observer(function AttendanceModuleWorkspace() 
   const canViewReports = hasPermission(stores.auth.user, PERMISSION_KEYS.VIEW_ATTENDANCE_REPORTS);
   const canExportReports = hasPermission(stores.auth.user, PERMISSION_KEYS.EXPORT_ATTENDANCE_REPORTS);
   const canManagePayroll = hasPermission(stores.auth.user, PERMISSION_KEYS.MANAGE_ATTENDANCE_PAYROLL);
+  const canManageTrustedDevices = hasPermission(stores.auth.user, PERMISSION_KEYS.MANAGE_WORKFORCE_POLICIES);
   const tabs = [
     { key: "daily", label: "Daily register", content: <AttendanceWorkspace /> },
     ...(canViewReports ? [{ key: "reports", label: "Reports", content: <AttendanceReportsPanel canExport={canExportReports} /> }] : []),
     ...(canManagePayroll ? [{ key: "payroll", label: "Payroll", content: <AttendancePayrollPanel /> }] : []),
+    ...(canManageTrustedDevices ? [{ key: "trusted-devices", label: "Trusted browsers", content: <AttendanceTrustedDevicesPanel /> }] : []),
   ];
 
   return (

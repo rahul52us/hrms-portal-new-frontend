@@ -70,6 +70,10 @@ type PayrollEmployeeSnapshot = {
     departmentName?: string;
     teamName?: string;
     officeLocationName?: string;
+    officeLocationCode?: string;
+    officeLocationCity?: string;
+    officeLocationState?: string;
+    officeLocationCountry?: string;
     reportingManagerName?: string;
   };
   bank: {
@@ -80,9 +84,17 @@ type PayrollEmployeeSnapshot = {
     ifsc?: string;
   };
   statutory: {
+    source?: string;
     panNumberMasked?: string;
     aadharNumberMasked?: string;
+    uanMasked?: string;
+    esiInsuranceNumberMasked?: string;
     nationality?: string;
+    taxDeclaration?: {
+      taxYear?: string;
+      versionNumber?: number | null;
+      taxRegime?: string;
+    } | null;
   };
   compensation: {
     assigned: boolean;
@@ -244,8 +256,8 @@ export default function PayrollEmployeeSnapshotsPanel({ companyId, run, onRunCha
               const rowMinorUnits = Number(item.compensation.currencyMinorUnits ?? minorUnits);
               return <Tr key={item._id}>
                 <Td verticalAlign="top"><Text fontWeight="700">{item.identity.name}</Text><Text fontSize="xs" color={muted}>{displayParts([item.identity.code, item.identity.username])}</Text><Text fontSize="xs" color={muted}>{item.identity.mobileNumberMasked || "No mobile"}</Text></Td>
-                <Td verticalAlign="top"><Text>{item.organization.designation || "No designation"}</Text><Text maxW="250px" whiteSpace="normal" fontSize="xs" color={muted}>{displayParts([item.organization.departmentName, item.organization.teamName, item.organization.officeLocationName])}</Text><Text fontSize="xs" color={muted}>{item.organization.reportingManagerName ? `Manager: ${item.organization.reportingManagerName}` : "No reporting manager"}</Text></Td>
-                <Td verticalAlign="top"><Text>{item.bank.bankName || "No bank"}{item.bank.accountNumberMasked ? ` | ${item.bank.accountNumberMasked}` : ""}</Text><Text fontSize="xs" color={muted}>{item.bank.ifsc || "No IFSC"}</Text><Text fontSize="xs" color={muted}>PAN {item.statutory.panNumberMasked || "-"} | Aadhaar {item.statutory.aadharNumberMasked || "-"}</Text></Td>
+                <Td verticalAlign="top"><Text>{item.organization.designation || "No designation"}</Text><Text maxW="250px" whiteSpace="normal" fontSize="xs" color={muted}>{displayParts([item.organization.departmentName, item.organization.teamName, item.organization.officeLocationName])}</Text><Text fontSize="xs" color={muted}>{displayParts([item.organization.officeLocationCity, item.organization.officeLocationState, item.organization.officeLocationCountry])}</Text><Text fontSize="xs" color={muted}>{item.organization.reportingManagerName ? `Manager: ${item.organization.reportingManagerName}` : "No reporting manager"}</Text></Td>
+                <Td verticalAlign="top"><Text>{item.bank.bankName || "No bank"}{item.bank.accountNumberMasked ? ` | ${item.bank.accountNumberMasked}` : ""}</Text><Text fontSize="xs" color={muted}>{item.bank.ifsc || "No IFSC"}</Text><Text fontSize="xs" color={muted}>PAN {item.statutory.panNumberMasked || "-"} | Aadhaar {item.statutory.aadharNumberMasked || "-"}</Text><Text fontSize="xs" color={muted}>UAN {item.statutory.uanMasked || "-"} | ESI {item.statutory.esiInsuranceNumberMasked || "-"}</Text><Text fontSize="xs" color={muted}>{item.statutory.taxDeclaration ? `Tax ${item.statutory.taxDeclaration.taxYear} | ${item.statutory.taxDeclaration.taxRegime || "regime missing"}` : "No verified tax declaration"}</Text></Td>
                 <Td verticalAlign="top">{item.compensation.assigned ? <><Text fontWeight="700">{item.compensation.structureName} v{item.compensation.structureVersionNumber}</Text><Text fontSize="xs" color={muted}>{item.compensation.structureCode} | {item.compensation.componentCount || 0} components</Text><Text fontSize="xs">Gross {formatMoney(totals.monthlyGrossMinor, currency, rowMinorUnits)} | Net {formatMoney(totals.monthlyNetMinor, currency, rowMinorUnits)}</Text></> : <Badge colorScheme="red">Not assigned</Badge>}</Td>
                 <Td verticalAlign="top">{item.issues.length ? <Stack align="start" spacing={1}>{item.issues.map((issue) => <Box key={issue.code}><Badge colorScheme={issue.severity === "error" ? "red" : "orange"}>{issue.category} {issue.severity}</Badge><Text mt={1} maxW="260px" whiteSpace="normal" fontSize="xs">{issue.message}</Text></Box>)}</Stack> : <Badge colorScheme="green">Ready</Badge>}</Td>
               </Tr>;

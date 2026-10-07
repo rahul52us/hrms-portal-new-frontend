@@ -50,6 +50,21 @@ const DEFAULT_RULES: AttendanceRules = {
     approvalWorkflowVersion: null,
     approvalWorkflowVersionNumber: null,
   },
+  officeGeofence: {
+    enabled: false,
+    radiusMeters: 200,
+    validateOn: "punch_in",
+    unavailableAction: "block",
+  },
+  punchNetwork: {
+    enabled: false,
+    allowedNetworks: [],
+    scope: "office_only",
+  },
+  trustedDevice: {
+    enabled: false,
+    scope: "all_punches",
+  },
   autoFinalize: {
     enabled: false,
     graceMinutes: 1440,
@@ -99,6 +114,15 @@ function dateValue(value?: string | null) {
   return value ? new Date(value).toISOString().slice(0, 10) : "";
 }
 
+function parseAllowedNetworks(value: string) {
+  return Array.from(new Set(
+    value
+      .split(/[\n,]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+  ));
+}
+
 export default function AttendancePolicyDrawer({
   isOpen,
   onClose,
@@ -115,6 +139,7 @@ export default function AttendancePolicyDrawer({
   const [effectiveFrom, setEffectiveFrom] = useState("");
   const [changeReason, setChangeReason] = useState("");
   const [rules, setRules] = useState<AttendanceRules>(DEFAULT_RULES);
+  const [allowedNetworksText, setAllowedNetworksText] = useState("");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -132,6 +157,9 @@ export default function AttendancePolicyDrawer({
           ? ""
           : version?.changeReason || ""
     );
+    setAllowedNetworksText(
+      (sourceRules?.punchNetwork?.allowedNetworks || DEFAULT_RULES.punchNetwork.allowedNetworks).join("\n")
+    );
     setRules({
       ...DEFAULT_RULES,
       ...sourceRules,
@@ -143,12 +171,29 @@ export default function AttendancePolicyDrawer({
         ...DEFAULT_RULES.overtimeApproval,
         ...(sourceRules?.overtimeApproval || {}),
       },
+      officeGeofence: {
+        ...DEFAULT_RULES.officeGeofence,
+        ...(sourceRules?.officeGeofence || {}),
+      },
+      punchNetwork: {
+        ...DEFAULT_RULES.punchNetwork,
+        ...(sourceRules?.punchNetwork || {}),
+      },
+      trustedDevice: {
+        ...DEFAULT_RULES.trustedDevice,
+        ...(sourceRules?.trustedDevice || {}),
+      },
       regularization: {
         ...DEFAULT_RULES.regularization,
         ...(sourceRules?.regularization || {}),
       },
     });
   }, [isOpen, mode, resource, version]);
+
+  const allowedNetworks = useMemo(
+    () => parseAllowedNetworks(allowedNetworksText),
+    [allowedNetworksText]
+  );
 
   const validationError = useMemo(() => {
     if (mode === "create" && (!name.trim() || !code.trim())) {
@@ -173,8 +218,11 @@ export default function AttendancePolicyDrawer({
     if (rules.overtimeApproval.required && !rules.overtimeApproval.approvalWorkflowVersion) {
       return "Select a published approval workflow for overtime reviews.";
     }
+    if (rules.punchNetwork.enabled && !allowedNetworks.length) {
+      return "Add at least one allowed IP address or CIDR for punch network restriction.";
+    }
     return "";
-  }, [changeReason, code, effectiveFrom, mode, name, rules]);
+  }, [allowedNetworks.length, changeReason, code, effectiveFrom, mode, name, rules]);
 
   const setRule = (key: keyof AttendanceRules, value: any) => {
     setRules((current) => ({ ...current, [key]: value }));
@@ -191,6 +239,27 @@ export default function AttendancePolicyDrawer({
     setRules((current) => ({
       ...current,
       overtimeApproval: { ...current.overtimeApproval, [key]: value },
+    }));
+  };
+
+  const setOfficeGeofenceRule = (key: keyof AttendanceRules["officeGeofence"], value: any) => {
+    setRules((current) => ({
+      ...current,
+      officeGeofence: { ...current.officeGeofence, [key]: value },
+    }));
+  };
+
+  const setPunchNetworkRule = (key: keyof AttendanceRules["punchNetwork"], value: any) => {
+    setRules((current) => ({
+      ...current,
+      punchNetwork: { ...current.punchNetwork, [key]: value },
+    }));
+  };
+
+  const setTrustedDeviceRule = (key: keyof AttendanceRules["trustedDevice"], value: any) => {
+    setRules((current) => ({
+      ...current,
+      trustedDevice: { ...current.trustedDevice, [key]: value },
     }));
   };
 
@@ -252,7 +321,13 @@ export default function AttendancePolicyDrawer({
         companyId,
         effectiveFrom,
         changeReason: changeReason.trim(),
-        rules,
+        rules: {
+          ...rules,
+          punchNetwork: {
+            ...rules.punchNetwork,
+            allowedNetworks,
+          },
+        },
       };
       let policyId = resource?._id || "";
       let versionId = version?._id || "";
@@ -343,6 +418,121 @@ export default function AttendancePolicyDrawer({
               <FormLabel fontSize="sm" fontWeight="600">Description</FormLabel>
               <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} bg={inputBg} />
             </FormControl>
+          ) : null}
+        </Box>
+
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <Text fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Punch access controls</Text>
+          <Text mt={1} fontSize="sm" color="gray.500">Optionally restrict attendance punches to approved networks and browsers.</Text>
+          <Stack mt={5} spacing={6}>
+            <Box>
+              <HStack justify="space-between" align="start">
+                <Box>
+                  <Text fontSize="sm" fontWeight="700">Allowed office networks</Text>
+                  <Text fontSize="xs" color="gray.500">Accepts individual IPv4/IPv6 addresses and CIDR ranges.</Text>
+                </Box>
+                <Switch
+                  aria-label="Restrict punches to allowed networks"
+                  isChecked={rules.punchNetwork.enabled}
+                  onChange={(event) => setPunchNetworkRule("enabled", event.target.checked)}
+                  colorScheme="blue"
+                />
+              </HStack>
+              {rules.punchNetwork.enabled ? (
+                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5} mt={4}>
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600">Allowed IP addresses or CIDRs</FormLabel>
+                    <Textarea
+                      value={allowedNetworksText}
+                      onChange={(event) => setAllowedNetworksText(event.target.value)}
+                      placeholder={"203.0.113.10\n10.20.0.0/16"}
+                      rows={3}
+                      bg={inputBg}
+                    />
+                    <FormHelperText>Enter one IP or CIDR per line. Commas also work. Use the address visible to this server.</FormHelperText>
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600">Network restriction applies to</FormLabel>
+                    <Select value={rules.punchNetwork.scope} onChange={(event) => setPunchNetworkRule("scope", event.target.value)} bg={inputBg}>
+                      <option value="office_only">Office punches only</option>
+                      <option value="all_punches">All punches, including WFH</option>
+                    </Select>
+                  </FormControl>
+                </SimpleGrid>
+              ) : null}
+            </Box>
+
+            <Box pt={5} borderTopWidth="1px" borderColor={borderColor}>
+              <HStack justify="space-between" align="start">
+                <Box>
+                  <Text fontSize="sm" fontWeight="700">Require a trusted browser</Text>
+                  <Text fontSize="xs" color="gray.500">Employees register a browser; HR/Admin must trust it before punches are accepted.</Text>
+                </Box>
+                <Switch
+                  aria-label="Require a trusted attendance browser"
+                  isChecked={rules.trustedDevice.enabled}
+                  onChange={(event) => setTrustedDeviceRule("enabled", event.target.checked)}
+                  colorScheme="blue"
+                />
+              </HStack>
+              {rules.trustedDevice.enabled ? (
+                <FormControl mt={4} maxW={{ md: "50%" }}>
+                  <FormLabel fontSize="sm" fontWeight="600">Trusted browser applies to</FormLabel>
+                  <Select value={rules.trustedDevice.scope} onChange={(event) => setTrustedDeviceRule("scope", event.target.value)} bg={inputBg}>
+                    <option value="all_punches">All punches, including WFH</option>
+                    <option value="office_only">Office punches only</option>
+                  </Select>
+                  <FormHelperText>The identifier is hashed on the server. It is not hardware attestation.</FormHelperText>
+                </FormControl>
+              ) : null}
+            </Box>
+          </Stack>
+        </Box>
+
+        <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
+          <HStack justify="space-between" align="start">
+            <Box>
+              <Text fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Office geofence</Text>
+              <Text mt={1} fontSize="sm" color="gray.500">Validate browser punches against the employee&apos;s assigned office coordinates.</Text>
+            </Box>
+            <Switch
+              aria-label="Enable office geofence"
+              isChecked={rules.officeGeofence.enabled}
+              onChange={(event) => setOfficeGeofenceRule("enabled", event.target.checked)}
+              colorScheme="blue"
+            />
+          </HStack>
+          {rules.officeGeofence.enabled ? (
+            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={5} mt={5}>
+              <FormControl isRequired>
+                <FormLabel fontSize="sm" fontWeight="600">Allowed distance from office</FormLabel>
+                <NumberInput
+                  min={50}
+                  max={10000}
+                  value={rules.officeGeofence.radiusMeters}
+                  onChange={(_, value) => setOfficeGeofenceRule("radiusMeters", Number.isFinite(value) ? value : 200)}
+                >
+                  <NumberInputField bg={inputBg} />
+                </NumberInput>
+                <FormHelperText>Radius in meters. Each office must have latitude and longitude.</FormHelperText>
+              </FormControl>
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="600">Validate location on</FormLabel>
+                <Select value={rules.officeGeofence.validateOn} onChange={(event) => setOfficeGeofenceRule("validateOn", event.target.value)} bg={inputBg}>
+                  <option value="punch_in">Punch-in only</option>
+                  <option value="punch_in_and_out">Punch-in and punch-out</option>
+                </Select>
+                <FormHelperText>Punch-in only avoids blocking punch-out if location access is later unavailable.</FormHelperText>
+              </FormControl>
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="600">If browser location is unavailable</FormLabel>
+                <Select value={rules.officeGeofence.unavailableAction} onChange={(event) => setOfficeGeofenceRule("unavailableAction", event.target.value)} bg={inputBg}>
+                  <option value="block">Block the punch</option>
+                  <option value="allow">Allow and record as unavailable</option>
+                </Select>
+                <FormHelperText>Approved WFH punches bypass the office geofence.</FormHelperText>
+              </FormControl>
+            </SimpleGrid>
           ) : null}
         </Box>
 

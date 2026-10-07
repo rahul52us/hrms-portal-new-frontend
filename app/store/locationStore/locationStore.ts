@@ -11,6 +11,8 @@ export interface OfficeLocationItem {
   state?: string;
   country?: string;
   pinCode?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   is_active?: boolean;
 }
 
@@ -96,6 +98,8 @@ class LocationStore {
     state?: string;
     country?: string;
     pinCode?: string;
+    latitude?: number | null;
+    longitude?: number | null;
     is_active?: boolean;
   }) => {
     this.isSubmitting = true;

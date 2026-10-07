@@ -63,6 +63,20 @@ const formatTime = (value: string | null | undefined, timezone: string) =>
       }).format(new Date(value))
     : "Not recorded";
 
+const formatLocationVerification = (value: any) => {
+  if (!value) return "Not captured";
+  const status = titleCase(value.verificationStatus);
+  const distance = Number.isFinite(Number(value.distanceMeters)) ? ` (${value.distanceMeters} m)` : "";
+  return `${status}${distance}${value.officeLocationNameSnapshot ? ` - ${value.officeLocationNameSnapshot}` : ""}`;
+};
+
+const formatAccessVerification = (value: any) => {
+  if (!value) return "Not captured";
+  const network = `Network ${titleCase(value.networkStatus)}${value.clientIp ? ` (${value.clientIp})` : ""}`;
+  const device = `Browser ${titleCase(value.deviceStatus)}${value.deviceIdSuffix ? ` (...${value.deviceIdSuffix})` : ""}`;
+  return `${network} | ${device}`;
+};
+
 const statusColor = (status: string) =>
   ({
     present: "green",
@@ -329,6 +343,10 @@ export default function AttendanceDayDrawer({
                       <Field label="Punch in" value={formatTime(session.punchIn, timezone)} />
                       <Field label="Final punch out" value={formatTime(session.punchOut, timezone)} />
                       <Field label="Source" value={titleCase(session.source)} />
+                      <Field label="Punch-in location" value={formatLocationVerification(session.punchInLocation)} />
+                      <Field label="Punch-out location" value={formatLocationVerification(session.punchOutLocation)} />
+                      <Field label="Punch-in access" value={formatAccessVerification(session.punchInAccess)} />
+                      <Field label="Punch-out access" value={formatAccessVerification(session.punchOutAccess)} />
                     </Flex>
                   ))
                 ) : (

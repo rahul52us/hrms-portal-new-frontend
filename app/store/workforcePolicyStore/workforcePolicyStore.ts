@@ -25,6 +25,21 @@ export interface AttendanceRules {
     approvalWorkflowVersion?: string | null;
     approvalWorkflowVersionNumber?: number | null;
   };
+  officeGeofence: {
+    enabled: boolean;
+    radiusMeters: number;
+    validateOn: "punch_in" | "punch_in_and_out";
+    unavailableAction: "block" | "allow";
+  };
+  punchNetwork: {
+    enabled: boolean;
+    allowedNetworks: string[];
+    scope: "office_only" | "all_punches";
+  };
+  trustedDevice: {
+    enabled: boolean;
+    scope: "office_only" | "all_punches";
+  };
   autoFinalize: {
     enabled: boolean;
     graceMinutes: number;

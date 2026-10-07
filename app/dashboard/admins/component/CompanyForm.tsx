@@ -5,20 +5,20 @@ import {
   Box,
   Button,
   Checkbox,
-  Divider,
   Flex,
   HStack,
   Icon,
+  Image,
   SimpleGrid,
   Text,
   VStack,
-  useColorModeValue,
   useToast,
 } from "@chakra-ui/react";
 import { Formik, Form as FormikForm, getIn } from "formik";
 import {
   Building2,
   Globe,
+  MapPin,
   UserPlus,
   Palette,
 } from "lucide-react";
@@ -98,6 +98,14 @@ export const companyInitialValues = {
   primaryThemeColor: DEFAULT_LEARNER_PRIMARY_COLOR,
   verified_email_allowed: false,
   logo: { file: null },
+  registeredAddress: {
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "",
+  },
   companyAdmin: {
     create: false,
     name: "",
@@ -130,6 +138,10 @@ const createCompanyFormValues = (company?: any) => ({
   logo: company?.logo
     ? { ...company.logo, file: null }
     : { file: null },
+  registeredAddress: {
+    ...companyInitialValues.registeredAddress,
+    ...(company?.registeredAddress || {}),
+  },
   companyAdmin: {
     ...companyInitialValues.companyAdmin,
     ...(company?.companyAdmin || {}),
@@ -139,25 +151,31 @@ const createCompanyFormValues = (company?: any) => ({
 /* ================= FORM ================= */
 const CompanyForm = ({
   onSubmit,
-  onClose,
-  isLoading,
   initialValues,
-  submitLabel = "Create Company",
   children,
   simpleCreate = false,
 }: any) => {
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(initialValues?.logo?.url || null);
   const toast = useToast();
 
   /* ✅ SAFE PREVIEW */
   const handlePreview = (file: any) => {
     if (file && file instanceof File) {
-      const url = URL.createObjectURL(file);
-      setPreview(url);
-      return () => URL.revokeObjectURL(url);
+      setPreview(URL.createObjectURL(file));
+      return;
     }
     setPreview(null);
   };
+
+  useEffect(() => {
+    setPreview(initialValues?.logo?.url || null);
+  }, [initialValues?.logo?.url]);
+
+  useEffect(() => {
+    return () => {
+      if (preview?.startsWith("blob:")) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
 
   const validationSchema = Yup.object({
     company_name: Yup.string()
@@ -211,6 +229,14 @@ const CompanyForm = ({
     primaryThemeColor: Yup.string()
       .matches(/^#(?:[0-9A-Fa-f]{3}){1,2}$/, "Enter a valid hex color")
       .required("Primary theme color is required"),
+    registeredAddress: Yup.object({
+      addressLine1: Yup.string().trim().max(200, "Address line 1 cannot exceed 200 characters"),
+      addressLine2: Yup.string().trim().max(200, "Address line 2 cannot exceed 200 characters"),
+      city: Yup.string().trim().max(100, "City cannot exceed 100 characters"),
+      state: Yup.string().trim().max(100, "State cannot exceed 100 characters"),
+      postalCode: Yup.string().trim().max(20, "Postal code cannot exceed 20 characters"),
+      country: Yup.string().trim().max(100, "Country cannot exceed 100 characters"),
+    }),
     companyAdmin: Yup.object({
       create: Yup.boolean(),
       name: Yup.string().when("create", {
@@ -306,15 +332,6 @@ const CompanyForm = ({
         setFieldValue,
         submitForm,
       }: any) => {
-        useEffect(() => {
-          const cleanup = handlePreview(values?.logo?.file);
-          if (!values?.logo?.file) {
-            setPreview(values?.logo?.url || null);
-          }
-
-          return cleanup;
-        }, [values?.logo?.file, values?.logo?.url]);
-
         const slug = slugifyTenant(values.tenantSlug || values.company_name || "");
         const previewUrl = buildTenantPreview(slug, values.customDomain);
         const resolvedThemeColor = normalizeHexColor(
@@ -447,10 +464,14 @@ const CompanyForm = ({
                       borderRadius="lg"
                       overflow="hidden"
                       border="1px solid"
+                      bg="white"
                     >
-                      <img
+                      <Image
                         src={preview}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        alt={`${values.company_name || "Company"} logo`}
+                        w="100%"
+                        h="100%"
+                        objectFit="contain"
                       />
                     </Box>
 
@@ -458,7 +479,10 @@ const CompanyForm = ({
                       size="sm"
                       colorScheme="red"
                       variant="outline"
-                      onClick={() => setFieldValue("logo", { file: null, url: "" })}
+                      onClick={() => {
+                        setFieldValue("logo", { file: null, url: "" });
+                        setPreview(null);
+                      }}
                     >
                       Remove Logo
                     </Button>
@@ -467,13 +491,37 @@ const CompanyForm = ({
                   <CustomInput
                     type="file-drag"
                     name="logo"
-                    accept="image/*"
+                    accept="image/png,image/jpeg"
                     onChange={(e: any) => {
                       const file = e.target.files?.[0];
-                      if (file) setFieldValue("logo", { file });
+                      if (!file) return;
+                      if (!["image/png", "image/jpeg"].includes(file.type)) {
+                        toast({
+                          title: "Unsupported logo format",
+                          description: "Choose a PNG or JPEG image.",
+                          status: "error",
+                          position: "top-right",
+                        });
+                        return;
+                      }
+                      if (file.size > 2 * 1024 * 1024) {
+                        toast({
+                          title: "Logo is too large",
+                          description: "Choose an image up to 2 MB.",
+                          status: "error",
+                          position: "top-right",
+                        });
+                        return;
+                      }
+                      handlePreview(file);
+                      setFieldValue("logo", { file });
                     }}
                   />
                 )}
+
+                <Text mt={2} fontSize="xs" color="gray.500">
+                  PNG or JPEG. This logo is used on newly issued payslips.
+                </Text>
 
                 <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} mt={4}>
                   <CustomInput
@@ -538,6 +586,78 @@ const CompanyForm = ({
                     </Box>
                   </>
                 )}
+              </SectionCard>
+
+              <SectionCard title="Registered Address" icon={MapPin} color="green">
+                <Text mb={4} fontSize="sm" color="gray.500">
+                  Legal company address shown on newly issued payslips.
+                </Text>
+                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                  <Box gridColumn={{ md: "span 2" }}>
+                    <CustomInput
+                      label="Address Line 1"
+                      name="registeredAddress.addressLine1"
+                      placeholder="Building, street, or area"
+                      value={values.registeredAddress?.addressLine1 || ""}
+                      onBlur={handleBlur}
+                      onChange={handleChange}
+                      error={fieldError("registeredAddress.addressLine1")}
+                      showError={showFieldError("registeredAddress.addressLine1")}
+                    />
+                  </Box>
+                  <Box gridColumn={{ md: "span 2" }}>
+                    <CustomInput
+                      label="Address Line 2"
+                      name="registeredAddress.addressLine2"
+                      placeholder="Suite, floor, or landmark (optional)"
+                      value={values.registeredAddress?.addressLine2 || ""}
+                      onBlur={handleBlur}
+                      onChange={handleChange}
+                      error={fieldError("registeredAddress.addressLine2")}
+                      showError={showFieldError("registeredAddress.addressLine2")}
+                    />
+                  </Box>
+                  <CustomInput
+                    label="City"
+                    name="registeredAddress.city"
+                    placeholder="Enter city"
+                    value={values.registeredAddress?.city || ""}
+                    onBlur={handleBlur}
+                    onChange={handleChange}
+                    error={fieldError("registeredAddress.city")}
+                    showError={showFieldError("registeredAddress.city")}
+                  />
+                  <CustomInput
+                    label="State / Province"
+                    name="registeredAddress.state"
+                    placeholder="Enter state or province"
+                    value={values.registeredAddress?.state || ""}
+                    onBlur={handleBlur}
+                    onChange={handleChange}
+                    error={fieldError("registeredAddress.state")}
+                    showError={showFieldError("registeredAddress.state")}
+                  />
+                  <CustomInput
+                    label="Postal Code"
+                    name="registeredAddress.postalCode"
+                    placeholder="Enter postal code"
+                    value={values.registeredAddress?.postalCode || ""}
+                    onBlur={handleBlur}
+                    onChange={handleChange}
+                    error={fieldError("registeredAddress.postalCode")}
+                    showError={showFieldError("registeredAddress.postalCode")}
+                  />
+                  <CustomInput
+                    label="Country"
+                    name="registeredAddress.country"
+                    placeholder="Enter country"
+                    value={values.registeredAddress?.country || ""}
+                    onBlur={handleBlur}
+                    onChange={handleChange}
+                    error={fieldError("registeredAddress.country")}
+                    showError={showFieldError("registeredAddress.country")}
+                  />
+                </SimpleGrid>
               </SectionCard>
 
               {simpleCreate && (

@@ -259,6 +259,11 @@ const LocationTable = ({ companyId, companyName }: LocationTableProps) => {
                         <Text fontSize="sm" color={muted}>
                           {[location.state, location.country].filter(Boolean).join(", ") || "--"}
                         </Text>
+                        <Text fontSize="xs" color={muted}>
+                          {location.latitude !== null && location.latitude !== undefined && location.longitude !== null && location.longitude !== undefined
+                            ? `${location.latitude}, ${location.longitude}`
+                            : "Attendance coordinates not set"}
+                        </Text>
                       </Td>
                       <Td>
                         <Badge colorScheme={location.is_active === false ? "red" : "green"} borderRadius="full">

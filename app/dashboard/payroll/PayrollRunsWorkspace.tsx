@@ -2,6 +2,8 @@
 
 import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
 import PayrollDraftResultsPanel from "./PayrollDraftResultsPanel";
+import PayrollFinalizedResultsPanel from "./PayrollFinalizedResultsPanel";
+import PayrollPayslipsPanel from "./PayrollPayslipsPanel";
 import PayrollEmployeeSnapshotsPanel from "./PayrollEmployeeSnapshotsPanel";
 import PayrollOneTimeInputsPanel from "./PayrollOneTimeInputsPanel";
 import PayrollValidationPanel from "./PayrollValidationPanel";
@@ -45,7 +47,9 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FiEye, FiPlus, FiRefreshCw } from "react-icons/fi";
+import { FiCheck, FiEye, FiPlus, FiRefreshCw, FiRotateCcw, FiSend } from "react-icons/fi";
+
+type PayrollActor = { _id?: string; name?: string; username?: string; code?: string; role?: string };
 
 type PayrollRun = {
   _id: string;
@@ -87,7 +91,31 @@ type PayrollRun = {
   status: string;
   version: number;
   preparationReason: string;
-  createdBy?: { name?: string; username?: string; code?: string };
+  createdBy?: PayrollActor;
+  reviewSubmittedAt?: string;
+  reviewSubmittedBy?: PayrollActor | string | null;
+  reviewSubmissionReason?: string;
+  reviewCalculationVersion?: number;
+  reviewDecision?: "approved" | "returned" | null;
+  reviewDecidedAt?: string;
+  reviewDecidedBy?: PayrollActor | string | null;
+  reviewDecisionReason?: string;
+  finalizationVersion?: number;
+  finalizedResultCount?: number;
+  finalizedTotals?: Record<string, number>;
+  finalizedAt?: string;
+  finalizedBy?: PayrollActor | string | null;
+  finalizationReason?: string;
+  payoutStatus?: "not_started" | "processing" | "paid";
+  reopenedAt?: string;
+  reopenedBy?: PayrollActor | string | null;
+  reopenReason?: string;
+  reopenedFromFinalizationVersion?: number;
+  statutoryProfileVersionNumber?: number;
+  statutoryCountryCode?: string;
+  statutoryProviderKey?: string;
+  statutoryProviderImplementationVersion?: string;
+  statutoryEnabledModules?: string[];
   createdAt?: string;
 };
 
@@ -126,7 +154,8 @@ type PayrollSource = {
   existingRun?: { _id: string; status: string } | null;
 };
 
-type Props = { companyId: string; canManage: boolean };
+type Props = { companyId: string; canManage: boolean; canApprove: boolean; canFinalize: boolean; canReopen: boolean; currentUserId: string };
+type PayrollReviewAction = "submit" | "approve" | "return" | "finalize" | "reopen";
 
 function currentPeriodKey() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -155,16 +184,27 @@ function creatorName(run: PayrollRun) {
   return run.createdBy?.name || run.createdBy?.code || run.createdBy?.username || "Unknown";
 }
 
+function actorId(actor: PayrollActor | string | null | undefined) {
+  return typeof actor === "string" ? actor : String(actor?._id || "");
+}
+
+function actorName(actor: PayrollActor | string | null | undefined) {
+  if (typeof actor === "string") return actor || "Unknown";
+  if (!actor) return "Unknown";
+  return actor.name || actor.code || actor.username || "Unknown";
+}
+
 function organization(input: PayrollEmployeeInput) {
   return [input.departmentNameSnapshot, input.teamNameSnapshot, input.officeLocationNameSnapshot]
     .filter(Boolean)
     .join(" | ") || "Not assigned";
 }
 
-export default function PayrollRunsWorkspace({ companyId, canManage }: Props) {
+export default function PayrollRunsWorkspace({ companyId, canManage, canApprove, canFinalize, canReopen, currentUserId }: Props) {
   const toast = useToast();
   const createDialog = useDisclosure();
   const inputDrawer = useDisclosure();
+  const reviewDialog = useDisclosure();
   const [runs, setRuns] = useState<PayrollRun[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -184,7 +224,9 @@ export default function PayrollRunsWorkspace({ companyId, canManage }: Props) {
   const [inputTotalPages, setInputTotalPages] = useState(1);
   const [inputSearch, setInputSearch] = useState("");
   const [issueFilter, setIssueFilter] = useState("all");
-  const [runInputView, setRunInputView] = useState<"attendance" | "one_time" | "snapshots" | "results" | "validation">("attendance");
+  const [runInputView, setRunInputView] = useState<"attendance" | "one_time" | "snapshots" | "results" | "validation" | "finalized" | "payslips">("attendance");
+  const [reviewAction, setReviewAction] = useState<PayrollReviewAction>("submit");
+  const [reviewReason, setReviewReason] = useState("");
   const surface = useColorModeValue("white", "gray.800");
   const border = useColorModeValue("gray.200", "gray.700");
   const muted = useColorModeValue("gray.600", "gray.400");
@@ -315,6 +357,43 @@ export default function PayrollRunsWorkspace({ companyId, canManage }: Props) {
     void loadRuns();
   }, [loadRuns]);
 
+  const openReviewAction = (action: PayrollReviewAction) => {
+    setReviewAction(action);
+    setReviewReason("");
+    reviewDialog.onOpen();
+  };
+
+  const applyReviewAction = async () => {
+    if (!selectedRun) return;
+    setSubmitting(true);
+    try {
+      const endpoint = reviewAction === "submit"
+        ? `/payroll/runs/${selectedRun._id}/submit-review`
+        : reviewAction === "finalize"
+          ? `/payroll/runs/${selectedRun._id}/finalize`
+          : reviewAction === "reopen"
+            ? `/payroll/runs/${selectedRun._id}/reopen`
+          : `/payroll/runs/${selectedRun._id}/review-decision`;
+      const payload: Record<string, unknown> = {
+        companyId,
+        expectedVersion: selectedRun.version,
+        reason: reviewReason.trim(),
+      };
+      if (reviewAction === "approve" || reviewAction === "return") payload.action = reviewAction;
+      const { data } = await axios.post(endpoint, payload);
+      setSelectedRun(data.data);
+      if (reviewAction === "finalize") setRunInputView("finalized");
+      if (reviewAction === "reopen") setRunInputView("results");
+      reviewDialog.onClose();
+      toast({ title: data.message || "Payroll review updated", status: "success" });
+      await loadRuns();
+    } catch (error) {
+      toast({ title: "Unable to update payroll run", description: message(error), status: "error" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const summary = useMemo(() => ({
     draft: runs.filter((run) => run.status === "draft").length,
     active: runs.filter((run) => ["calculating", "review", "approved"].includes(run.status)).length,
@@ -382,11 +461,28 @@ export default function PayrollRunsWorkspace({ companyId, canManage }: Props) {
         footerContent={<Flex w="full" justify="flex-end"><Button variant="ghost" onClick={inputDrawer.onClose}>Close</Button></Flex>}
       >
         {!selectedRun ? <Skeleton h="120px" /> : <Stack spacing={5}>
-          <SimpleGrid columns={{ base: 1, md: 4 }} spacing={3}>
+          <Flex borderWidth="1px" borderColor={border} borderRadius="md" p={4} gap={4} direction={{ base: "column", lg: "row" }} align={{ base: "stretch", lg: "center" }} justify="space-between">
+            <Box>
+              <HStack><Text fontWeight="800">Review status</Text><Badge colorScheme={["approved", "finalized"].includes(selectedRun.status) ? "green" : selectedRun.status === "review" ? "blue" : "orange"}>{selectedRun.status}</Badge></HStack>
+              {selectedRun.status === "review" ? <Text mt={1} fontSize="sm" color={muted}>Submitted by {actorName(selectedRun.reviewSubmittedBy)}{selectedRun.reviewSubmittedAt ? ` on ${new Date(selectedRun.reviewSubmittedAt).toLocaleString()}` : ""}. Inputs are locked while this run is under review.</Text> : selectedRun.status === "draft" && selectedRun.reopenedFromFinalizationVersion === selectedRun.finalizationVersion ? <Text mt={1} fontSize="sm" color={muted}>Reopened from finalization v{selectedRun.reopenedFromFinalizationVersion} by {actorName(selectedRun.reopenedBy)}{selectedRun.reopenedAt ? ` on ${new Date(selectedRun.reopenedAt).toLocaleString()}` : ""}. The old snapshot remains historical; submit and approve this draft again after corrections.</Text> : selectedRun.reviewDecision === "returned" && selectedRun.status === "draft" ? <Text mt={1} fontSize="sm" color={muted}>Returned by {actorName(selectedRun.reviewDecidedBy)}. Update the draft, recalculate if inputs change, and submit it again.</Text> : selectedRun.status === "approved" ? <Text mt={1} fontSize="sm" color={muted}>Independently approved by {actorName(selectedRun.reviewDecidedBy)}. Finalize to create the immutable payroll source for payslips and payouts.</Text> : selectedRun.status === "finalized" ? <Text mt={1} fontSize="sm" color={muted}>Finalization v{selectedRun.finalizationVersion} created by {actorName(selectedRun.finalizedBy)}{selectedRun.finalizedAt ? ` on ${new Date(selectedRun.finalizedAt).toLocaleString()}` : ""}. Payout: {(selectedRun.payoutStatus || "not_started").replaceAll("_", " ")}.</Text> : <Text mt={1} fontSize="sm" color={muted}>Complete calculation and validation before submitting this draft for independent review.</Text>}
+            </Box>
+            <HStack alignSelf={{ base: "flex-start", lg: "center" }}>
+              {selectedRun.status === "draft" ? <Button leftIcon={<FiSend />} colorScheme="blue" isDisabled={selectedRun.calculationStatus !== "calculated"} onClick={() => openReviewAction("submit")}>Submit for review</Button> : null}
+              {selectedRun.status === "review" && canApprove ? <>
+                <Button leftIcon={<FiRotateCcw />} variant="outline" colorScheme="orange" isDisabled={actorId(selectedRun.reviewSubmittedBy) === currentUserId} onClick={() => openReviewAction("return")}>Return to draft</Button>
+                <Button leftIcon={<FiCheck />} colorScheme="green" isDisabled={actorId(selectedRun.reviewSubmittedBy) === currentUserId} onClick={() => openReviewAction("approve")}>Approve payroll</Button>
+              </> : null}
+              {selectedRun.status === "approved" && canFinalize ? <Button leftIcon={<FiCheck />} colorScheme="green" onClick={() => openReviewAction("finalize")}>Finalize payroll</Button> : null}
+              {selectedRun.status === "finalized" && canReopen && (selectedRun.payoutStatus || "not_started") === "not_started" ? <Button leftIcon={<FiRotateCcw />} variant="outline" colorScheme="orange" onClick={() => openReviewAction("reopen")}>Reopen payroll</Button> : null}
+            </HStack>
+          </Flex>
+          {selectedRun.status === "review" && actorId(selectedRun.reviewSubmittedBy) === currentUserId ? <Alert status="info" borderRadius="md"><AlertIcon /><AlertDescription>Maker-checker control requires another payroll approver to approve or return this run.</AlertDescription></Alert> : null}
+          <SimpleGrid columns={{ base: 1, md: 3, xl: 5 }} spacing={3}>
             <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}><Text fontSize="xs" color={muted}>LOCKED SOURCE</Text><Text fontWeight="800">Input v{selectedRun.attendancePayrollInputVersion}</Text><Text fontSize="xs" color={muted}>Attendance v{selectedRun.attendancePeriodVersion}</Text></Box>
             <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}><Text fontSize="xs" color={muted}>EMPLOYEE INPUTS</Text><Text fontWeight="800">{selectedRun.employeeInputCount || 0}</Text><Text fontSize="xs" color={muted}>{selectedRun.attendanceSummaryCount} current summaries</Text></Box>
             <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}><Text fontSize="xs" color={muted}>CARRIED ADJUSTMENTS</Text><Text fontWeight="800">{selectedRun.attendanceAdjustmentCount}</Text><Text fontSize="xs" color={muted}>From locked prior corrections</Text></Box>
             <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}><Text fontSize="xs" color={muted}>INPUT ISSUES</Text><Text fontWeight="800" color={selectedRun.employeeInputIssueCount ? "red.500" : undefined}>{selectedRun.employeeInputIssueCount || 0}</Text><Text fontSize="xs" color={muted}>Must be reviewed before calculation</Text></Box>
+            <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}><Text fontSize="xs" color={muted}>STATUTORY PROFILE</Text><Text fontWeight="800">{selectedRun.statutoryProfileVersionNumber ? `${selectedRun.statutoryCountryCode} v${selectedRun.statutoryProfileVersionNumber}` : "Not snapshotted"}</Text><Text fontSize="xs" color={muted}>{selectedRun.statutoryProfileVersionNumber ? `${selectedRun.statutoryEnabledModules?.length || 0} enabled modules` : "Create and publish a profile for future runs"}</Text></Box>
           </SimpleGrid>
 
           {selectedRun.attendanceInputStatus !== "prepared" ? (
@@ -403,6 +499,8 @@ export default function PayrollRunsWorkspace({ companyId, canManage }: Props) {
                 <Button size="sm" colorScheme="blue" variant={runInputView === "snapshots" ? "solid" : "ghost"} onClick={() => setRunInputView("snapshots")}>Employee snapshots{selectedRun.employeeSnapshotStatus === "prepared" ? ` (v${selectedRun.employeeSnapshotVersion || 1})` : ""}</Button>
                 <Button size="sm" colorScheme="blue" variant={runInputView === "results" ? "solid" : "ghost"} onClick={() => setRunInputView("results")}>Draft results{selectedRun.calculationVersion ? ` (v${selectedRun.calculationVersion})` : ""}</Button>
                 <Button size="sm" colorScheme="blue" variant={runInputView === "validation" ? "solid" : "ghost"} onClick={() => setRunInputView("validation")}>Validation</Button>
+                {selectedRun.finalizationVersion ? <Button size="sm" colorScheme="green" variant={runInputView === "finalized" ? "solid" : "ghost"} onClick={() => setRunInputView("finalized")}>Finalized results (v{selectedRun.finalizationVersion})</Button> : null}
+                {selectedRun.finalizationVersion ? <Button size="sm" colorScheme="green" variant={runInputView === "payslips" ? "solid" : "ghost"} onClick={() => setRunInputView("payslips")}>Payslips</Button> : null}
               </Flex>
               {runInputView === "attendance" ? <Stack spacing={3}>
               <Flex gap={3} direction={{ base: "column", md: "row" }} justify="space-between">
@@ -423,7 +521,7 @@ export default function PayrollRunsWorkspace({ companyId, canManage }: Props) {
                 )}
                 <Flex p={4} borderTopWidth="1px" borderColor={border} justify="space-between" align="center"><Text fontSize="sm" color={muted}>{inputTotal} employee input{inputTotal === 1 ? "" : "s"}</Text><HStack><Button size="sm" variant="outline" isDisabled={inputPage <= 1 || inputsLoading} onClick={() => setInputPage((value) => value - 1)}>Previous</Button><Text fontSize="sm">{inputPage} / {inputTotalPages}</Text><Button size="sm" variant="outline" isDisabled={inputPage >= inputTotalPages || inputsLoading} onClick={() => setInputPage((value) => value + 1)}>Next</Button></HStack></Flex>
               </Box>
-              </Stack> : runInputView === "one_time" ? <PayrollOneTimeInputsPanel companyId={companyId} run={selectedRun} onRunChanged={handleRunChanged} /> : runInputView === "snapshots" ? <PayrollEmployeeSnapshotsPanel companyId={companyId} run={selectedRun} onRunChanged={handleRunChanged} /> : runInputView === "results" ? <PayrollDraftResultsPanel companyId={companyId} run={selectedRun} onRunChanged={handleRunChanged} /> : <PayrollValidationPanel companyId={companyId} run={selectedRun} onRunChanged={handleRunChanged} />}
+              </Stack> : runInputView === "one_time" ? <PayrollOneTimeInputsPanel companyId={companyId} run={selectedRun} onRunChanged={handleRunChanged} /> : runInputView === "snapshots" ? <PayrollEmployeeSnapshotsPanel companyId={companyId} run={selectedRun} onRunChanged={handleRunChanged} /> : runInputView === "results" ? <PayrollDraftResultsPanel companyId={companyId} run={selectedRun} onRunChanged={handleRunChanged} /> : runInputView === "finalized" ? <PayrollFinalizedResultsPanel companyId={companyId} run={selectedRun} onRunChanged={handleRunChanged} /> : runInputView === "payslips" ? <PayrollPayslipsPanel companyId={companyId} run={selectedRun} /> : <PayrollValidationPanel companyId={companyId} run={selectedRun} onRunChanged={handleRunChanged} />}
             </Stack>
           )}
         </Stack>}
@@ -444,6 +542,18 @@ export default function PayrollRunsWorkspace({ companyId, canManage }: Props) {
             <FormControl isRequired><FormLabel>Preparation reason</FormLabel><Textarea value={reason} maxLength={500} onChange={(event) => setReason(event.target.value)} placeholder="Example: Prepare the September 2026 monthly payroll" /><FormHelperText>Minimum 3 characters. Stored permanently in payroll audit history.</FormHelperText></FormControl>
           </Stack></ModalBody>
           <ModalFooter gap={3}><Button variant="ghost" onClick={createDialog.onClose}>Cancel</Button><Button colorScheme="blue" isLoading={submitting} isDisabled={!source?.canCreate || reason.trim().length < 3} onClick={() => void createRun()}>Create draft run</Button></ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={reviewDialog.isOpen} onClose={reviewDialog.onClose} isCentered size="lg">
+        <ModalOverlay /><ModalContent>
+          <ModalHeader>{reviewAction === "submit" ? "Submit payroll for review" : reviewAction === "approve" ? "Approve payroll" : reviewAction === "return" ? "Return payroll to draft" : reviewAction === "reopen" ? "Reopen finalized payroll" : "Finalize payroll"}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody><Stack spacing={4}>
+            <Alert status={reviewAction === "approve" || reviewAction === "finalize" ? "success" : reviewAction === "return" || reviewAction === "reopen" ? "warning" : "info"} borderRadius="md"><AlertIcon /><AlertDescription>{reviewAction === "submit" ? "Submission locks payroll inputs and calculation changes until a different payroll approver approves or returns the run." : reviewAction === "approve" ? "This records the independent checker approval." : reviewAction === "return" ? "The run becomes editable again. Explain what the maker must correct before resubmission." : reviewAction === "reopen" ? "The run returns to draft and must pass review, approval, and finalization again. The previous finalized snapshot remains immutable and available for audit." : "Finalization atomically creates immutable employee payroll snapshots. Ordinary editing is not available after this action."}</AlertDescription></Alert>
+            <FormControl isRequired><FormLabel>{reviewAction === "submit" ? "Submission reason" : reviewAction === "approve" ? "Approval reason" : reviewAction === "return" ? "Return reason" : reviewAction === "reopen" ? "Reopen reason" : "Finalization reason"}</FormLabel><Textarea value={reviewReason} maxLength={500} onChange={(event) => setReviewReason(event.target.value)} placeholder={reviewAction === "return" ? "Describe the correction required" : reviewAction === "reopen" ? "Describe why this finalized payroll must be corrected" : reviewAction === "finalize" ? "Record why this approved payroll is being finalized" : "Record why this payroll is ready to proceed"} /><FormHelperText>Minimum 3 characters. Stored in the immutable payroll audit history.</FormHelperText></FormControl>
+          </Stack></ModalBody>
+          <ModalFooter gap={3}><Button variant="ghost" onClick={reviewDialog.onClose}>Cancel</Button><Button colorScheme={reviewAction === "approve" || reviewAction === "finalize" ? "green" : reviewAction === "return" || reviewAction === "reopen" ? "orange" : "blue"} isLoading={submitting} isDisabled={reviewReason.trim().length < 3} onClick={() => void applyReviewAction()}>{reviewAction === "submit" ? "Submit for review" : reviewAction === "approve" ? "Approve payroll" : reviewAction === "return" ? "Return to draft" : reviewAction === "reopen" ? "Reopen payroll" : "Finalize payroll"}</Button></ModalFooter>
         </ModalContent>
       </Modal>
     </Stack>

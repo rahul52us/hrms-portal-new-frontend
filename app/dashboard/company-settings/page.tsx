@@ -19,7 +19,7 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import { observer } from "mobx-react-lite";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FiBriefcase, FiSettings } from "react-icons/fi";
 import PermissionGate from "../../component/common/PermissionGate";
 import { getApiErrorMessage } from "../../config/utils/apiError";
@@ -83,13 +83,7 @@ const CompanySettingsPage = observer(() => {
   const sectionBg = useColorModeValue("gray.50", "gray.700");
   const borderColor = useColorModeValue("gray.200", "gray.700");
 
-  useEffect(() => {
-    if (canAccess) {
-      loadSettings();
-    }
-  }, [canAccess]);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     setLoading(true);
     try {
       const response = await userStore.getAdminCompanySettings();
@@ -109,7 +103,13 @@ const CompanySettingsPage = observer(() => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast, userStore]);
+
+  useEffect(() => {
+    if (canAccess) {
+      void loadSettings();
+    }
+  }, [canAccess, loadSettings]);
 
   const handleSave = async (values: any) => {
     if (!canEdit) {
@@ -127,7 +127,9 @@ const CompanySettingsPage = observer(() => {
     setSaving(true);
     try {
       // Strip _id to prevent MongoDB immutable field modification error
-      const { _id, logo, ...cleanValues } = values;
+      const cleanValues = { ...values };
+      delete cleanValues._id;
+      delete cleanValues.logo;
 
       const existingLogoUrl = company?.logo?.url || "";
       const nextLogo = values?.logo || {};
@@ -138,7 +140,6 @@ const CompanySettingsPage = observer(() => {
       const companyDetails: any = {
         ...cleanValues,
         departments,
-        deletedFiles: removedExistingLogo && existingLogoUrl ? [existingLogoUrl] : [],
         isLogoEdit: shouldReplaceLogo,
       };
 
