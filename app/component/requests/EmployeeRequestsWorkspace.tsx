@@ -888,7 +888,7 @@ export default function EmployeeRequestsWorkspace() {
               {(isWfh || isRegularization) && eligibilityErrorMessage ? <Alert status="error" borderRadius="md"><AlertIcon /><AlertDescription>{eligibilityErrorMessage}</AlertDescription></Alert> : null}
               {isWfh && remoteEligibility && !remoteEligibility.eligible ? (
                 <Alert status="warning" borderRadius="md">
-                  <AlertIcon /><AlertDescription>WFH is not available for the selected date.</AlertDescription>
+                  <AlertIcon /><AlertDescription>{remoteEligibility.reason || "WFH is not available for the selected date."}</AlertDescription>
                 </Alert>
               ) : null}
 

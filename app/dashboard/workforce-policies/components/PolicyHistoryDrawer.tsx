@@ -136,6 +136,7 @@ const PolicyHistoryDrawer = observer(function PolicyHistoryDrawer({
                 <HStack mt={3} spacing={4} wrap="wrap" color="gray.600">
                   <Text fontSize="xs">{(version.rules as AttendanceRules).minimumFullDayMinutes} full-day minutes</Text>
                   <Text fontSize="xs">Late grace: {(version.rules as AttendanceRules).gracePeriodMinutesLate} min</Text>
+                  <Text fontSize="xs">Status: {(version.rules as AttendanceRules).statusCalculationBasis === "scheduled_window" ? "inside assigned shift" : "total worked time"}</Text>
                   <Text fontSize="xs">Missing punch: {(version.rules as AttendanceRules).missingPunchTreatment.replaceAll("_", " ")}</Text>
                   <Text fontSize="xs">
                     Overtime: {(version.rules as AttendanceRules).overtimeEnabled
@@ -152,6 +153,9 @@ const PolicyHistoryDrawer = observer(function PolicyHistoryDrawer({
               {resourceType === "work_schedule" && version.rules ? (
                 <HStack mt={3} spacing={4} wrap="wrap" color="gray.600">
                   <Text fontSize="xs">{(version.rules as WorkScheduleRules).startTime}-{(version.rules as WorkScheduleRules).endTime}</Text>
+                  <Text fontSize="xs">
+                    Work mode: {(version.rules as WorkScheduleRules).defaultWorkMode === "remote" ? "Permanent WFH" : "Office"}
+                  </Text>
                   <Text fontSize="xs">{(version.rules as WorkScheduleRules).workingDays.join(", ")}</Text>
                   <Text fontSize="xs">Saturday: {(version.rules as WorkScheduleRules).saturdayRule.replaceAll("_", " ")}</Text>
                   <Text fontSize="xs">{(version.rules as WorkScheduleRules).timezone}</Text>

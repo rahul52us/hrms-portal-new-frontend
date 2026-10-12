@@ -17,7 +17,7 @@ export type CalendarDay = {
 export type CalendarRow = {
   date: string; employee: { id: string; name: string; code: string }; department: string; team: string; officeLocation: string;
   dayType: string; holiday: { name: string; type: string; isHalfDay: boolean; description: string } | null;
-  schedule: { isWorkingDay: boolean | null; startTime: string | null; endTime: string | null };
+  schedule: { isWorkingDay: boolean | null; startTime: string | null; endTime: string | null; defaultWorkMode?: "office" | "remote" };
   events: CalendarEvent[]; assignmentSource: string; timezone: string | null;
 };
 export type CalendarOptions = {

@@ -1,6 +1,10 @@
 "use client";
 
 import PermissionGate from "@/app/component/common/PermissionGate";
+import {
+  PERMISSION_KEYS,
+  hasPermission,
+} from "@/app/config/utils/permissions";
 import stores from "@/app/store/stores";
 import {
   Box,
@@ -11,10 +15,15 @@ import {
   Heading,
   HStack,
   Icon,
+  Input,
   Select,
   SimpleGrid,
   Spinner,
   Stack,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
   Table,
   TableContainer,
   Tbody,
@@ -23,6 +32,7 @@ import {
   Th,
   Thead,
   Tr,
+  Tabs,
   useColorModeValue,
   useToast,
   VStack,
@@ -34,6 +44,8 @@ import {
   FiDatabase,
   FiGrid,
   FiShield,
+  FiSearch,
+  FiUserCheck,
   FiUsers,
 } from "react-icons/fi";
 
@@ -87,11 +99,17 @@ const PermissionsPage = observer(() => {
   const { auth, companyStore, userStore } = stores;
 
   const role = String(auth.role || auth.user?.role || "").toLowerCase();
-  const canManagePermissions = role === "superadmin";
+  const canManagePermissions =
+    ["superadmin", "admin", "hradmin"].includes(role) &&
+    hasPermission(auth.user, PERMISSION_KEYS.MANAGE_PERMISSIONS);
+  const canEditRoleDefaults = canManagePermissions && ["superadmin", "admin"].includes(role);
   const companyId = companyStore.getActiveCompanyId();
 
   const [selectedRole, setSelectedRole] = useState("admin");
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedAssignmentUserId, setSelectedAssignmentUserId] = useState("");
+  const [assignmentRole, setAssignmentRole] = useState("");
+  const [assignmentSearch, setAssignmentSearch] = useState("");
   const [roleDraft, setRoleDraft] = useState<Record<string, boolean>>({});
   const [userDraft, setUserDraft] = useState<Record<string, boolean>>({});
 
@@ -140,8 +158,13 @@ const PermissionsPage = observer(() => {
   useEffect(() => {
     if (!canManagePermissions) return;
 
-    companyStore.getManagedCompanies().catch(() => undefined);
-  }, [canManagePermissions, companyStore]);
+    if (role === "superadmin") {
+      companyStore.getManagedCompanies().catch(() => undefined);
+      return;
+    }
+
+    companyStore.initializeCompanyContext();
+  }, [canManagePermissions, companyStore, role]);
 
   useEffect(() => {
     if (!companyId || !canManagePermissions) return;
@@ -159,15 +182,37 @@ const PermissionsPage = observer(() => {
   const config = userStore.permissionConfig;
   const catalog = config?.catalog || [];
   const roles = config?.roles || [];
+  const assignmentRoles = config?.assignmentRoles || [];
 
-  const configurableUsers = useMemo(
+  const roleLabels = useMemo(
+    () => new Map(roles.map((item: any) => [item.value, item.label])),
+    [roles]
+  );
+
+  const assignmentUsers = useMemo(
     () =>
-      userStore.users.filter((user: any) =>
-        ["admin", "departmenthead"].includes(
-          String(user?.role || "").toLowerCase()
-        )
+      userStore.users.filter(
+        (user: any) => String(user?.role || "").toLowerCase() === "user"
       ),
     [userStore.users]
+  );
+
+  const selectedAssignmentUser = useMemo(
+    () =>
+      assignmentUsers.find((user: any) => user._id === selectedAssignmentUserId) ||
+      null,
+    [assignmentUsers, selectedAssignmentUserId]
+  );
+
+  const configurableUsers = useMemo(
+    () => {
+      const configurableRoleKeys = new Set(roles.map((item: any) => item.value));
+      return userStore.users.filter((user: any) => {
+        const organizationalRole = String(user?.role || "").toLowerCase();
+        return Boolean(user?.accessRole) || configurableRoleKeys.has(organizationalRole);
+      });
+    },
+    [roles, userStore.users]
   );
 
   const selectedUser = useMemo(
@@ -185,6 +230,37 @@ const PermissionsPage = observer(() => {
       return acc;
     }, {});
   }, [catalog]);
+
+  const roleGroupedCatalog = useMemo(() => {
+    const selectedRoleOption = roles.find((item: any) => item.value === selectedRole);
+    const allowed = new Set(selectedRoleOption?.allowedPermissionKeys || []);
+    return Object.entries(groupedCatalog).reduce<Record<string, any[]>>(
+      (acc, [category, permissions]) => {
+        const filtered = (permissions as any[]).filter((permission) =>
+          allowed.has(permission.key)
+        );
+        if (filtered.length) acc[category] = filtered;
+        return acc;
+      },
+      {}
+    );
+  }, [groupedCatalog, roles, selectedRole]);
+
+  const userGroupedCatalog = useMemo(() => {
+    const permissionRole = selectedUser?.accessRole || selectedUser?.role;
+    const selectedRoleOption = roles.find((item: any) => item.value === permissionRole);
+    const allowed = new Set(selectedRoleOption?.allowedPermissionKeys || []);
+    return Object.entries(groupedCatalog).reduce<Record<string, any[]>>(
+      (acc, [category, permissions]) => {
+        const filtered = (permissions as any[]).filter((permission) =>
+          allowed.has(permission.key)
+        );
+        if (filtered.length) acc[category] = filtered;
+        return acc;
+      },
+      {}
+    );
+  }, [groupedCatalog, roles, selectedUser]);
 
   useEffect(() => {
     if (!selectedRole && roles[0]?.value) {
@@ -209,6 +285,16 @@ const PermissionsPage = observer(() => {
       setSelectedUserId("");
     }
   }, [selectedUser, selectedUserId]);
+
+  useEffect(() => {
+    setAssignmentRole(String(selectedAssignmentUser?.accessRole || ""));
+  }, [selectedAssignmentUser]);
+
+  useEffect(() => {
+    if (selectedAssignmentUserId && !selectedAssignmentUser) {
+      setSelectedAssignmentUserId("");
+    }
+  }, [selectedAssignmentUser, selectedAssignmentUserId]);
 
   const handleRoleToggle = (key: string, value: boolean) => {
     setRoleDraft((prev) => ({ ...prev, [key]: value }));
@@ -261,6 +347,49 @@ const PermissionsPage = observer(() => {
         duration: 4000,
       });
     }
+  };
+
+  const saveRoleAssignment = async () => {
+    if (!selectedAssignmentUserId) return;
+
+    try {
+      await userStore.updateUserAccessRole(
+        selectedAssignmentUserId,
+        assignmentRole,
+        companyId
+      );
+      setSelectedUserId("");
+      toast({
+        title: assignmentRole ? "Access role assigned" : "Access role removed",
+        description: "Individual permission overrides were reset for this employee.",
+        status: "success",
+        duration: 3500,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Unable to update role assignment",
+        description: error?.error || error?.message || "Please try again.",
+        status: "error",
+        duration: 4000,
+      });
+    }
+  };
+
+  const searchAssignmentUsers = async () => {
+    if (!companyId) return;
+    setSelectedAssignmentUserId("");
+    await userStore.fetchUsers({
+      page: 1,
+      limit: 100,
+      companyId,
+      search: assignmentSearch.trim(),
+    }).catch((error: any) => {
+      toast({
+        title: "Unable to search employees",
+        description: error?.error || error?.message || "Please try again.",
+        status: "error",
+      });
+    });
   };
 
   const CustomSwitch = ({
@@ -348,7 +477,8 @@ const PermissionsPage = observer(() => {
 
   const renderDesktopPermissionTable = (
     draft: Record<string, boolean>,
-    onToggle: (key: string, value: boolean) => void
+    onToggle: (key: string, value: boolean) => void,
+    permissionGroups: Record<string, any[]> = groupedCatalog
   ) => (
     <Box display={{ base: "none", md: "block" }}>
       <TableContainer borderWidth="1px" borderColor={subtleBorderColor} rounded="2xl">
@@ -373,7 +503,7 @@ const PermissionsPage = observer(() => {
           </Thead>
 
           <Tbody>
-            {Object.entries(groupedCatalog).map(([category, permissions]) => {
+            {Object.entries(permissionGroups).map(([category, permissions]) => {
               const { Icon: CategoryIcon, gradient } = getCategoryStyle(category);
               const permissionItems = permissions as any[];
 
@@ -449,10 +579,11 @@ const PermissionsPage = observer(() => {
 
   const renderMobilePermissionCards = (
     draft: Record<string, boolean>,
-    onToggle: (key: string, value: boolean) => void
+    onToggle: (key: string, value: boolean) => void,
+    permissionGroups: Record<string, any[]> = groupedCatalog
   ) => (
     <VStack display={{ base: "flex", md: "none" }} spacing={3} align="stretch">
-      {Object.entries(groupedCatalog).map(([category, permissions]) => {
+      {Object.entries(permissionGroups).map(([category, permissions]) => {
         const { Icon: CategoryIcon, gradient } = getCategoryStyle(category);
         const permissionItems = permissions as any[];
 
@@ -552,11 +683,12 @@ const PermissionsPage = observer(() => {
 
   const renderPermissions = (
     draft: Record<string, boolean>,
-    onToggle: (key: string, value: boolean) => void
+    onToggle: (key: string, value: boolean) => void,
+    permissionGroups: Record<string, any[]> = groupedCatalog
   ) => (
     <>
-      {renderMobilePermissionCards(draft, onToggle)}
-      {renderDesktopPermissionTable(draft, onToggle)}
+      {renderMobilePermissionCards(draft, onToggle, permissionGroups)}
+      {renderDesktopPermissionTable(draft, onToggle, permissionGroups)}
     </>
   );
 
@@ -564,7 +696,7 @@ const PermissionsPage = observer(() => {
     <PermissionGate
       allowed={canManagePermissions}
       title="Permissions access is disabled"
-      description="Only Super Admins can edit role defaults and user permission overrides."
+      description="You do not have permission to manage access roles or user permission overrides."
       fallbackHref="/dashboard/profile"
     >
       <Box minH="100dvh" bg={bgColor} py={{ base: 2, md: 0 }}>
@@ -581,7 +713,7 @@ const PermissionsPage = observer(() => {
                 <Box minW={0}>
                   <Heading
                     size={{ base: "md", md: "xl" }}
-                    letterSpacing="-0.04em"
+                    letterSpacing="0"
                     color={textColor}
                   >
                     Permissions
@@ -592,7 +724,7 @@ const PermissionsPage = observer(() => {
                     fontSize={{ base: "xs", md: "base" }}
                     color={textSecondaryColor}
                   >
-                    Role defaults and user overrides
+                    Role defaults, assignments, and user overrides
                   </Text>
                 </Box>
 
@@ -614,6 +746,17 @@ const PermissionsPage = observer(() => {
               </HStack>
             </Box>
 
+            <Tabs isLazy variant="enclosed" colorScheme="teal">
+              <TabList overflowX="auto" borderColor={borderColor}>
+                {canEditRoleDefaults ? (
+                  <Tab whiteSpace="nowrap">Role permissions</Tab>
+                ) : null}
+                <Tab whiteSpace="nowrap">Role assignment</Tab>
+                <Tab whiteSpace="nowrap">User overrides</Tab>
+              </TabList>
+              <TabPanels>
+                {canEditRoleDefaults ? (
+                  <TabPanel px={0} pb={0}>
             <Box
               borderRadius={{ base: "2xl", md: "3xl" }}
               bg={cardBgColor}
@@ -682,7 +825,7 @@ const PermissionsPage = observer(() => {
                     <Spinner size={{ base: "md", md: "xl" }} color="teal.400" />
                   </Box>
                 ) : (
-                  renderPermissions(roleDraft, handleRoleToggle)
+                  renderPermissions(roleDraft, handleRoleToggle, roleGroupedCatalog)
                 )}
 
                 <Button
@@ -700,6 +843,155 @@ const PermissionsPage = observer(() => {
                 </Button>
               </Stack>
             </Box>
+                  </TabPanel>
+                ) : null}
+
+                <TabPanel px={0} pb={0}>
+                  <Box
+                    borderRadius={{ base: "2xl", md: "3xl" }}
+                    bg={cardBgColor}
+                    borderWidth="1px"
+                    borderColor={borderColor}
+                    p={{ base: 4, md: 6 }}
+                    shadow="sm"
+                  >
+                    <Stack spacing={{ base: 4, md: 6 }}>
+                      <HStack justify="space-between" align="start" spacing={3}>
+                        <Box>
+                          <HStack spacing={2}>
+                            <Icon as={FiUserCheck} color="teal.500" />
+                            <Heading size={{ base: "sm", md: "md" }} color={textColor}>
+                              Role Assignment
+                            </Heading>
+                          </HStack>
+                          <Text mt={1} fontSize="sm" color={textSecondaryColor}>
+                            Grant operational access without changing the employee&apos;s organizational role or reporting hierarchy.
+                          </Text>
+                        </Box>
+                        <Box
+                          display={{ base: "none", sm: "inline-flex" }}
+                          rounded="full"
+                          bg={badgeBgColor}
+                          px={3}
+                          py={1}
+                        >
+                          <Text fontSize="xs" fontWeight="700" color={badgeTextColor}>
+                            ACCESS ROLE
+                          </Text>
+                        </Box>
+                      </HStack>
+
+                      <FormControl maxW="620px">
+                        <FormLabel fontSize="sm" fontWeight="700" color={textMutedColor}>
+                          Find employee
+                        </FormLabel>
+                        <HStack align="stretch">
+                          <Input
+                            value={assignmentSearch}
+                            placeholder="Search by name, email, or employee code"
+                            bg={selectBgColor}
+                            borderColor={selectBorderColor}
+                            onChange={(event) => setAssignmentSearch(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") void searchAssignmentUsers();
+                            }}
+                          />
+                          <Button
+                            leftIcon={<FiSearch />}
+                            variant="outline"
+                            isLoading={userStore.loading}
+                            onClick={() => void searchAssignmentUsers()}
+                          >
+                            Search
+                          </Button>
+                        </HStack>
+                      </FormControl>
+
+                      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                        <FormControl>
+                          <FormLabel fontSize="sm" fontWeight="700" color={textMutedColor}>
+                            Employee
+                          </FormLabel>
+                          <Select
+                            placeholder="Select an employee"
+                            value={selectedAssignmentUserId}
+                            onChange={(event) => setSelectedAssignmentUserId(event.target.value)}
+                            bg={selectBgColor}
+                            borderColor={selectBorderColor}
+                          >
+                            {assignmentUsers.map((user: any) => (
+                              <option key={user._id} value={user._id}>
+                                {user.name} ({user.username}){user.code ? ` - ${user.code}` : ""}
+                              </option>
+                            ))}
+                          </Select>
+                        </FormControl>
+
+                        <FormControl isDisabled={!selectedAssignmentUser}>
+                          <FormLabel fontSize="sm" fontWeight="700" color={textMutedColor}>
+                            Access role
+                          </FormLabel>
+                          <Select
+                            value={assignmentRole}
+                            onChange={(event) => setAssignmentRole(event.target.value)}
+                            bg={selectBgColor}
+                            borderColor={selectBorderColor}
+                          >
+                            <option value="">No additional access role</option>
+                            {assignmentRoles.map((roleOption: any) => (
+                              <option key={roleOption.value} value={roleOption.value}>
+                                {roleOption.label}
+                              </option>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </SimpleGrid>
+
+                      {selectedAssignmentUser ? (
+                        <Box
+                          borderWidth="1px"
+                          borderColor={subtleBorderColor}
+                          borderRadius="md"
+                          bg={softCardBg}
+                          p={4}
+                        >
+                          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
+                            <Box>
+                              <Text fontSize="xs" color={textMutedColor}>ORGANIZATIONAL ROLE</Text>
+                              <Text fontWeight="700">Employee</Text>
+                            </Box>
+                            <Box>
+                              <Text fontSize="xs" color={textMutedColor}>CURRENT ACCESS ROLE</Text>
+                              <Text fontWeight="700">
+                                {selectedAssignmentUser.accessRole
+                                  ? roleLabels.get(selectedAssignmentUser.accessRole) || selectedAssignmentUser.accessRole
+                                  : "None"}
+                              </Text>
+                            </Box>
+                          </SimpleGrid>
+                          <Text mt={3} fontSize="xs" color={textSecondaryColor}>
+                            Changing or removing the access role resets this employee&apos;s individual permission overrides so old grants cannot reactivate later.
+                          </Text>
+                        </Box>
+                      ) : null}
+
+                      <Button
+                        alignSelf={{ base: "stretch", md: "flex-start" }}
+                        colorScheme="teal"
+                        isDisabled={
+                          !selectedAssignmentUser ||
+                          assignmentRole === String(selectedAssignmentUser?.accessRole || "")
+                        }
+                        isLoading={userStore.permissionSaving}
+                        onClick={saveRoleAssignment}
+                      >
+                        Save Role Assignment
+                      </Button>
+                    </Stack>
+                  </Box>
+                </TabPanel>
+
+                <TabPanel px={0} pb={0}>
 
             <Box
               borderRadius={{ base: "2xl", md: "3xl" }}
@@ -712,9 +1004,7 @@ const PermissionsPage = observer(() => {
               <Stack spacing={{ base: 4, md: 7 }}>
                 <HStack align="center" justify="space-between" spacing={3}>
                   <HStack spacing={{ base: 2, md: 3 }}>
-                    <Text display={{ base: "none", md: "block" }} fontSize="3xl">
-                      👤
-                    </Text>
+                    <Icon as={FiUsers} display={{ base: "none", md: "block" }} boxSize={6} color="teal.500" />
 
                     <Heading size={{ base: "sm", md: "lg" }} color={textColor}>
                       User Overrides
@@ -775,7 +1065,7 @@ const PermissionsPage = observer(() => {
                       borderColor={infoBoxBorderColor}
                       align="flex-start"
                     >
-                      <Text fontSize={{ base: "lg", md: "2xl" }}>⚡</Text>
+                      <Icon as={FiShield} boxSize={5} color="amber.500" />
 
                       <Text
                         fontSize={{ base: "xs", md: "sm" }}
@@ -790,7 +1080,7 @@ const PermissionsPage = observer(() => {
                       </Text>
                     </HStack>
 
-                    {renderPermissions(userDraft, handleUserToggle)}
+                    {renderPermissions(userDraft, handleUserToggle, userGroupedCatalog)}
 
                     <Button
                       alignSelf={{ base: "stretch", md: "flex-start" }}
@@ -832,6 +1122,9 @@ const PermissionsPage = observer(() => {
                 )}
               </Stack>
             </Box>
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
           </Stack>
         </Box>
       </Box>

@@ -46,7 +46,7 @@ const PayrollPage = observer(() => {
       allowed={canViewPayroll}
       title="Payroll module is disabled"
       description="This account does not currently have payroll access."
-      fallbackHref="/dashboard/hr"
+      fallbackHref={String(auth.user?.role || "").toLowerCase() === "user" ? "/employee" : "/dashboard/hr"}
     >
       <Box minH="100dvh">
         <Stack spacing={0}>

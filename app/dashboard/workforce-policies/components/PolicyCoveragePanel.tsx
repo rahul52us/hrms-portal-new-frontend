@@ -58,6 +58,12 @@ const resolvedLabel = (resolved: ResolvedPolicyResource | null) => {
     name: resource?.name || "Policy configuration",
     version: resolved.version.versionNumber,
     scope,
+    detail:
+      resolved.version.rules && !Array.isArray(resolved.version.rules) && "defaultWorkMode" in resolved.version.rules
+        ? (resolved.version.rules as any).defaultWorkMode === "remote"
+          ? "Permanent WFH"
+          : "Office"
+        : "",
   };
 };
 
@@ -107,6 +113,7 @@ const CoverageValue = ({
             <Text mt={0.5} fontSize="xs" color={muted}>
               Version {value.version} | {value.scope}
             </Text>
+            {value.detail ? <Text mt={0.5} fontSize="xs" color={muted}>{value.detail}</Text> : null}
           </Box>
         </HStack>
       ) : (

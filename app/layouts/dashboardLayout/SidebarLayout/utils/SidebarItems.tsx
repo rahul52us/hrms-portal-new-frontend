@@ -128,7 +128,7 @@ const sidebarDatas: SidebarItem[] = [
     name: "Payroll",
     icon: <FiCreditCard />,
     url: "/dashboard/payroll",
-    role: ["admin", "hradmin"],
+    role: ["admin", "hradmin", "user"],
     permissionKey: PERMISSION_KEYS.VIEW_PAYROLL,
   },
   {
@@ -158,7 +158,8 @@ const sidebarDatas: SidebarItem[] = [
     name: "Permissions",
     icon: <FaCog />,
     url: "/dashboard/permissions",
-    role: ["superadmin"],
+    role: ["superadmin", "admin", "hradmin"],
+    permissionKey: PERMISSION_KEYS.MANAGE_PERMISSIONS,
   },
   {
     id: 14,

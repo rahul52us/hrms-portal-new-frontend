@@ -30,6 +30,7 @@ class UserStore {
     companyName: "",
     catalog: [],
     roles: [],
+    assignmentRoles: [],
     rolePermissions: {},
   };
   user: any = {
@@ -516,6 +517,31 @@ class UserStore {
       const updatedUser = response?.data?.data?.user;
       if (updatedUser?._id) {
         this.users = this.users.map((user) => (user._id === updatedUser._id ? updatedUser : user));
+      }
+      return response?.data;
+    } catch (err: any) {
+      return Promise.reject(err?.response?.data || err.message);
+    } finally {
+      this.permissionSaving = false;
+    }
+  };
+
+  updateUserAccessRole = async (
+    id: string,
+    accessRole: string,
+    companyId?: string
+  ) => {
+    this.permissionSaving = true;
+    try {
+      const response = await axios.put(`/admin/users/${id}/access-role`, {
+        companyId,
+        accessRole: accessRole || null,
+      });
+      const updatedUser = response?.data?.data?.user;
+      if (updatedUser?._id) {
+        this.users = this.users.map((user) =>
+          user._id === updatedUser._id ? updatedUser : user
+        );
       }
       return response?.data;
     } catch (err: any) {

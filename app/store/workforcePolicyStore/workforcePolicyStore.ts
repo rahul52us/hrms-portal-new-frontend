@@ -15,6 +15,7 @@ export interface AttendanceRules {
   gracePeriodMinutesEarly: number;
   minimumFullDayMinutes: number;
   minimumHalfDayMinutes: number;
+  statusCalculationBasis: "total_worked" | "scheduled_window";
   requirePunchOut: boolean;
   missingPunchTreatment: string;
   overtimeEnabled: boolean;
@@ -70,6 +71,7 @@ export interface AttendanceRegularizationRules {
 
 export interface WorkScheduleRules {
   timezone: string;
+  defaultWorkMode: "office" | "remote";
   workingDays: string[];
   saturdayRule: string;
   customSaturdayOffWeeks: number[];

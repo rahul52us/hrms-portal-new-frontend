@@ -319,7 +319,15 @@ const WorkforcePoliciesWorkspace = observer(() => {
                   <Td><Text fontWeight="700">{item.name}</Text><Text fontSize="xs" color={muted}>{item.code}</Text></Td>
                   <Td>
                     {item.latestPublishedVersion ? (
-                      <><Text fontWeight="600">v{item.latestPublishedVersion.versionNumber}</Text><Text fontSize="xs" color={muted}>From {formatDate(item.latestPublishedVersion.effectiveFrom)}</Text></>
+                      <>
+                        <Text fontWeight="600">v{item.latestPublishedVersion.versionNumber}</Text>
+                        <Text fontSize="xs" color={muted}>From {formatDate(item.latestPublishedVersion.effectiveFrom)}</Text>
+                        {type === "work_schedule" ? (
+                          <Text fontSize="xs" color={muted}>
+                            {(item.latestPublishedVersion.rules as any)?.defaultWorkMode === "remote" ? "Permanent WFH" : "Office"}
+                          </Text>
+                        ) : null}
+                      </>
                     ) : <Badge colorScheme="orange">Draft only</Badge>}
                     {item.draftVersion ? <Badge ml={2} colorScheme="yellow">Draft v{item.draftVersion.versionNumber}</Badge> : null}
                   </Td>

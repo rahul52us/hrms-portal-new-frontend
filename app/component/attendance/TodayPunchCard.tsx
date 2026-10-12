@@ -289,6 +289,14 @@ export default function TodayPunchCard({
                 </AlertDescription>
               </Alert>
             ) : null}
+            {!today.remoteWorkAuthorization && today.context.schedule.defaultWorkMode === "remote" ? (
+              <Alert status="info" borderRadius="md">
+                <AlertIcon />
+                <AlertDescription>
+                  Permanent WFH applies through your assigned work schedule. Punch in normally; office-only location, network, and trusted-browser checks do not apply.
+                </AlertDescription>
+              </Alert>
+            ) : null}
             {today.context.missingPolicies.length ? (
               <Alert status="warning" borderRadius="md">
                 <AlertIcon />
@@ -338,6 +346,7 @@ export default function TodayPunchCard({
                   {titleCase(
                     record?.workMode ||
                       today.remoteWorkAuthorization?.workMode ||
+                      today.context.schedule.defaultWorkMode ||
                       "office"
                   )}
                 </Text>

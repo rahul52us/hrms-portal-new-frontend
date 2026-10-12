@@ -11,8 +11,11 @@ import {
   Box,
   Button,
   Flex,
+  FormControl,
+  FormLabel,
   HStack,
   Icon,
+  Input,
   SimpleGrid,
   Skeleton,
   Stack,
@@ -70,6 +73,7 @@ export default function MyPayslipsWorkspace() {
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState("");
   const [page, setPage] = useState(1);
+  const [periodKey, setPeriodKey] = useState("");
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const surface = useColorModeValue("white", "gray.800");
@@ -81,16 +85,21 @@ export default function MyPayslipsWorkspace() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await axios.get("/payroll/payslips/me", { params: { page, limit: 12 } });
+      const { data } = await axios.get("/payroll/payslips/me", {
+        params: { page, limit: 12, ...(periodKey ? { periodKey } : {}) },
+      });
       setItems(data.data || []);
       setTotal(Number(data.pagination?.total || 0));
       setTotalPages(Number(data.pagination?.totalPages || 1));
     } catch (error) {
+      setItems([]);
+      setTotal(0);
+      setTotalPages(1);
       toast({ title: "Unable to load payslips", description: getApiErrorMessage(error), status: "error" });
     } finally {
       setLoading(false);
     }
-  }, [page, toast]);
+  }, [page, periodKey, toast]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -128,11 +137,37 @@ export default function MyPayslipsWorkspace() {
         <Button alignSelf={{ base: "flex-start", md: "center" }} leftIcon={<FiRefreshCw />} variant="outline" isLoading={loading} onClick={() => void load()}>Refresh</Button>
       </Flex>
 
+      <Flex align={{ base: "stretch", sm: "end" }} direction={{ base: "column", sm: "row" }} gap={3}>
+        <FormControl maxW={{ base: "100%", sm: "260px" }}>
+          <FormLabel mb={1} fontSize="sm" fontWeight="700">Payroll month</FormLabel>
+          <Input
+            type="month"
+            value={periodKey}
+            max="9999-12"
+            bg={surface}
+            onChange={(event) => {
+              setPeriodKey(event.target.value);
+              setPage(1);
+            }}
+          />
+        </FormControl>
+        <Button
+          variant="outline"
+          isDisabled={!periodKey || loading}
+          onClick={() => {
+            setPeriodKey("");
+            setPage(1);
+          }}
+        >
+          All months
+        </Button>
+      </Flex>
+
       {loading ? <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={4}>{[1, 2, 3].map((item) => <Skeleton key={item} h="238px" borderRadius="md" />)}</SimpleGrid> : items.length === 0 ? (
         <Box bg={surface} borderWidth="1px" borderColor={border} borderRadius="md" py={16} textAlign="center">
           <Icon as={FiFileText} boxSize={9} color="gray.400" />
-          <Text mt={3} fontWeight="800">No payslips issued yet</Text>
-          <Text mt={1} fontSize="sm" color={muted}>Your payslip will appear after payroll is finalized and released by HR.</Text>
+          <Text mt={3} fontWeight="800">{periodKey ? `No payslip for ${periodLabel(periodKey)}` : "No payslips issued yet"}</Text>
+          <Text mt={1} fontSize="sm" color={muted}>{periodKey ? "No issued payslip matches the selected payroll month." : "Your payslip will appear after payroll is finalized and released by HR."}</Text>
         </Box>
       ) : <>
         {items.some((item) => !item.isLatest) ? <Alert status="info" borderRadius="md"><AlertIcon /><AlertDescription>A corrected payroll may create another payslip version for the same month. The latest version is marked clearly; older versions remain available for history.</AlertDescription></Alert> : null}
@@ -153,7 +188,7 @@ export default function MyPayslipsWorkspace() {
         </Box>)}</SimpleGrid>
       </>}
 
-      <Flex justify="space-between" align="center"><Text fontSize="sm" color={muted}>{total} payslip{total === 1 ? "" : "s"}</Text><HStack><Button size="sm" variant="outline" isDisabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}>Previous</Button><Text fontSize="sm">{page} / {totalPages}</Text><Button size="sm" variant="outline" isDisabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}>Next</Button></HStack></Flex>
+      <Flex justify="space-between" align="center"><Text fontSize="sm" color={muted}>{total} payslip{total === 1 ? "" : "s"}{periodKey ? ` for ${periodLabel(periodKey)}` : ""}</Text><HStack><Button size="sm" variant="outline" isDisabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}>Previous</Button><Text fontSize="sm">{page} / {totalPages}</Text><Button size="sm" variant="outline" isDisabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}>Next</Button></HStack></Flex>
     </Stack>
   </Box>;
 }

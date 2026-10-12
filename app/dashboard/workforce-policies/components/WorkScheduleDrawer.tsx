@@ -40,6 +40,7 @@ const REGULAR_WORK_DAYS = [
 
 const DEFAULT_RULES: WorkScheduleRules = {
   timezone: "Asia/Kolkata",
+  defaultWorkMode: "office",
   workingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
   saturdayRule: "all_off",
   customSaturdayOffWeeks: [],
@@ -265,8 +266,8 @@ export default function WorkScheduleDrawer({
         </Box>
 
         <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
-          <Text mb={4} fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Validity and timezone</Text>
-          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
+          <Text mb={4} fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Validity and work arrangement</Text>
+          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={5}>
             <FormControl isRequired>
               <FormLabel fontSize="sm" fontWeight="600">Effective from</FormLabel>
               <Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} bg={inputBg} />
@@ -274,6 +275,20 @@ export default function WorkScheduleDrawer({
             <FormControl isRequired>
               <FormLabel fontSize="sm" fontWeight="600">Timezone</FormLabel>
               <Input value={rules.timezone} onChange={(event) => setRule("timezone", event.target.value)} placeholder="Asia/Kolkata" bg={inputBg} />
+            </FormControl>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm" fontWeight="600">Default work mode</FormLabel>
+              <Select
+                value={rules.defaultWorkMode}
+                onChange={(event) => setRule("defaultWorkMode", event.target.value)}
+                bg={inputBg}
+              >
+                <option value="office">Office</option>
+                <option value="remote">Permanent WFH</option>
+              </Select>
+              <FormHelperText>
+                Assign this schedule to a company, location, department, team, or employee.
+              </FormHelperText>
             </FormControl>
           </SimpleGrid>
         </Box>

@@ -144,10 +144,12 @@ const PolicyCard = ({
           <>
             <Text><strong>Full day:</strong> {attendanceRules.minimumFullDayMinutes} minutes</Text>
             <Text><strong>Late grace:</strong> {attendanceRules.gracePeriodMinutesLate} minutes</Text>
+            <Text><strong>Status calculation:</strong> {attendanceRules.statusCalculationBasis === "scheduled_window" ? "Time inside assigned shift" : "Total worked time"}</Text>
           </>
         ) : null}
         {scheduleRules ? (
           <>
+            <Text><strong>Work mode:</strong> {scheduleRules.defaultWorkMode === "remote" ? "Permanent WFH" : "Office"}</Text>
             <Text><strong>Hours:</strong> {scheduleRules.startTime} - {scheduleRules.endTime}</Text>
             <Text><strong>Working days:</strong> {(scheduleRules.workingDays || []).join(", ") || "--"}</Text>
           </>

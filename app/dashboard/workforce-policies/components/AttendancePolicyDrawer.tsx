@@ -40,6 +40,7 @@ const DEFAULT_RULES: AttendanceRules = {
   gracePeriodMinutesEarly: 0,
   minimumFullDayMinutes: 480,
   minimumHalfDayMinutes: 240,
+  statusCalculationBasis: "total_worked",
   requirePunchOut: true,
   missingPunchTreatment: "flag_incomplete",
   overtimeEnabled: false,
@@ -681,6 +682,16 @@ export default function AttendancePolicyDrawer({
             <FormControl><FormLabel fontSize="sm" fontWeight="600">Full-day minutes</FormLabel><NumberInput min={1} value={rules.minimumFullDayMinutes} onChange={(_, value) => setRule("minimumFullDayMinutes", value || 0)}><NumberInputField bg={inputBg} /></NumberInput></FormControl>
             <FormControl><FormLabel fontSize="sm" fontWeight="600">Half-day minutes</FormLabel><NumberInput min={1} value={rules.minimumHalfDayMinutes} onChange={(_, value) => setRule("minimumHalfDayMinutes", value || 0)}><NumberInputField bg={inputBg} /></NumberInput></FormControl>
           </SimpleGrid>
+          <FormControl mt={5}>
+            <FormLabel fontSize="sm" fontWeight="600">Time used for attendance status</FormLabel>
+            <Select value={rules.statusCalculationBasis} onChange={(event) => setRule("statusCalculationBasis", event.target.value)} bg={inputBg}>
+              <option value="total_worked">Total worked time</option>
+              <option value="scheduled_window">Only time inside the assigned shift</option>
+            </Select>
+            <FormHelperText>
+              Choose the assigned-shift option when time worked after shift end must not compensate for a late arrival.
+            </FormHelperText>
+          </FormControl>
         </Box>
 
         <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">

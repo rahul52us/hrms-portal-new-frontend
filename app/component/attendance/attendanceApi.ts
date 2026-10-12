@@ -39,6 +39,7 @@ export type AttendanceRecord = {
   state: "open" | "calculated" | "finalized";
   status: string;
   workMode: "office" | "remote" | "hybrid" | "field";
+  workModeSource?: "default" | "work_schedule" | "remote_work_request" | "manual" | "import";
   punchSessions: AttendancePunchSession[];
   workedMinutes: number;
   breakMinutes: number;
@@ -91,6 +92,7 @@ export type TodayAttendance = {
       startTime?: string | null;
       endTime?: string | null;
       scheduledMinutes?: number | null;
+      defaultWorkMode?: "office" | "remote";
     };
     holiday?: { name: string; type: string; isHalfDay: boolean } | null;
     missingPolicies: string[];
