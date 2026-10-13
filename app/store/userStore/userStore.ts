@@ -29,8 +29,10 @@ class UserStore {
     companyId: "",
     companyName: "",
     catalog: [],
+    permissionDependencies: {},
     roles: [],
     assignmentRoles: [],
+    individualOverridePermissionKeys: [],
     rolePermissions: {},
   };
   user: any = {

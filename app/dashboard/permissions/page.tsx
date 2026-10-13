@@ -111,7 +111,7 @@ const PermissionsPage = observer(() => {
   const [assignmentRole, setAssignmentRole] = useState("");
   const [assignmentSearch, setAssignmentSearch] = useState("");
   const [roleDraft, setRoleDraft] = useState<Record<string, boolean>>({});
-  const [userDraft, setUserDraft] = useState<Record<string, boolean>>({});
+  const [userDraft, setUserDraft] = useState<Record<string, boolean | undefined>>({});
 
   const bgColor = useColorModeValue("gray.50", "gray.900");
   const cardBgColor = useColorModeValue("white", "gray.800");
@@ -181,18 +181,26 @@ const PermissionsPage = observer(() => {
 
   const config = userStore.permissionConfig;
   const catalog = config?.catalog || [];
+  const permissionDependencies = config?.permissionDependencies || {};
   const roles = config?.roles || [];
   const assignmentRoles = config?.assignmentRoles || [];
+  const individualOverridePermissionKeys = config?.individualOverridePermissionKeys || [];
 
   const roleLabels = useMemo(
-    () => new Map(roles.map((item: any) => [item.value, item.label])),
-    [roles]
+    () =>
+      new Map(
+        [...roles, ...assignmentRoles].map((item: any) => [item.value, item.label])
+      ),
+    [assignmentRoles, roles]
   );
 
   const assignmentUsers = useMemo(
     () =>
       userStore.users.filter(
-        (user: any) => String(user?.role || "").toLowerCase() === "user"
+        (user: any) =>
+          ["user", "hr", "departmenthead"].includes(
+            String(user?.role || "").toLowerCase()
+          )
       ),
     [userStore.users]
   );
@@ -205,14 +213,14 @@ const PermissionsPage = observer(() => {
   );
 
   const configurableUsers = useMemo(
-    () => {
-      const configurableRoleKeys = new Set(roles.map((item: any) => item.value));
-      return userStore.users.filter((user: any) => {
-        const organizationalRole = String(user?.role || "").toLowerCase();
-        return Boolean(user?.accessRole) || configurableRoleKeys.has(organizationalRole);
-      });
-    },
-    [roles, userStore.users]
+    () =>
+      userStore.users.filter((user: any) => {
+        const targetRole = String(user?.role || "").toLowerCase();
+        if (targetRole === "superadmin") return false;
+        if (role === "hradmin" && targetRole === "admin") return false;
+        return true;
+      }),
+    [role, userStore.users]
   );
 
   const selectedUser = useMemo(
@@ -247,9 +255,14 @@ const PermissionsPage = observer(() => {
   }, [groupedCatalog, roles, selectedRole]);
 
   const userGroupedCatalog = useMemo(() => {
-    const permissionRole = selectedUser?.accessRole || selectedUser?.role;
-    const selectedRoleOption = roles.find((item: any) => item.value === permissionRole);
-    const allowed = new Set(selectedRoleOption?.allowedPermissionKeys || []);
+    const permissionRoles = [selectedUser?.role, selectedUser?.accessRole].filter(Boolean);
+    const allowed = new Set(individualOverridePermissionKeys);
+    permissionRoles.forEach((permissionRole) => {
+      const roleOption = [...roles, ...assignmentRoles].find(
+        (item: any) => item.value === permissionRole
+      );
+      (roleOption?.allowedPermissionKeys || []).forEach((key: string) => allowed.add(key));
+    });
     return Object.entries(groupedCatalog).reduce<Record<string, any[]>>(
       (acc, [category, permissions]) => {
         const filtered = (permissions as any[]).filter((permission) =>
@@ -260,7 +273,29 @@ const PermissionsPage = observer(() => {
       },
       {}
     );
-  }, [groupedCatalog, roles, selectedUser]);
+  }, [assignmentRoles, groupedCatalog, individualOverridePermissionKeys, roles, selectedUser]);
+
+  const userEffectiveDraft = useMemo(() => {
+    const next: Record<string, boolean> = {
+      ...(selectedUser?.rolePermissionDefaults || {}),
+    };
+    Object.entries(userDraft).forEach(([key, value]) => {
+      if (typeof value === "boolean") next[key] = value;
+    });
+
+    let changed = true;
+    while (changed) {
+      changed = false;
+      Object.entries(permissionDependencies).forEach(([permissionKey, dependencies]) => {
+        if (!next[permissionKey]) return;
+        if ((dependencies as string[]).some((dependencyKey) => !next[dependencyKey])) {
+          next[permissionKey] = false;
+          changed = true;
+        }
+      });
+    }
+    return next;
+  }, [permissionDependencies, selectedUser, userDraft]);
 
   useEffect(() => {
     if (!selectedRole && roles[0]?.value) {
@@ -275,10 +310,14 @@ const PermissionsPage = observer(() => {
   }, [catalog, config?.rolePermissions, selectedRole]);
 
   useEffect(() => {
-    setUserDraft(
-      buildPermissionDraft(catalog, selectedUser?.permissionOverrides || {})
-    );
-  }, [catalog, selectedUser]);
+    const explicitOverrides = Object.entries(
+      selectedUser?.permissionOverrides || {}
+    ).reduce<Record<string, boolean>>((acc, [key, value]) => {
+      if (typeof value === "boolean") acc[key] = value;
+      return acc;
+    }, {});
+    setUserDraft(explicitOverrides);
+  }, [selectedUser]);
 
   useEffect(() => {
     if (selectedUserId && !selectedUser) {
@@ -300,8 +339,16 @@ const PermissionsPage = observer(() => {
     setRoleDraft((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleUserToggle = (key: string, value: boolean) => {
-    setUserDraft((prev) => ({ ...prev, [key]: value }));
+  const handleUserOverride = (key: string, value: string) => {
+    setUserDraft((prev) => {
+      const next = { ...prev };
+      if (value === "inherit") {
+        delete next[key];
+      } else {
+        next[key] = value === "allow";
+      }
+      return next;
+    });
   };
 
   const saveRolePermissions = async () => {
@@ -328,7 +375,14 @@ const PermissionsPage = observer(() => {
     if (!selectedUserId) return;
 
     try {
-      await userStore.updateUserPermissions(selectedUserId, userDraft);
+      const explicitOverrides = Object.entries(userDraft).reduce<Record<string, boolean>>(
+        (acc, [key, value]) => {
+          if (typeof value === "boolean") acc[key] = value;
+          return acc;
+        },
+        {}
+      );
+      await userStore.updateUserPermissions(selectedUserId, explicitOverrides);
 
       if (selectedUserId === auth.user?._id) {
         await auth.fetchUser();
@@ -692,6 +746,118 @@ const PermissionsPage = observer(() => {
     </>
   );
 
+  const getUserOverrideState = (permissionKey: string) => {
+    const explicitValue = userDraft[permissionKey];
+    const inheritedValue = Boolean(
+      selectedUser?.rolePermissionDefaults?.[permissionKey]
+    );
+    return {
+      selection:
+        typeof explicitValue === "boolean"
+          ? explicitValue
+            ? "allow"
+            : "deny"
+          : "inherit",
+      inheritedValue,
+      effectiveValue: Boolean(userEffectiveDraft[permissionKey]),
+    };
+  };
+
+  const renderUserOverrideControl = (permission: any) => {
+    const state = getUserOverrideState(permission.key);
+    return (
+      <VStack spacing={1} align={{ base: "stretch", md: "end" }} minW={{ md: "220px" }}>
+        <Select
+          size="sm"
+          value={state.selection}
+          aria-label={`Override ${permission.label}`}
+          bg={selectBgColor}
+          borderColor={selectBorderColor}
+          onChange={(event) =>
+            handleUserOverride(permission.key, event.target.value)
+          }
+        >
+          <option value="inherit">
+            Inherit ({state.inheritedValue ? "Allowed" : "Not allowed"})
+          </option>
+          <option value="allow">Allow</option>
+          <option value="deny">Deny</option>
+        </Select>
+        <Text
+          fontSize="xs"
+          fontWeight="700"
+          color={state.effectiveValue ? "green.500" : textMutedColor}
+        >
+          Effective: {state.effectiveValue ? "Allowed" : "Not allowed"}
+        </Text>
+      </VStack>
+    );
+  };
+
+  const renderUserOverrides = () => (
+    <VStack spacing={4} align="stretch">
+      {Object.entries(userGroupedCatalog).map(([category, permissions]) => {
+        const { Icon: CategoryIcon, gradient } = getCategoryStyle(category);
+        const permissionItems = permissions as any[];
+        return (
+          <Box
+            key={category}
+            borderWidth="1px"
+            borderColor={subtleBorderColor}
+            rounded="xl"
+            overflow="hidden"
+          >
+            <HStack spacing={3} px={4} py={3} bg={categoryHeaderBg}>
+              <Box
+                display="flex"
+                h="8"
+                w="8"
+                alignItems="center"
+                justifyContent="center"
+                rounded="md"
+                bgGradient={gradient}
+                color="white"
+              >
+                <Icon as={CategoryIcon} boxSize={4} />
+              </Box>
+              <Text fontWeight="bold" color={textColor}>
+                {category}
+              </Text>
+            </HStack>
+            <VStack spacing={0} align="stretch">
+              {permissionItems.map((permission: any, index: number) => (
+                <Fragment key={permission.key}>
+                  <Stack
+                    direction={{ base: "column", md: "row" }}
+                    align={{ base: "stretch", md: "center" }}
+                    justify="space-between"
+                    spacing={4}
+                    px={4}
+                    py={3}
+                    _hover={{ bg: tableRowHoverBg }}
+                  >
+                    <Box flex="1" minW={0}>
+                      <Text fontWeight="semibold" color={textColor}>
+                        {permission.label}
+                      </Text>
+                      <Text mt={1} fontSize="sm" color={textSecondaryColor}>
+                        {permission.description}
+                      </Text>
+                    </Box>
+                    {renderUserOverrideControl(permission)}
+                  </Stack>
+                  {index < permissionItems.length - 1 ? (
+                    <Divider borderColor={subtleBorderColor} />
+                  ) : null}
+                </Fragment>
+              ))}
+            </VStack>
+          </Box>
+        );
+      })}
+    </VStack>
+  );
+
   return (
     <PermissionGate
       allowed={canManagePermissions}
@@ -865,7 +1031,7 @@ const PermissionsPage = observer(() => {
                             </Heading>
                           </HStack>
                           <Text mt={1} fontSize="sm" color={textSecondaryColor}>
-                            Grant operational access without changing the employee&apos;s organizational role or reporting hierarchy.
+                            Grant operational access without changing the user&apos;s organizational role or reporting hierarchy.
                           </Text>
                         </Box>
                         <Box
@@ -883,7 +1049,7 @@ const PermissionsPage = observer(() => {
 
                       <FormControl maxW="620px">
                         <FormLabel fontSize="sm" fontWeight="700" color={textMutedColor}>
-                          Find employee
+                          Find user
                         </FormLabel>
                         <HStack align="stretch">
                           <Input
@@ -910,10 +1076,10 @@ const PermissionsPage = observer(() => {
                       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                         <FormControl>
                           <FormLabel fontSize="sm" fontWeight="700" color={textMutedColor}>
-                            Employee
+                            User
                           </FormLabel>
                           <Select
-                            placeholder="Select an employee"
+                            placeholder="Select a user"
                             value={selectedAssignmentUserId}
                             onChange={(event) => setSelectedAssignmentUserId(event.target.value)}
                             bg={selectBgColor}
@@ -958,7 +1124,9 @@ const PermissionsPage = observer(() => {
                           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
                             <Box>
                               <Text fontSize="xs" color={textMutedColor}>ORGANIZATIONAL ROLE</Text>
-                              <Text fontWeight="700">Employee</Text>
+                              <Text fontWeight="700">
+                                {roleLabels.get(selectedAssignmentUser.role) || selectedAssignmentUser.role}
+                              </Text>
                             </Box>
                             <Box>
                               <Text fontSize="xs" color={textMutedColor}>CURRENT ACCESS ROLE</Text>
@@ -970,7 +1138,7 @@ const PermissionsPage = observer(() => {
                             </Box>
                           </SimpleGrid>
                           <Text mt={3} fontSize="xs" color={textSecondaryColor}>
-                            Changing or removing the access role resets this employee&apos;s individual permission overrides so old grants cannot reactivate later.
+                            Changing or removing the access role resets this user&apos;s individual permission overrides so old grants cannot reactivate later.
                           </Text>
                         </Box>
                       ) : null}
@@ -1072,15 +1240,11 @@ const PermissionsPage = observer(() => {
                         color={infoBoxTextColor}
                         lineHeight="1.5"
                       >
-                        Overrides are applied{" "}
-                        <Text as="span" fontWeight="700">
-                          on top
-                        </Text>{" "}
-                        of role defaults.
+                        Choose Inherit to follow the role or access-role default. Use Allow or Deny only when this user needs an exception.
                       </Text>
                     </HStack>
 
-                    {renderPermissions(userDraft, handleUserToggle, userGroupedCatalog)}
+                    {renderUserOverrides()}
 
                     <Button
                       alignSelf={{ base: "stretch", md: "flex-start" }}

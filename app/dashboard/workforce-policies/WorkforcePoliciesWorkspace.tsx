@@ -101,9 +101,10 @@ const WorkforcePoliciesWorkspace = observer(() => {
   const role = String(auth.role || auth.user?.role || "").toLowerCase();
   const isSuperadmin = role === "superadmin";
   const canView = hasPermission(auth.user, PERMISSION_KEYS.VIEW_WORKFORCE_POLICIES);
-  const canManage =
-    ["superadmin", "admin", "hradmin"].includes(role) &&
-    hasPermission(auth.user, PERMISSION_KEYS.MANAGE_WORKFORCE_POLICIES);
+  const canManage = hasPermission(
+    auth.user,
+    PERMISSION_KEYS.MANAGE_WORKFORCE_POLICIES
+  );
   const [tabIndex, setTabIndex] = useState(0);
   const [search, setSearch] = useState("");
   const [employeeOptions, setEmployeeOptions] = useState<AssignmentScopeOption[]>([]);
