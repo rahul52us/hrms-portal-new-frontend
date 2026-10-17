@@ -27,6 +27,11 @@ type PayrollSettingsForm = {
   payDay: number;
   roundingMode: "nearest" | "floor" | "ceil";
   employeeCompensationVisibility: "hidden" | "current" | "history";
+  payrollReminderDay: number;
+  payrollNotificationsEnabled: boolean;
+  accessLogRetentionDays: number;
+  operationalJobRetentionDays: number;
+  finalizedPayrollRetentionYears: number;
 };
 
 const defaults: PayrollSettingsForm = {
@@ -36,6 +41,11 @@ const defaults: PayrollSettingsForm = {
   payDay: 31,
   roundingMode: "nearest",
   employeeCompensationVisibility: "hidden",
+  payrollReminderDay: 20,
+  payrollNotificationsEnabled: true,
+  accessLogRetentionDays: 365,
+  operationalJobRetentionDays: 90,
+  finalizedPayrollRetentionYears: 8,
 };
 
 function message(error: any) {
@@ -140,8 +150,36 @@ export default function PayrollSettingsPanel({ companyId, canManage }: Props) {
             </Select>
             <FormHelperText>Future and cancelled assignments, audit reasons, and internal actor details are never shown.</FormHelperText>
           </FormControl>
+          <FormControl isRequired>
+            <FormLabel>Payroll reminder day</FormLabel>
+            <Input type="number" min={1} max={28} value={form.payrollReminderDay} isDisabled={!canManage} onChange={(event) => setForm((value) => ({ ...value, payrollReminderDay: Number(event.target.value) }))} />
+            <FormHelperText>Notify payroll users when the current month's run has not started by this day.</FormHelperText>
+          </FormControl>
+          <FormControl isRequired>
+            <FormLabel>Payroll notifications</FormLabel>
+            <Select value={form.payrollNotificationsEnabled ? "enabled" : "disabled"} isDisabled={!canManage} onChange={(event) => setForm((value) => ({ ...value, payrollNotificationsEnabled: event.target.value === "enabled" }))}>
+              <option value="enabled">Enabled</option>
+              <option value="disabled">Disabled</option>
+            </Select>
+            <FormHelperText>Daily checks notify payroll users about runs waiting for action.</FormHelperText>
+          </FormControl>
+          <FormControl isRequired>
+            <FormLabel>Payroll access-log retention</FormLabel>
+            <Input type="number" min={30} max={3650} value={form.accessLogRetentionDays} isDisabled={!canManage} onChange={(event) => setForm((value) => ({ ...value, accessLogRetentionDays: Number(event.target.value) }))} />
+            <FormHelperText>Days to retain report and payslip access events.</FormHelperText>
+          </FormControl>
+          <FormControl isRequired>
+            <FormLabel>Operations job retention</FormLabel>
+            <Input type="number" min={7} max={730} value={form.operationalJobRetentionDays} isDisabled={!canManage} onChange={(event) => setForm((value) => ({ ...value, operationalJobRetentionDays: Number(event.target.value) }))} />
+            <FormHelperText>Days to retain reminder job outcomes and metrics.</FormHelperText>
+          </FormControl>
+          <FormControl isRequired>
+            <FormLabel>Finalized payroll retention</FormLabel>
+            <Input type="number" min={1} max={25} value={form.finalizedPayrollRetentionYears} isDisabled={!canManage} onChange={(event) => setForm((value) => ({ ...value, finalizedPayrollRetentionYears: Number(event.target.value) }))} />
+            <FormHelperText>Company policy in years. Finalized payroll remains immutable and is never auto-deleted.</FormHelperText>
+          </FormControl>
         </SimpleGrid>
-        {canManage ? <Button alignSelf="flex-start" colorScheme="blue" isLoading={saving} isDisabled={!/^[A-Z]{3}$/.test(form.currency) || form.payDay < 1 || form.payDay > 31} onClick={() => void save()}>Save settings</Button> : null}
+        {canManage ? <Button alignSelf="flex-start" colorScheme="blue" isLoading={saving} isDisabled={!/^[A-Z]{3}$/.test(form.currency) || form.payDay < 1 || form.payDay > 31 || form.payrollReminderDay < 1 || form.payrollReminderDay > 28} onClick={() => void save()}>Save settings</Button> : null}
       </Stack>
     </Box>
   );

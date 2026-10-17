@@ -16,6 +16,8 @@ import PayrollRunsWorkspace from "./PayrollRunsWorkspace";
 import StatutoryProfilesWorkspace from "./StatutoryProfilesWorkspace";
 import EmployeeStatutoryWorkspace from "./EmployeeStatutoryWorkspace";
 import StatutoryReportsWorkspace from "./StatutoryReportsWorkspace";
+import PayrollReportsWorkspace from "./PayrollReportsWorkspace";
+import PayrollOperationsWorkspace from "./PayrollOperationsWorkspace";
 
 const PayrollPage = observer(() => {
   const { auth, companyStore } = stores;
@@ -62,6 +64,8 @@ const PayrollPage = observer(() => {
             <TabList bg={surface} borderWidth="1px" borderColor={border} borderRadius="md" px={3} overflowX="auto">
               {canManageRuns ? <Tab>Payroll runs</Tab> : null}
               {canManageRuns ? <Tab>Statutory reports</Tab> : null}
+              {canManageRuns ? <Tab>Reports</Tab> : null}
+              {canManageRuns ? <Tab>Operations</Tab> : null}
               <Tab>Salary components</Tab>
               <Tab>Salary structures</Tab>
               {canManageCompensation ? <Tab>Employee compensation</Tab> : null}
@@ -72,6 +76,8 @@ const PayrollPage = observer(() => {
             <TabPanels>
               {canManageRuns ? <TabPanel px={0}><PayrollRunsWorkspace companyId={companyId || ""} canManage={canManageRuns} canApprove={canApproveRuns} canFinalize={canFinalizeRuns} canReopen={canReopenRuns} currentUserId={String(auth.user?._id || "")} /></TabPanel> : null}
               {canManageRuns ? <TabPanel px={0}><StatutoryReportsWorkspace companyId={companyId || ""} /></TabPanel> : null}
+              {canManageRuns ? <TabPanel px={0}><PayrollReportsWorkspace companyId={companyId || ""} /></TabPanel> : null}
+              {canManageRuns ? <TabPanel px={0}><PayrollOperationsWorkspace companyId={companyId || ""} /></TabPanel> : null}
               <TabPanel px={0}><SalaryComponentsWorkspace companyId={companyId || ""} canManage={canManage} /></TabPanel>
               <TabPanel px={0}><SalaryStructuresWorkspace companyId={companyId || ""} canManage={canManage} /></TabPanel>
               {canManageCompensation ? <TabPanel px={0}><EmployeeCompensationWorkspace companyId={companyId || ""} canManage={canManageCompensation} /></TabPanel> : null}
