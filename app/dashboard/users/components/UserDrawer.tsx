@@ -418,7 +418,7 @@ const UserDrawer = ({
                   <CustomInput
                     type="file-drag"
                     name="pic"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/webp"
                     onChange={(e: any) => {
                       const file = e.target.files?.[0];
                       if (!file) {

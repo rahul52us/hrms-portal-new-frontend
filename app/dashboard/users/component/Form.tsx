@@ -157,7 +157,7 @@ const Form = ({ initialData, onSubmit, isOpen, onClose, isEdit }: any) => {
                             name="pic"
                             value={values.pic}
                             isMulti={true}
-                            accept="image/*"
+                            accept="image/png,image/jpeg,image/webp"
                             onChange={(e: any) => {
                               setFieldValue("pic", {
                                 ...values.pic,
