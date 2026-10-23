@@ -19,6 +19,7 @@
     "@capacitor/core": "^7.6.7",
     "@chakra-ui/icons": "^2.2.4",
     "@chakra-ui/react": "^2.7.0",
+    "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@fontsource/montserrat": "^5.1.1",

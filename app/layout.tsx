@@ -13,6 +13,7 @@ import stores from "./store/stores";
 import Notification from "./component/common/Notification/Notification";
 import { Montserrat } from "next/font/google";
 import { getMetadataForPath, PageMetadata } from "./metadata";
+import EmotionRegistry from "./theme/EmotionRegistry";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -110,12 +111,14 @@ const RootLayout = observer(({ children }: { children: React.ReactNode }) => {
         <ColorModeScript initialColorMode="light" />
       </head>
       <body className={`${lato.className} ${montserrat.className}`}>
+        <EmotionRegistry>
         <ChakraProvider theme={activeTheme}>
           <Notification />
           <Suspense fallback={null}>
             <LayoutComponent>{children}</LayoutComponent>
           </Suspense>
         </ChakraProvider>
+        </EmotionRegistry>
       </body>
     </html>
   );

@@ -17,7 +17,7 @@ import PageLoader from '../../component/common/Loader/PageLoader';
 
 const DashboardLayout = observer(({ children }: { children: React.ReactNode }) => {
   const {
-    auth: { user, sessionReady },
+    auth: { user, company, sessionReady },
     dashboardStore : {getMasterData},
     layout: { fullScreenMode, mediumScreenMode, isCallapse, openDashSidebarFun, openMobileSideDrawer, setOpenMobileSideDrawer },
     themeStore: { themeConfig },
@@ -69,10 +69,10 @@ const DashboardLayout = observer(({ children }: { children: React.ReactNode }) =
   }, [isCallapse, openDashSidebarFun]);
 
   useEffect(() => {
-    if(user){
-    getMasterData()
+    if (user && company && user.role !== 'superadmin') {
+      getMasterData().catch(() => undefined);
     }
-  },[user , getMasterData])
+  }, [user, company, getMasterData]);
 
   if (!hasMounted || !sessionReady) {
     return (

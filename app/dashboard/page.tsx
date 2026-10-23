@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import stores from "../store/stores";
 import PermissionGate from "../component/common/PermissionGate";
-import ScopedDashboard from "./components/LMS/ScopedDashboard";
+import PlatformDashboard from "./components/PlatformDashboard";
 import { PERMISSION_KEYS, hasPermission } from "../config/utils/permissions";
 import { getDefaultAuthenticatedRoute } from "../config/utils/roleAccess";
 
@@ -51,7 +51,7 @@ const Page = observer(() => {
       fallbackHref="/dashboard/profile"
     >
       <Box minH="100vh" bg={pageBg}>
-        <ScopedDashboard />
+        <PlatformDashboard />
       </Box>
     </PermissionGate>
   );

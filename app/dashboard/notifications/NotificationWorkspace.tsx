@@ -42,28 +42,18 @@ import { observer } from "mobx-react-lite";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiBell,
-  FiBookOpen,
-  FiClock,
   FiEye,
   FiFilter,
-  FiFlag,
   FiMail,
   FiMessageSquare,
   FiSearch,
   FiSend,
   FiShield,
-  FiZap
 } from "react-icons/fi";
 import { getApiErrorMessage } from "../../config/utils/apiError";
 import stores from "../../store/stores";
 
-type NotificationType =
-  | "announcement"
-  | "quiz_reminder"
-  | "pending_course"
-  | "course_expiry"
-  | "batch_ending"
-  | "custom";
+type NotificationType = "announcement" | "custom";
 
 type RecipientMode = "selected" | "all";
 
@@ -71,100 +61,24 @@ type NotificationUser = {
   _id: string;
   name: string;
   username: string;
+  code?: string;
   role: string;
   department?: string;
   designation?: string;
   status: "active" | "inactive" | "pending" | string;
   reportingManager?: { _id?: string; username?: string; name?: string } | null;
-  notificationSignals?: {
-    assignedCourses?: number;
-    pendingCourses?: number;
-    completedCourses?: number;
-    inProgressCourses?: number;
-    notStartedCourses?: number;
-    overdueCourses?: number;
-    expiringCourses?: number;
-    batchEndingSoon?: boolean;
-    batchEndingSoonCount?: number;
-    quizAttempts?: number;
-    courseStatus?: string;
-    quizStatus?: string;
-  };
 };
 
 const notificationTypes: Array<{
-  value: NotificationType;
-  label: string;
-  subject: string;
-  message: string;
-  icon: any;
-  tone: string;
+  value: NotificationType; label: string; subject: string; message: string; icon: any; tone: string;
 }> = [
-  {
-    value: "announcement",
-    label: "Announcement",
-    subject: "Important Announcement",
-    message: "We have an important update for {{company_name}}. Please review the details and reach out to your administrator if you need support.",
-    icon: FiBell,
-    tone: "blue",
-  },
-  {
-    value: "quiz_reminder",
-    label: "Quiz Reminder",
-    subject: "Please complete your pending quiz",
-    message: "A quiz is waiting for you. Please complete it soon so your learning progress stays up to date.",
-    icon: FiZap,
-    tone: "purple",
-  },
-  {
-    value: "pending_course",
-    label: "Pending Course",
-    subject: "Reminder: Complete your pending course",
-    message: "You still have pending course work in {{company_name}}. Please continue from where you left off and complete it before the due date.",
-    icon: FiBookOpen,
-    tone: "orange",
-  },
-  {
-    value: "course_expiry",
-    label: "Course Expiry",
-    subject: "Your course is about to expire",
-    message: "One or more assigned courses are nearing expiry. Please complete the required learning before access closes.",
-    icon: FiClock,
-    tone: "red",
-  },
-  {
-    value: "batch_ending",
-    label: "Batch Ending",
-    subject: "Your batch is ending soon",
-    message: "Your batch is approaching its end date. Please complete any remaining course and quiz activity as soon as possible.",
-    icon: FiFlag,
-    tone: "teal",
-  },
-  {
-    value: "custom",
-    label: "Custom Message",
-    subject: "Message from {{company_name}}",
-    message: "Write your message here for {{user_name}}.",
-    icon: FiMessageSquare,
-    tone: "gray",
-  },
+  { value: "announcement", label: "Announcement", subject: "Important announcement",
+    message: "We have an important update for {{company_name}}. Please review the details and contact HR if you need support.", icon: FiBell, tone: "blue" },
+  { value: "custom", label: "Custom message", subject: "Message from {{company_name}}",
+    message: "Write your message here for {{user_name}}.", icon: FiMessageSquare, tone: "gray" },
 ];
 
-const defaultFilters = {
-  role: "",
-  department: "",
-  manager: "",
-  status: "",
-  courseStatus: "",
-  quizStatus: "",
-  pendingCourses: false,
-  completedCourses: false,
-  courseExpiringSoon: false,
-  batchEndingSoon: false,
-  overdueCourses: false,
-  notStarted: false,
-  inProgress: false,
-};
+const defaultFilters = { role: "", department: "", manager: "", status: "" };
 
 function normalize(value: unknown) {
   return String(value || "").trim().toLowerCase();
@@ -179,11 +93,11 @@ function formatLabel(value: string) {
 function renderPreviewText(template: string, user: NotificationUser | null, company: any) {
   return String(template || "").replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key) => {
     const values: Record<string, string> = {
-      user_name: user?.name || "Alex Learner",
+      user_name: user?.name || "Example Employee",
       company_name: company?.company_name || "Company",
-      course_name: "Assigned Course",
-      batch_name: "Current Batch",
-      due_date: "Due date",
+      department: user?.department || "",
+      designation: user?.designation || "",
+      employee_code: user?.code || "",
     };
     return values[key] || "";
   });
@@ -301,7 +215,6 @@ const NotificationWorkspace = observer(({
   const filteredUsers = useMemo(() => {
     const searchText = normalize(search);
     return users.filter((user) => {
-      const signals = user.notificationSignals || {};
       const matchesSearch =
         !searchText ||
         normalize(user.name).includes(searchText) ||
@@ -313,21 +226,12 @@ const NotificationWorkspace = observer(({
       if (filters.role && normalize(user.role) !== normalize(filters.role)) return false;
       if (filters.department && normalize(user.department) !== normalize(filters.department)) return false;
       if (filters.status && normalize(user.status) !== normalize(filters.status)) return false;
-      if (filters.courseStatus && normalize(signals.courseStatus) !== normalize(filters.courseStatus)) return false;
-      if (filters.quizStatus && normalize(signals.quizStatus) !== normalize(filters.quizStatus)) return false;
       if (filters.manager) {
         const managerMatch =
           normalize(user.reportingManager?.username) === normalize(filters.manager) ||
           normalize(user.reportingManager?.name) === normalize(filters.manager);
         if (!managerMatch) return false;
       }
-      if (filters.pendingCourses && !signals.pendingCourses) return false;
-      if (filters.completedCourses && !signals.completedCourses) return false;
-      if (filters.courseExpiringSoon && !signals.expiringCourses) return false;
-      if (filters.batchEndingSoon && !signals.batchEndingSoon) return false;
-      if (filters.overdueCourses && !signals.overdueCourses) return false;
-      if (filters.notStarted && !signals.notStartedCourses) return false;
-      if (filters.inProgress && !signals.inProgressCourses) return false;
 
       return true;
     });
@@ -342,14 +246,6 @@ const NotificationWorkspace = observer(({
   const previewSubject = renderPreviewText(subject, sampleUser, selectedCompany);
   const previewMessage = renderPreviewText(message, sampleUser, selectedCompany);
 
-  const stats = useMemo(() => {
-    return {
-      total: users.length,
-      selected: recipientCount,
-      pending: filteredUsers.reduce((sum, user) => sum + Number(user.notificationSignals?.pendingCourses || 0), 0),
-      expiring: filteredUsers.reduce((sum, user) => sum + Number(user.notificationSignals?.expiringCourses || 0), 0),
-    };
-  }, [filteredUsers, recipientCount, users.length]);
 
   const updateFilter = (key: string, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -500,7 +396,7 @@ const NotificationWorkspace = observer(({
           </HStack>
           <HStack spacing={3} flexWrap="wrap">
             <Badge px={3} py={1.5} borderRadius="full" bg={chipBg} color={cardTextColor}>
-              {stats.total} users
+              {users.length} users
             </Badge>
             <Badge px={3} py={1.5} borderRadius="full" bg={chipBg} color={cardTextColor}>
               {recipientCount} recipients
@@ -512,32 +408,6 @@ const NotificationWorkspace = observer(({
         </HStack>
       </Box>
 
-      {/* <SimpleGrid columns={{ base: 1, md: 4 }} spacing={4}>
-        {[
-          { label: "Company users", value: stats.total, icon: FiUsers, color: "blue" },
-          { label: "Recipients", value: stats.selected, icon: FiCheckCircle, color: "green" },
-          { label: "Pending courses", value: stats.pending, icon: FiBookOpen, color: "orange" },
-          { label: "Expiring soon", value: stats.expiring, icon: FiClock, color: "red" },
-        ].map((stat) => (
-          <Card key={stat.label} borderRadius="2xl" border="1px solid" borderColor={borderColor} shadow="sm" bg={surfaceBg}>
-            <CardBody>
-              <HStack justify="space-between">
-                <Box>
-                  <Text fontSize="xs" color={mutedText} fontWeight="800" textTransform="uppercase">
-                    {stat.label}
-                  </Text>
-                  <Text fontSize="2xl" fontWeight="900" mt={1}>
-                    {stat.value}
-                  </Text>
-                </Box>
-                <Flex w="42px" h="42px" borderRadius="xl" bg={`${stat.color}.50`} color={`${stat.color}.500`} align="center" justify="center">
-                  <Icon as={stat.icon} boxSize={5} />
-                </Flex>
-              </HStack>
-            </CardBody>
-          </Card>
-        ))}
-      </SimpleGrid> */}
 
       <Grid templateColumns={{ base: "1fr", xl: "280px minmax(0, 1fr) 380px" }} gap={5} alignItems="start">
         <Card bg={surfaceBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" shadow="sm">
@@ -614,46 +484,6 @@ const NotificationWorkspace = observer(({
                   <option value="inactive">Inactive</option>
                 </Select>
               </FormControl>
-              <FormControl>
-                <FormLabel fontSize="xs">Course status</FormLabel>
-                <Select size="sm" value={filters.courseStatus} onChange={(event) => updateFilter("courseStatus", event.target.value)}>
-                  <option value="">Any course status</option>
-                  <option value="pending">Pending</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="completed">Completed</option>
-                  <option value="none">No courses</option>
-                </Select>
-              </FormControl>
-              <FormControl>
-                <FormLabel fontSize="xs">Quiz status</FormLabel>
-                <Select size="sm" value={filters.quizStatus} onChange={(event) => updateFilter("quizStatus", event.target.value)}>
-                  <option value="">Any quiz status</option>
-                  <option value="not_attempted">Not attempted</option>
-                  <option value="needs_attention">Needs attention</option>
-                  <option value="completed">Completed</option>
-                </Select>
-              </FormControl>
-              <Divider />
-              <VStack align="stretch" spacing={2}>
-                {[
-                  ["pendingCourses", "Has pending courses"],
-                  ["completedCourses", "Has completed courses"],
-                  ["courseExpiringSoon", "Course expiring soon"],
-                  ["batchEndingSoon", "Batch ending soon"],
-                  ["overdueCourses", "Overdue courses"],
-                  ["notStarted", "Not started"],
-                  ["inProgress", "In progress"],
-                ].map(([key, label]) => (
-                  <Checkbox
-                    key={key}
-                    size="sm"
-                    isChecked={(filters as any)[key]}
-                    onChange={(event) => updateFilter(key, event.target.checked)}
-                  >
-                    {label}
-                  </Checkbox>
-                ))}
-              </VStack>
             </VStack>
           </CardBody>
         </Card>
@@ -774,7 +604,6 @@ const NotificationWorkspace = observer(({
                   }}
                 >
                   {filteredUsers.map((user) => {
-                    const signals = user.notificationSignals || {};
                     const checked = recipientMode === "all" || selectedUserIds.includes(user._id);
                     return (
                       <Box
@@ -813,15 +642,6 @@ const NotificationWorkspace = observer(({
                             <HStack spacing={2} mt={3} flexWrap="wrap">
                               <Tag size="sm">{formatLabel(user.role)}</Tag>
                               {user.department ? <Tag size="sm" colorScheme="blue">{user.department}</Tag> : null}
-                              <Tag size="sm" colorScheme={signals.pendingCourses ? "orange" : "green"}>
-                                {signals.pendingCourses || 0} pending
-                              </Tag>
-                              <Tag size="sm" colorScheme={signals.expiringCourses ? "red" : "gray"}>
-                                {signals.expiringCourses || 0} expiring
-                              </Tag>
-                              <Tag size="sm" colorScheme={signals.quizStatus === "completed" ? "green" : "purple"}>
-                                {formatLabel(signals.quizStatus || "no quiz")}
-                              </Tag>
                             </HStack>
                           </Box>
                         </HStack>
@@ -871,7 +691,7 @@ const NotificationWorkspace = observer(({
                 <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
                   <FormControl>
                     <FormLabel fontSize="xs">CTA text</FormLabel>
-                    <Input value={ctaText} onChange={(event) => setCtaText(event.target.value)} placeholder="Open Course" />
+                    <Input value={ctaText} onChange={(event) => setCtaText(event.target.value)} placeholder="Open dashboard" />
                   </FormControl>
                   <FormControl>
                     <FormLabel fontSize="xs">Priority</FormLabel>
@@ -884,7 +704,7 @@ const NotificationWorkspace = observer(({
                 </SimpleGrid>
                 <FormControl>
                   <FormLabel fontSize="xs">CTA URL</FormLabel>
-                  <Input value={ctaUrl} onChange={(event) => setCtaUrl(event.target.value)} placeholder="https://example.com/course" />
+                  <Input value={ctaUrl} onChange={(event) => setCtaUrl(event.target.value)} placeholder="https://example.com/dashboard" />
                 </FormControl>
               </VStack>
             </CardBody>
@@ -912,7 +732,7 @@ const NotificationWorkspace = observer(({
                   </HStack>
                 </Box>
                 <Box p={5}>
-                  <Text mb={3}>Hi {sampleUser?.name || "Alex Learner"},</Text>
+                  <Text mb={3}>Hi {sampleUser?.name || "Example Employee"},</Text>
                   <Text whiteSpace="pre-wrap" color="gray.700" lineHeight="1.7">{previewMessage || "Your message preview will appear here."}</Text>
                   {ctaText && ctaUrl ? (
                     <Button mt={5} size="sm" borderRadius="full" colorScheme="blue">

@@ -139,6 +139,14 @@ const sidebarDatas: SidebarItem[] = [
     role: ["admin", "departmenthead", "hradmin", "hr", "user"],
   },
   {
+    id: 112,
+    name: "Projects",
+    icon: <LucideBriefcaseBusiness />,
+    url: "/dashboard/projects",
+    role: ["admin", "hradmin", "hr", "departmenthead", "user"],
+    permissionKey: PERMISSION_KEYS.VIEW_PROJECTS,
+  },
+  {
     id: 35,
     name: "Master Settings",
     icon: <FiDatabase />,

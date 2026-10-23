@@ -1,6 +1,8 @@
 "use client";
 
 export const PERMISSION_KEYS = {
+  VIEW_PROJECTS: "view_projects",
+  MANAGE_PROJECTS: "manage_projects",
   VIEW_DASHBOARD: "view_dashboard",
   VIEW_USERS: "view_users",
   CREATE_USERS: "create_users",
