@@ -7,7 +7,8 @@ export type PolicyResourceType =
   | "work_schedule"
   | "holiday_calendar"
   | "leave_policy"
-  | "remote_work_policy";
+  | "remote_work_policy"
+  | "timesheet_policy";
 export type PolicyScopeType = "company" | "location" | "department" | "team" | "employee";
 
 export interface AttendanceRules {
@@ -95,6 +96,21 @@ export interface RemoteWorkRules {
   requireReason: boolean;
   minimumReasonLength: number;
   probationEligibility: "allowed" | "after_confirmation" | "not_allowed";
+}
+
+export interface TimesheetRules {
+  required: boolean;
+  deadlineDaysAfterShift: number;
+  deadlineTime: string;
+  maxBackdateDays: number;
+  minimumEntryMinutes: number;
+  minuteIncrement: number;
+  maximumDailyEntries: number;
+  notesRequired: boolean;
+  minimumNotesLength: number;
+  allowExtraHours: boolean;
+  maximumExtraMinutes: number;
+  payrollMode: "report_only" | "block" | "shortfall";
 }
 
 export interface LeaveTypeItem {
@@ -223,6 +239,7 @@ export function approvalWorkflowSupportsRequestType(
 
 export interface PolicyVersion {
   _id: string;
+  revision?: number;
   versionNumber: number;
   status: PolicyVersionStatus;
   effectiveFrom?: string | null;
@@ -230,7 +247,7 @@ export interface PolicyVersion {
   changeReason?: string;
   cancellationReason?: string;
   cancelledAt?: string | null;
-  rules?: AttendanceRules | WorkScheduleRules | RemoteWorkRules | LeavePolicyRule[];
+  rules?: AttendanceRules | WorkScheduleRules | RemoteWorkRules | TimesheetRules | LeavePolicyRule[];
   leaveYearStartMonth?: number;
   leaveYearStartDay?: number;
   timezone?: string;
@@ -289,6 +306,7 @@ export interface EmployeePolicyResolution {
   holidayCalendar: ResolvedPolicyResource | null;
   leavePolicy: ResolvedPolicyResource | null;
   remoteWorkPolicy: ResolvedPolicyResource | null;
+  timesheetPolicy: ResolvedPolicyResource | null;
   warnings: string[];
 }
 
@@ -324,6 +342,7 @@ class WorkforcePolicyStore {
   leaveTypes: LeaveTypeItem[] = [];
   leavePolicies: WorkforcePolicyItem[] = [];
   remoteWorkPolicies: WorkforcePolicyItem[] = [];
+  timesheetPolicies: WorkforcePolicyItem[] = [];
   approvalWorkflows: ApprovalWorkflowItem[] = [];
   assignments: WorkforcePolicyAssignment[] = [];
   assignmentsPagination: PaginationState = { ...EMPTY_PAGINATION };
@@ -364,6 +383,7 @@ class WorkforcePolicyStore {
     this.leaveTypes = [];
     this.leavePolicies = [];
     this.remoteWorkPolicies = [];
+    this.timesheetPolicies = [];
     this.approvalWorkflows = [];
     this.assignments = [];
     this.assignmentsPagination = { ...EMPTY_PAGINATION };
@@ -398,13 +418,14 @@ class WorkforcePolicyStore {
       this.leaveTypes = [];
       this.leavePolicies = [];
       this.remoteWorkPolicies = [];
+      this.timesheetPolicies = [];
       this.approvalWorkflows = [];
       this.assignments = [];
       this.assignmentsPagination = { ...EMPTY_PAGINATION };
     }
     this.activeCompanyId = companyId;
     try {
-      const [attendance, schedules, calendars, leaveTypes, leavePolicies, remoteWorkPolicies, approvalWorkflows, assignments] = await Promise.all([
+      const [attendance, schedules, calendars, leaveTypes, leavePolicies, remoteWorkPolicies, approvalWorkflows, assignments, timesheetPolicies] = await Promise.all([
         axios.get("/workforce-policies/attendance", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/work-schedules", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/holiday-calendars", { params: { companyId, limit: 100 } }),
@@ -413,6 +434,7 @@ class WorkforcePolicyStore {
         axios.get("/workforce-policies/remote-work-policies", { params: { companyId, limit: 100 } }),
         axios.get("/approval-workflows", { params: { companyId, limit: 100 } }),
         axios.get("/workforce-policies/assignments", { params: { companyId, limit: 100 } }),
+        axios.get("/workforce-policies/timesheet-policies", { params: { companyId, limit: 100 } }),
       ]);
       runInAction(() => {
         this.attendancePolicies = attendance.data?.data || [];
@@ -421,6 +443,7 @@ class WorkforcePolicyStore {
         this.leaveTypes = leaveTypes.data?.data || [];
         this.leavePolicies = leavePolicies.data?.data || [];
         this.remoteWorkPolicies = remoteWorkPolicies.data?.data || [];
+        this.timesheetPolicies = timesheetPolicies.data?.data || [];
         this.approvalWorkflows = approvalWorkflows.data?.data || [];
         this.assignments = assignments.data?.data || [];
         this.assignmentsPagination = assignments.data?.pagination || { ...EMPTY_PAGINATION };
@@ -565,7 +588,9 @@ class WorkforcePolicyStore {
             ? `/workforce-policies/holiday-calendars/${resourceId}`
               : resourceType === "leave_policy"
                 ? `/workforce-policies/leave-policies/${resourceId}`
-                : `/workforce-policies/remote-work-policies/${resourceId}`;
+                : resourceType === "timesheet_policy"
+                  ? `/workforce-policies/timesheet-policies/${resourceId}`
+                  : `/workforce-policies/remote-work-policies/${resourceId}`;
       const response = await axios.get(path, { params: { companyId } });
       runInAction(() => {
         if (requestSequence === this.detailRequestSequence) {

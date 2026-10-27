@@ -4,11 +4,14 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { useEffect, useMemo, useRef } from "react";
-import { CalendarCategory, CalendarDay } from "./calendarApi";
+import { CalendarDay, PlannerCategory } from "./calendarApi";
+import { TimesheetSummary } from "./timesheetApi";
+import { formatMinutes, timesheetLabels } from "./timesheetUi.utils";
+import { format } from "date-fns";
 
-export default function CalendarGrid({ anchor, mode, days, category, onDay }: {
-  anchor: string; mode: "month" | "week"; days: CalendarDay[]; category: CalendarCategory;
-  onDay: (date: string, category?: CalendarCategory) => void;
+export default function CalendarGrid({ anchor, mode, days, category, timesheets, onDay }: {
+  anchor: string; mode: "month" | "week"; days: CalendarDay[]; category: PlannerCategory; timesheets?: Map<string, TimesheetSummary>;
+  onDay: (date: string, category?: PlannerCategory) => void;
 }) {
   const ref = useRef<FullCalendar>(null);
   useEffect(() => {
@@ -21,6 +24,11 @@ export default function CalendarGrid({ anchor, mode, days, category, onDay }: {
       id: `${day.date}:${kind}:${entries.length}`, title, start: day.date, allDay: true, backgroundColor: color, borderColor: color, textColor,
       extendedProps: { date: day.date, order: entries.length, category: kind === "pending_leave" ? "leave" : kind === "pending_wfh" ? "wfh" : kind },
     });
+    const timesheet = timesheets?.get(day.date);
+    if (timesheet && (category === "all" || category === "timesheet")) {
+      const warning = timesheet.shortHours || ["missing", "returned", "rejected", "setup_incomplete"].includes(timesheet.state);
+      add(`${timesheetLabels[timesheet.state]}${timesheet.loggedMinutes ? ` ${formatMinutes(timesheet.loggedMinutes)}` : ""}${timesheet.shortHours ? " | Short hours" : ""}`, "timesheet", timesheet.state === "approved" ? "#DCFCE7" : warning ? "#FEF3C7" : "#EFF6FF", timesheet.state === "approved" ? "#166534" : warning ? "#92400E" : "#1D4ED8");
+    }
     if (category === "all" || category === "leave") {
       if (day.onLeave) add(`${day.onLeave} on leave`, "leave", "#DBEAFE", "#1D4ED8");
       if (day.pendingLeave) add(`${day.pendingLeave} pending leave`, "pending_leave", "#FEF3C7", "#92400E");
@@ -38,12 +46,13 @@ export default function CalendarGrid({ anchor, mode, days, category, onDay }: {
       backgroundColor: "#F1F5F9", borderColor: "#F1F5F9", textColor: "#475569",
       extendedProps: { date: day.date, category, order: 4 },
     }];
-  }), [category, days]);
+  }), [category, days, timesheets]);
   return <FullCalendar ref={ref} plugins={[dayGridPlugin, interactionPlugin]} initialDate={anchor} initialView="dayGridMonth"
     headerToolbar={false} firstDay={1} fixedWeekCount={false} height="auto" events={events} dayMaxEvents={false}
     editable={false} selectable={false} eventOrder="order" displayEventTime={false}
     dateClick={(info) => onDay(info.dateStr)}
     eventClick={(info) => onDay(info.event.extendedProps.date, info.event.extendedProps.category)}
     eventContent={(info) => <span>{info.event.title}</span>}
+    dayCellContent={(info) => <button type="button" className="planner-day-button" aria-label={`Open planner day ${format(info.date, "yyyy-MM-dd")}`} onClick={(event) => { event.stopPropagation(); onDay(format(info.date, "yyyy-MM-dd")); }}>{info.dayNumberText}</button>}
   />;
 }

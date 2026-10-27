@@ -4,11 +4,13 @@ import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
 import { actOnLeaveRequest } from "@/app/component/leave/leaveApi";
 import { actOnRemoteWorkRequest } from "@/app/component/remote-work/remoteWorkApi";
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
-import { Alert, AlertIcon, Badge, Box, Button, Flex, FormControl, FormLabel, HStack, IconButton, Select, Skeleton, Stack, Text, Textarea, Tooltip, useToast } from "@chakra-ui/react";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Alert, AlertIcon, Badge, Box, Button, Flex, FormControl, FormLabel, HStack, IconButton, Select, Skeleton, Stack, Tab, TabList, Tabs, Text, Textarea, Tooltip, useToast } from "@chakra-ui/react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FiArrowLeft, FiCheck, FiChevronLeft, FiChevronRight, FiEdit3, FiPlus, FiX } from "react-icons/fi";
 import { CalendarCategory, CalendarEvent, CalendarRow, fetchCalendarDay } from "./calendarApi";
+import TimesheetDayPanel from "./TimesheetDayPanel";
+import ConfirmationModal from "@/app/component/common/ConfirmationModal/ConfirmationModal";
 
 export const displayDate = (value: string) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`));
 const label = (value: string) => ({ full: "Full day", first_half: "First half", second_half: "Second half" }[value] || value.replace(/_/g, " "));
@@ -18,8 +20,8 @@ const localToday = () => {
   return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 };
 
-export default function CalendarDayDrawer({ date, params, initialCategory, canApplyForSelf, onClose, onChanged }: {
-  date: string | null; params: Record<string, any>; initialCategory: CalendarCategory; canApplyForSelf: boolean; onClose: () => void; onChanged: () => void;
+export default function CalendarDayDrawer({ date, params, initialCategory, initialPane = "details", canApplyForSelf, onClose, onChanged }: {
+  date: string | null; params: Record<string, any>; initialCategory: CalendarCategory; initialPane?: "details" | "timesheet"; canApplyForSelf: boolean; onClose: () => void; onChanged: () => void;
 }) {
   const toast = useToast();
   const [category, setCategory] = useState<CalendarCategory>(initialCategory);
@@ -32,13 +34,17 @@ export default function CalendarDayDrawer({ date, params, initialCategory, canAp
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [revision, setRevision] = useState(0);
-  useEffect(() => { setCategory(initialCategory); setPage(1); setSelected(null); setComment(""); }, [date, initialCategory]);
+  const [pane, setPane] = useState<"details" | "timesheet">(initialPane), [dirty, setDirty] = useState(false), [timesheetSaving, setTimesheetSaving] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false), pendingNavigation = useRef<(() => void) | null>(null);
+  const router = useRouter();
+  const navigate = (action: () => void) => { if (timesheetSaving) return; if (dirty) { pendingNavigation.current = action; setDiscardOpen(true); } else action(); };
+  useEffect(() => { setCategory(initialCategory); setPage(1); setSelected(null); setComment(""); setPane(initialPane); setDirty(false); }, [date, initialCategory, initialPane]);
   useEffect(() => {
     if (!date) return;
     const controller = new AbortController();
     setLoading(true); setError(""); setItems([]);
     fetchCalendarDay({ ...params, date, category, page, limit: 20 }, controller.signal)
-      .then((result) => { setItems(result.items); setPagination(result.pagination); })
+      .then((result) => { if (!controller.signal.aborted) { setItems(result.items); setPagination(result.pagination); } })
       .catch((err) => { if (!controller.signal.aborted) setError(getApiErrorMessage(err?.response?.data || err, "Could not load this day")); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
@@ -55,8 +61,8 @@ export default function CalendarDayDrawer({ date, params, initialCategory, canAp
     } catch (err: any) { toast({ title: getApiErrorMessage(err?.response?.data || err, "Could not update request"), status: "error" }); }
     finally { setSubmitting(false); }
   };
-  return <DashboardDrawer isOpen={Boolean(date)} onClose={onClose} titlePrefix={selected ? "Request" : "Calendar"}
-    titleSuffix={date ? displayDate(date) : ""} maxW={{ base: "100%", md: "640px" }}
+  return <DashboardDrawer isOpen={Boolean(date)} onClose={() => navigate(onClose)} titlePrefix={selected ? "Request" : "Planner"}
+    titleSuffix={date ? displayDate(date) : ""} maxW={{ base: "100%", md: canApplyForSelf && pane === "timesheet" ? "900px" : "640px" }}
     footerContent={selected && (selected.canWithdraw || selected.canApprove) ? <Flex w="full" justify="end" gap={2} flexWrap="wrap">
       {selected.canWithdraw && <Button variant="outline" isLoading={submitting} onClick={() => act("withdraw")}>Withdraw request</Button>}
       {selected.canApprove && <><Button variant="outline" colorScheme="red" leftIcon={<FiX />} isLoading={submitting} onClick={() => act("reject")}>Reject</Button><Button colorScheme="green" leftIcon={<FiCheck />} isLoading={submitting} onClick={() => act("approve")}>Approve</Button></>}
@@ -70,15 +76,18 @@ export default function CalendarDayDrawer({ date, params, initialCategory, canAp
       {selected.cancellationPending && <Alert status="info"><AlertIcon />A cancellation request is pending. This leave is still approved.</Alert>}
       {selected.canApprove && <FormControl><FormLabel>Decision note</FormLabel><Textarea placeholder="Required when rejecting" value={comment} onChange={(event) => setComment(event.target.value)} /></FormControl>}
     </Stack> : <Stack spacing={4}>
+      {canApplyForSelf ? <Tabs index={pane === "timesheet" ? 1 : 0} onChange={(index) => { if (!timesheetSaving) setPane(index ? "timesheet" : "details"); }}><TabList><Tab>Day details</Tab><Tab>Timesheet</Tab></TabList></Tabs> : null}
+      {canApplyForSelf && date ? <TimesheetDayPanel key={date} date={date} editing={pane === "timesheet"} onEdit={() => setPane("timesheet")} onSaved={onChanged} onDirtyChange={setDirty} onSavingChange={setTimesheetSaving} /> : null}
+      {(!canApplyForSelf || pane === "details") ? <>
       <Flex gap={3} justify="space-between" flexWrap="wrap">
         <Select aria-label="Day category" size="sm" maxW="230px" value={category} onChange={(event) => { setCategory(event.target.value as CalendarCategory); setPage(1); }}>
           <option value="all">All calendar items</option><option value="leave">Leave</option><option value="wfh">Work from home</option><option value="holiday">Holidays</option><option value="weekly_off">Weekly offs</option>
         </Select>
         {canApplyForSelf ? (
           <HStack flexWrap="wrap">
-            <Button as={Link} href={`/dashboard/requests?applyDate=${date || ""}`} size="sm" variant="outline" leftIcon={<FiPlus />}>New request</Button>
+            <Button onClick={() => navigate(() => router.push(`/dashboard/requests?applyDate=${date || ""}`))} size="sm" variant="outline" leftIcon={<FiPlus />}>New request</Button>
             {date && date <= localToday() ? (
-              <Button as={Link} href={`/dashboard/requests?applyDate=${date}&requestType=attendance_correction`} size="sm" colorScheme="blue" leftIcon={<FiEdit3 />}>Correct attendance</Button>
+              <Button onClick={() => navigate(() => router.push(`/dashboard/requests?applyDate=${date}&requestType=attendance_correction`))} size="sm" colorScheme="blue" leftIcon={<FiEdit3 />}>Correct attendance</Button>
             ) : null}
           </HStack>
         ) : null}
@@ -90,7 +99,7 @@ export default function CalendarDayDrawer({ date, params, initialCategory, canAp
           {row.dayType === "weekly_off" && <Text mt={2} fontSize="sm" color="gray.500">Weekly off</Text>}
           {row.schedule.isWorkingDay && <Text mt={2} fontSize="sm" color="gray.500">Work schedule: {row.schedule.startTime} - {row.schedule.endTime}{row.schedule.startTime && row.schedule.endTime && row.schedule.endTime < row.schedule.startTime ? " (next day)" : ""}{row.schedule.defaultWorkMode === "remote" ? " | Permanent WFH" : ""}{row.timezone ? ` | ${row.timezone}` : ""}</Text>}
           {row.dayType === "unconfigured" && <Text mt={2} fontSize="sm" color="red.600">Work schedule is not configured for this date.</Text>}
-          {row.events.map((event) => <Button key={`${event.kind}:${event.id}`} mt={2} mr={2} size="sm" variant="outline" h="auto" minH={8} whiteSpace="normal" textAlign="left" onClick={() => { setSelected(event); setComment(""); }}>
+          {row.events.map((event) => <Button key={`${event.kind}:${event.id}`} mt={2} mr={2} size="sm" variant="outline" h="auto" minH={8} whiteSpace="normal" textAlign="left" onClick={() => navigate(() => { setSelected(event); setComment(""); })}>
             {event.title} | {label(event.portion)}{event.status === "approved" ? "" : " | Pending"}
           </Button>)}
           {row.assignmentSource !== "history" && <Text mt={2} fontSize="xs" color="gray.500">{row.assignmentSource === "missing_history" ? "Historical assignment unavailable" : "Using current assignment; historical assignment unavailable"}</Text>}
@@ -101,6 +110,8 @@ export default function CalendarDayDrawer({ date, params, initialCategory, canAp
         <Text fontSize="sm">{page} / {pagination.totalPages}</Text>
         <Tooltip label="Next page"><IconButton aria-label="Next day page" icon={<FiChevronRight />} size="sm" variant="outline" isDisabled={loading || page >= pagination.totalPages} onClick={() => setPage((value) => value + 1)} /></Tooltip>
       </HStack></HStack>
+      </> : null}
     </Stack>}
+    <ConfirmationModal isOpen={discardOpen} onClose={() => setDiscardOpen(false)} onConfirm={() => { setDiscardOpen(false); setDirty(false); const action = pendingNavigation.current; pendingNavigation.current = null; action?.(); }} title="Discard unsaved timesheet?" description="Your unsaved work entries will be lost." confirmText="Discard changes" cancelText="Keep editing" tone="danger" />
   </DashboardDrawer>;
 }

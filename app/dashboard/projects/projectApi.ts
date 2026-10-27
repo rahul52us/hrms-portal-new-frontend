@@ -5,11 +5,15 @@ export type Project = {
   _id: string; name: string; code: string; description: string; managers: Person[];
   startDate: string; endDate: string | null; status: "active" | "archived"; revision: number; canManage: boolean;
 };
-export type ProjectOptions = { canCreate: boolean; canAdmin: boolean; scopes: string[]; self: Person; today: string };
+export type ProjectOptions = { canAccessWorkspace: boolean; canCreate: boolean; canAdmin: boolean; scopes: Array<"all" | "managed">; self: Person; today: string };
 export type WorkType = { _id: string; name: string; code: string; status: string };
 export type Assignment = {
   _id: string; employeeNameSnapshot: string; employeeCodeSnapshot: string;
   effectiveFrom: string; effectiveTo: string | null; status: string; changeReason: string;
+};
+export type ProjectActivity = {
+  _id: string; action: string; actor: Person | null; createdAt: string; reason: string;
+  after?: { employeeNameSnapshot?: string } | null;
 };
 export type PageResult<T> = { data: T[]; pagination: { page: number; limit: number; total: number; totalPages: number } };
 export const emptyPage = { page: 1, limit: 20, total: 0, totalPages: 1 };

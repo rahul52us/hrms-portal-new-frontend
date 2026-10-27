@@ -190,6 +190,7 @@ const SidebarPopover = observer(
 
     const ItemContent = (
       <Flex
+        data-sidebar-item={item.url}
         align="center"
         width="100%"
         onMouseEnter={handleMouseEnter}
@@ -369,6 +370,7 @@ const SidebarAccordion = observer(
               {() => (
                 <>
                   <AccordionButton
+                    data-sidebar-item={item.url}
                     my={0.5}
                     px={3}
                     py={2.5}

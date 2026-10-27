@@ -42,6 +42,7 @@ const getResourceTypeLabel = (type: string) => {
   if (type === "work_schedule") return "Schedule";
   if (type === "holiday_calendar") return "Holiday";
   if (type === "remote_work_policy") return "WFH";
+  if (type === "timesheet_policy") return "Timesheet";
   return "Leave";
 };
 
@@ -107,6 +108,7 @@ const PolicyAssignmentsPanel = observer(({
             <option value="holiday_calendar">Holiday calendars</option>
             <option value="leave_policy">Leave policies</option>
             <option value="remote_work_policy">WFH policies</option>
+            <option value="timesheet_policy">Timesheet policies</option>
           </Select>
         )}
         <Select

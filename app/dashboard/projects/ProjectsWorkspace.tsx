@@ -9,16 +9,16 @@ import { getApiErrorMessage } from "@/app/config/utils/apiError";
 import { emptyPage, PageResult, Project, projectGet, ProjectOptions } from "./projectApi";
 import ProjectPagination from "./ProjectPagination";
 import ProjectDrawer from "./ProjectDrawer";
+import PermissionGate from "@/app/component/common/PermissionGate";
 
 export default observer(function ProjectsWorkspace() {
   const surface = useColorModeValue("white", "gray.800");
   const border = useColorModeValue("gray.200", "gray.700");
   const [options, setOptions] = useState<ProjectOptions | null>(null);
-  const [scope, setScope] = useState("");
+  const [scope, setScope] = useState<"all" | "managed" | "">("");
   const [status, setStatus] = useState("active");
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
-  const [date, setDate] = useState("");
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<Project[]>([]);
   const [pagination, setPagination] = useState(emptyPage);
@@ -28,30 +28,35 @@ export default observer(function ProjectsWorkspace() {
   const [opened, setOpened] = useState<{ id?: string } | null>(null);
   const ready = stores.auth.sessionReady && Boolean(stores.auth.user);
   const superadmin = String(stores.auth.user?.role || "").toLowerCase() === "superadmin";
+  const sessionAccess = stores.auth.user?.projectAccess?.canAccessWorkspace === true;
+  const canAccessWorkspace = sessionAccess && (options?.canAccessWorkspace ?? true);
   useEffect(() => {
     const timeout = setTimeout(() => { setQuery(search.trim()); setPage(1); }, 300);
     return () => clearTimeout(timeout);
   }, [search]);
   useEffect(() => {
-    if (!ready || superadmin) return;
+    if (!ready || superadmin || !sessionAccess) return;
     const controller = new AbortController();
     projectGet<{ data: ProjectOptions }>("/options", undefined, controller.signal).then(({ data }) => {
-      setOptions(data); setScope((value) => value || (data.scopes.includes("all") ? "all" : data.canCreate ? "managed" : "mine")); setDate((value) => value || data.today);
+      if (controller.signal.aborted) return;
+      setOptions(data); setScope((value) => value && data.scopes.includes(value) ? value : data.scopes.includes("all") ? "all" : data.scopes.includes("managed") ? "managed" : "");
+      if (!data.canAccessWorkspace) setLoading(false);
     }).catch((err) => { if (!controller.signal.aborted) { setError(getApiErrorMessage(err?.response?.data || err, "Unable to load project access")); setLoading(false); } });
     return () => controller.abort();
-  }, [ready, superadmin, revision]);
+  }, [ready, superadmin, sessionAccess, revision]);
   useEffect(() => {
-    if (!ready || !scope) return;
+    if (!ready || !canAccessWorkspace || !scope) return;
     const controller = new AbortController();
     setLoading(true); setError("");
-    projectGet<PageResult<Project>>("", { scope, status, search: query || undefined, asOf: date || undefined, page, limit: 20 }, controller.signal)
-      .then((result) => { setRows(result.data); setPagination(result.pagination); })
+    projectGet<PageResult<Project>>("", { scope, status, search: query || undefined, page, limit: 20 }, controller.signal)
+      .then((result) => { if (!controller.signal.aborted) { setRows(result.data); setPagination(result.pagination); } })
       .catch((err) => { if (!controller.signal.aborted) { setRows([]); setError(getApiErrorMessage(err?.response?.data || err, "Unable to load projects")); } })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [ready, scope, status, query, date, page, revision]);
+  }, [ready, canAccessWorkspace, scope, status, query, page, revision]);
   if (superadmin) return <Box p={6}><Alert status="info"><AlertIcon />Projects are available from company accounts.</Alert></Box>;
-  return <Box p={{ base: 3, md: 6 }} minW={0}><Stack spacing={5} maxW="1500px" mx="auto">
+  if (!ready) return <Stack p={6}><Skeleton h="45px" /><Skeleton h="120px" /></Stack>;
+  return <PermissionGate allowed={canAccessWorkspace} title="Project management only" description="This workspace is available to project managers and authorized HR users." fallbackHref="/dashboard/calendar"><Box p={{ base: 3, md: 6 }} minW={0}><Stack spacing={5} maxW="1500px" mx="auto">
     <Flex justify="space-between" align="center" gap={3} wrap="wrap"><Heading size="lg">Projects</Heading><HStack>
       <Tooltip label="Refresh projects"><IconButton aria-label="Refresh projects" variant="outline" icon={<FiRefreshCw />} onClick={() => setRevision((value) => value + 1)} /></Tooltip>
       {options?.canCreate && <Button colorScheme="blue" leftIcon={<FiPlus />} onClick={() => setOpened({})}>New project</Button>}
@@ -59,9 +64,8 @@ export default observer(function ProjectsWorkspace() {
     {error && <Alert status="error"><AlertIcon />{error}</Alert>}
     <Flex gap={3} wrap="wrap" align="end">
       <FormControl flex="1" minW={{ base: "100%", sm: "220px" }}><FormLabel fontSize="sm" htmlFor="project-search">Search</FormLabel><Input id="project-search" placeholder="Project name or code" maxLength={100} value={search} onChange={(event) => setSearch(event.target.value)} /></FormControl>
-      <FormControl w={{ base: "100%", sm: "190px" }}><FormLabel fontSize="sm" htmlFor="project-scope">View</FormLabel><Select id="project-scope" value={scope} onChange={(event) => { setScope(event.target.value); setPage(1); }}>{options?.scopes.map((item) => <option key={item} value={item}>{{ mine: "My assignments", managed: "Managed by me", all: "Company projects" }[item]}</option>)}</Select></FormControl>
+      {options && options.scopes.length > 1 && <FormControl w={{ base: "100%", sm: "190px" }}><FormLabel fontSize="sm" htmlFor="project-scope">View</FormLabel><Select id="project-scope" value={scope} onChange={(event) => { setScope(event.target.value as "all" | "managed"); setPage(1); }}>{options.scopes.map((item) => <option key={item} value={item}>{{ managed: "Managed by me", all: "Company projects" }[item]}</option>)}</Select></FormControl>}
       <FormControl w={{ base: "100%", sm: "160px" }}><FormLabel fontSize="sm" htmlFor="project-status">Status</FormLabel><Select id="project-status" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option value="active">Active</option><option value="archived">Archived</option><option value="all">All statuses</option></Select></FormControl>
-      {scope === "mine" && <FormControl w={{ base: "100%", sm: "180px" }}><FormLabel fontSize="sm" htmlFor="project-date">Assigned on</FormLabel><Input id="project-date" type="date" value={date} onChange={(event) => { setDate(event.target.value); setPage(1); }} /></FormControl>}
     </Flex>
     <Box borderWidth="1px" borderColor={border} borderRadius="md" bg={surface} overflow="hidden" minW={0}>
       {loading ? <Stack p={5}>{[0, 1, 2].map((value) => <Skeleton key={value} h="52px" />)}</Stack> : <>
@@ -70,11 +74,11 @@ export default observer(function ProjectsWorkspace() {
             <Td whiteSpace="normal" maxW="260px">{project.managers.map((person) => person.name || person.code).join(", ")}</Td>
             <Td>{project.startDate} to {project.endDate || "Ongoing"}</Td><Td><Badge colorScheme={project.status === "active" ? "green" : "gray"}>{project.status}</Badge></Td></Tr>)}</Tbody>
         </Table></TableContainer>
-        {!rows.length && <Text p={10} textAlign="center" color="gray.500">{scope === "mine" ? "No project assignments for this date." : "No projects found."}</Text>}
+        {!rows.length && <Text p={10} textAlign="center" color="gray.500">No projects found.</Text>}
         <ProjectPagination value={pagination} loading={loading} onPage={setPage} />
       </>}
     </Box>
   </Stack>
     {options && <ProjectDrawer open={Boolean(opened)} projectId={opened?.id} options={options} onClose={() => setOpened(null)} onCreated={(id) => setOpened({ id })} onChanged={() => setRevision((value) => value + 1)} />}
-  </Box>;
+  </Box></PermissionGate>;
 });

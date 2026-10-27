@@ -2,6 +2,7 @@ import axios from "axios";
 
 export type CalendarScope = "mine" | "reportees" | "organization";
 export type CalendarCategory = "all" | "leave" | "wfh" | "holiday" | "weekly_off";
+export type PlannerCategory = CalendarCategory | "timesheet";
 export type CalendarEvent = {
   id: string; kind: "leave" | "wfh"; title: string; code: string; status: string;
   fromDate: string; toDate: string; portion: string; units: number; unit: string; reason: string;

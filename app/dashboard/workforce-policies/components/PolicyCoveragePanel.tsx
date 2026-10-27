@@ -37,6 +37,7 @@ const POLICY_LABELS: Record<PolicyResourceType, string> = {
   holiday_calendar: "Holiday calendar",
   leave_policy: "Leave policy",
   remote_work_policy: "WFH policy",
+  timesheet_policy: "Timesheet policy",
 };
 
 const getLocalDateValue = () => {
@@ -146,20 +147,24 @@ const EmployeeCoverageRow = ({
   item,
   borderColor,
   muted,
+  timesheetOnly = false,
 }: {
   item: PolicyCoverageItem;
   borderColor: string;
   muted: string;
+  timesheetOnly?: boolean;
 }) => {
   const missingCount = item.missing.length;
   const employeeMeta = [item.employee.code, item.employee.username].filter(Boolean).join(" | ");
+  const missingBg = useColorModeValue("red.50", "rgba(229, 62, 62, 0.1)");
+  const warningBg = useColorModeValue("orange.50", "rgba(221, 107, 32, 0.1)");
 
   return (
     <Grid
-      minW={{ base: 0, lg: "1050px" }}
+      minW={{ base: 0, lg: timesheetOnly ? "0" : "1050px" }}
       templateColumns={{
         base: "minmax(0, 1fr)",
-        lg: "minmax(190px, 1.1fr) repeat(5, minmax(165px, 1fr)) minmax(135px, 0.75fr)",
+        lg: timesheetOnly ? "minmax(190px, 1fr) minmax(165px, 1fr) minmax(135px, 0.75fr)" : "minmax(190px, 1.1fr) repeat(5, minmax(165px, 1fr)) minmax(135px, 0.75fr)",
       }}
       borderTopWidth="1px"
       borderColor={borderColor}
@@ -184,13 +189,13 @@ const EmployeeCoverageRow = ({
         </Badge>
       </Flex>
 
-      {[
+      {(timesheetOnly ? [{ label: POLICY_LABELS.timesheet_policy, resolved: item.timesheetPolicy }] : [
         { label: POLICY_LABELS.attendance_policy, resolved: item.attendancePolicy },
         { label: POLICY_LABELS.work_schedule, resolved: item.workSchedule },
         { label: POLICY_LABELS.holiday_calendar, resolved: item.holidayCalendar },
         { label: POLICY_LABELS.leave_policy, resolved: item.leavePolicy },
         { label: POLICY_LABELS.remote_work_policy, resolved: item.remoteWorkPolicy },
-      ].map(({ label, resolved }) => (
+      ]).map(({ label, resolved }) => (
         <Box
           key={label}
           p={4}
@@ -198,7 +203,7 @@ const EmployeeCoverageRow = ({
           borderTopWidth={{ base: "1px", lg: "0" }}
           borderLeftWidth={{ base: "0", lg: "1px" }}
           borderColor={borderColor}
-          bg={!resolved ? useColorModeValue("red.50", "rgba(229, 62, 62, 0.1)") : "transparent"}
+          bg={!resolved ? missingBg : "transparent"}
           transition="background 0.2s"
         >
           <CoverageValue label={label} resolved={resolved} muted={muted} />
@@ -213,7 +218,7 @@ const EmployeeCoverageRow = ({
         align="start"
         borderLeftWidth="1px"
         borderColor={borderColor}
-        bg={item.complete ? "transparent" : useColorModeValue("orange.50", "rgba(221, 107, 32, 0.1)")}
+        bg={item.complete ? "transparent" : warningBg}
       >
         <Badge
           colorScheme={item.complete ? "green" : "orange"}
@@ -237,11 +242,13 @@ const PolicyCoveragePanel = observer(({
   borderColor,
   muted,
   onManageAssignments,
+  timesheetOnly = false,
 }: {
   companyId: string;
   borderColor: string;
   muted: string;
   onManageAssignments: () => void;
+  timesheetOnly?: boolean;
 }) => {
   const [asOfDate, setAsOfDate] = useState(getLocalDateValue());
   const [search, setSearch] = useState("");
@@ -251,9 +258,9 @@ const PolicyCoveragePanel = observer(({
   useEffect(() => {
     if (!companyId || !asOfDate) return;
     workforcePolicyStore
-      .fetchCoverage(companyId, { at: asOfDate, page, limit: 20, search: appliedSearch })
+      .fetchCoverage(companyId, { at: asOfDate, page, limit: 20, search: appliedSearch, ...(timesheetOnly ? { resourceType: "timesheet_policy" as const } : {}) })
       .catch(() => undefined);
-  }, [appliedSearch, asOfDate, companyId, page]);
+  }, [appliedSearch, asOfDate, companyId, page, timesheetOnly]);
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -271,7 +278,7 @@ const PolicyCoveragePanel = observer(({
         <Box>
           <Text fontWeight="800" fontSize="lg">Coverage result</Text>
           <Text mt={1} fontSize="sm" color={muted}>
-            Checks attendance, schedule, holiday, leave, and WFH policies effective on the selected date.
+            {timesheetOnly ? "Timesheet policies effective on the selected date." : "Checks attendance, schedule, holiday, leave, and WFH policies effective on the selected date."}
           </Text>
         </Box>
         <Flex as="form" onSubmit={submitSearch} align="center" gap={3} w={{ base: "full", lg: "auto" }}>
@@ -317,18 +324,18 @@ const PolicyCoveragePanel = observer(({
         <Box borderWidth="1px" borderColor={borderColor} borderRadius="lg" overflow="hidden" shadow="sm">
           <Grid
             display={{ base: "none", lg: "grid" }}
-            minW="1050px"
-            templateColumns="minmax(190px, 1.1fr) repeat(5, minmax(165px, 1fr)) minmax(135px, 0.75fr)"
+            minW={timesheetOnly ? "0" : "1050px"}
+            templateColumns={timesheetOnly ? "minmax(190px, 1fr) minmax(165px, 1fr) minmax(135px, 0.75fr)" : "minmax(190px, 1.1fr) repeat(5, minmax(165px, 1fr)) minmax(135px, 0.75fr)"}
             bg={tableHeadBg}
           >
-            {["Employee", "Attendance policy", "Work schedule", "Holiday calendar", "Leave policy", "WFH policy", "Status"].map((label, index) => (
+            {(timesheetOnly ? ["Employee", "Timesheet policy", "Status"] : ["Employee", "Attendance policy", "Work schedule", "Holiday calendar", "Leave policy", "WFH policy", "Status"]).map((label, index) => (
               <Box key={label} px={4} py={3} borderLeftWidth={index === 0 ? "0" : "1px"} borderColor={borderColor}>
                 <Text fontSize="xs" fontWeight="800" color={muted} textTransform="uppercase">{label}</Text>
               </Box>
             ))}
           </Grid>
           {workforcePolicyStore.coverageItems.map((item) => (
-            <EmployeeCoverageRow key={item.employee._id} item={item} borderColor={borderColor} muted={muted} />
+            <EmployeeCoverageRow key={item.employee._id} item={item} borderColor={borderColor} muted={muted} timesheetOnly={timesheetOnly} />
           ))}
         </Box>
       )}

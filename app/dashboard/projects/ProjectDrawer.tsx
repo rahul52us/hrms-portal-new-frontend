@@ -6,11 +6,16 @@ import AsyncSelect from "react-select/async";
 import { FiArrowLeft, FiEdit2, FiPlus, FiUserMinus } from "react-icons/fi";
 import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
-import { Assignment, emptyPage, PageResult, Person, Project, projectGet, ProjectOptions, projectSave, WorkType } from "./projectApi";
+import { Assignment, emptyPage, PageResult, Person, Project, ProjectActivity, projectGet, ProjectOptions, projectSave, WorkType } from "./projectApi";
 import ProjectPagination from "./ProjectPagination";
 
 type Mode = "detail" | "project" | "work" | "assign" | "end" | "status";
 type Choice = { value: string; label: string };
+type DetailRow = WorkType | Assignment | ProjectActivity;
+type DetailRows = {
+  key: string; data: DetailRow[]; pagination: PageResult<DetailRow>["pagination"]; loading: boolean; error: string;
+};
+const emptyDetails: DetailRows = { key: "", data: [], pagination: emptyPage, loading: false, error: "" };
 const choice = (person: Person): Choice => ({ value: person._id, label: `${person.name || "Employee"}${person.code ? ` (${person.code})` : ""}` });
 
 export default function ProjectDrawer({ open, projectId, options, onClose, onCreated, onChanged }: {
@@ -27,11 +32,15 @@ export default function ProjectDrawer({ open, projectId, options, onClose, onCre
   const [tab, setTab] = useState(0);
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState("all");
-  const [rows, setRows] = useState<any[]>([]);
-  const [pagination, setPagination] = useState(emptyPage);
-  const [rowsLoading, setRowsLoading] = useState(false);
-  const [rowsError, setRowsError] = useState("");
+  const [details, setDetails] = useState<DetailRows>(emptyDetails);
   const [refresh, setRefresh] = useState(0);
+  // A tab must never render rows belonging to another section or an earlier request.
+  const detailsKey = JSON.stringify([project?._id, project?.revision, tab, page, filter, refresh]);
+  const detailsMatch = details.key === detailsKey;
+  const rows = detailsMatch ? details.data : [];
+  const pagination = detailsMatch ? details.pagination : emptyPage;
+  const rowsLoading = !detailsMatch || details.loading;
+  const rowsError = detailsMatch ? details.error : "";
   const field = (key: string, value: unknown) => setForm((current: any) => ({ ...current, [key]: value }));
   const resetProjectForm = useCallback((value: Project | null) => {
     setForm({ name: value?.name || "", description: value?.description || "", startDate: value?.startDate || options.today, endDate: value?.endDate || "", reason: "" });
@@ -39,11 +48,11 @@ export default function ProjectDrawer({ open, projectId, options, onClose, onCre
   }, [options.today, options.self]);
   useEffect(() => {
     if (!open) return;
-    setError(""); setTab(0); setPage(1); setFilter("all"); setRows([]); setProject(null);
+    setError(""); setTab(0); setPage(1); setFilter("all"); setDetails(emptyDetails); setProject(null);
     if (!projectId) { setMode("project"); resetProjectForm(null); return; }
     const controller = new AbortController();
     setMode("detail"); setLoading(true);
-    projectGet<{ data: Project }>(`/${projectId}`, undefined, controller.signal).then(({ data }) => setProject(data))
+    projectGet<{ data: Project }>(`/${projectId}`, undefined, controller.signal).then(({ data }) => { if (!controller.signal.aborted) setProject(data); })
       .catch((err) => { if (!controller.signal.aborted) setError(getApiErrorMessage(err?.response?.data || err, "Unable to load project")); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
@@ -52,13 +61,16 @@ export default function ProjectDrawer({ open, projectId, options, onClose, onCre
     if (!open || !project || mode !== "detail") return;
     const controller = new AbortController();
     const section = tab === 0 ? "work-types" : tab === 1 ? "assignments" : "audit";
-    setRowsLoading(true); setRowsError(""); setRows([]);
-    projectGet<PageResult<any>>(`/${project._id}/${section}`, { page, limit: 20, ...(tab < 2 ? { status: filter } : {}) }, controller.signal)
-      .then((result) => { setRows(result.data); setPagination(result.pagination); })
-      .catch((err) => { if (!controller.signal.aborted) setRowsError(getApiErrorMessage(err?.response?.data || err, "Unable to load project details")); })
-      .finally(() => { if (!controller.signal.aborted) setRowsLoading(false); });
+    setDetails({ ...emptyDetails, key: detailsKey, loading: true });
+    projectGet<PageResult<DetailRow>>(`/${project._id}/${section}`, { page, limit: 20, ...(tab < 2 ? { status: filter } : {}) }, controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) setDetails({ key: detailsKey, data: result.data, pagination: result.pagination, loading: false, error: "" });
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) setDetails({ ...emptyDetails, key: detailsKey, error: getApiErrorMessage(err?.response?.data || err, "Unable to load project details") });
+      });
     return () => controller.abort();
-  }, [open, project?._id, project?.revision, mode, tab, page, filter, refresh]);
+  }, [open, mode, detailsKey]);
   const loadPeople = async (search: string) => {
     try {
       const result = await projectGet<PageResult<Person>>("/people", { search: search || undefined, kind: mode === "project" ? "manager" : "employee", projectId: project?._id, limit: 50 });
@@ -133,7 +145,7 @@ export default function ProjectDrawer({ open, projectId, options, onClose, onCre
           {project.canManage && <HStack flexWrap="wrap">{project.status === "active" && <Button size="sm" variant="outline" leftIcon={<FiEdit2 />} onClick={() => { resetProjectForm(project); setMode("project"); }}>Edit project</Button>}<Button size="sm" variant="outline" onClick={() => changeMode("status", { reason: "" })}>{project.status === "active" ? "Archive" : "Restore"}</Button></HStack>}
         </Flex>
         {project.description && <Text whiteSpace="pre-wrap" overflowWrap="anywhere">{project.description}</Text>}
-        <Tabs index={tab} onChange={(value) => { setTab(value); setPage(1); setFilter("all"); }} isLazy><TabList><Tab>Work types</Tab><Tab>{project.canManage || options.canAdmin ? "Employees" : "My assignment history"}</Tab>{project.canManage && <Tab>Activity</Tab>}</TabList>
+        <Tabs index={tab} onChange={(value) => { setTab(value); setPage(1); setFilter("all"); }} isLazy><TabList><Tab>Work types</Tab><Tab>Employees</Tab>{project.canManage && <Tab>Activity</Tab>}</TabList>
           <TabPanels>{[0, 1, ...(project.canManage ? [2] : [])].map((panel) => panel !== tab ? <TabPanel key={panel} /> : <TabPanel key={panel} px={0}>
             <Flex gap={3} justify="space-between" wrap="wrap" mb={4}>
               {panel < 2 ? <Select aria-label={panel === 0 ? "Work type status" : "Assignment status"} maxW="190px" value={filter} onChange={(event) => { setFilter(event.target.value); setPage(1); }}>
@@ -145,7 +157,7 @@ export default function ProjectDrawer({ open, projectId, options, onClose, onCre
             {rowsLoading ? <Stack><Skeleton h="45px" /><Skeleton h="45px" /></Stack> : <>
               {panel === 0 && <TableContainer><Table size="sm"><Thead><Tr><Th>Work type</Th><Th>Status</Th>{project.canManage && <Th>Actions</Th>}</Tr></Thead><Tbody>{(rows as WorkType[]).map((row) => <Tr key={row._id}><Td whiteSpace="normal" py={3}>{row.name}</Td><Td><Badge colorScheme={row.status === "active" ? "green" : "gray"}>{row.status}</Badge></Td>{project.canManage && <Td>{project.status === "active" && <Tooltip label="Edit work type"><IconButton aria-label={`Edit ${row.name}`} size="sm" variant="ghost" icon={<FiEdit2 />} onClick={() => changeMode("work", { ...row, reason: "" })} /></Tooltip>}</Td>}</Tr>)}</Tbody></Table></TableContainer>}
               {panel === 1 && <TableContainer><Table size="sm"><Thead><Tr><Th>Employee</Th><Th>Assigned from</Th><Th>Last project day</Th><Th>Status</Th>{project.canManage && <Th />}</Tr></Thead><Tbody>{(rows as Assignment[]).map((row) => <Tr key={row._id}><Td whiteSpace="normal" py={3}>{row.employeeNameSnapshot}<Text fontSize="xs" color="gray.500">{row.employeeCodeSnapshot}</Text></Td><Td>{row.effectiveFrom}</Td><Td>{row.effectiveTo || "Ongoing"}</Td><Td><Badge>{row.status === "cancelled" ? "Cancelled" : row.effectiveFrom > options.today ? "Upcoming" : row.effectiveTo && row.effectiveTo < options.today ? "Ended" : "Current"}</Badge></Td>{project.canManage && <Td>{row.status !== "cancelled" && (!row.effectiveTo || row.effectiveTo > options.today) && <Tooltip label="End or cancel assignment"><IconButton aria-label={`End assignment for ${row.employeeNameSnapshot}`} size="sm" variant="ghost" icon={<FiUserMinus />} onClick={() => changeMode("end", { ...row, effectiveTo: row.effectiveFrom > options.today ? row.effectiveFrom : options.today, action: row.effectiveFrom > options.today ? "cancel" : "end", reason: "" })} /></Tooltip>}</Td>}</Tr>)}</Tbody></Table></TableContainer>}
-              {panel === 2 && <Stack spacing={0}>{rows.map((row) => <Box key={row._id} py={3} borderBottomWidth="1px"><Text fontWeight="600">{row.action.replace(/_/g, " ")}</Text><Text fontSize="sm">{row.actor?.name || "Employee"} | {new Date(row.createdAt).toLocaleString()}</Text><Text mt={1} fontSize="sm" color="gray.500">{row.reason}</Text>{row.after?.employeeNameSnapshot && <Text fontSize="sm">{row.after.employeeNameSnapshot}</Text>}</Box>)}</Stack>}
+              {panel === 2 && <Stack spacing={0}>{(rows as ProjectActivity[]).map((row) => <Box key={row._id} py={3} borderBottomWidth="1px"><Text fontWeight="600">{row.action.replace(/_/g, " ")}</Text><Text fontSize="sm">{row.actor?.name || "Employee"} | {new Date(row.createdAt).toLocaleString()}</Text><Text mt={1} fontSize="sm" color="gray.500">{row.reason}</Text>{row.after?.employeeNameSnapshot && <Text fontSize="sm">{row.after.employeeNameSnapshot}</Text>}</Box>)}</Stack>}
               {!rows.length && !rowsError && <Text py={8} textAlign="center" color="gray.500">{panel === 0 ? "No work types." : panel === 1 ? "No employee assignments." : "No activity."}</Text>}
               <ProjectPagination value={pagination} loading={rowsLoading} onPage={setPage} />
             </>}

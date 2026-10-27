@@ -18,6 +18,7 @@ import {
   LeavePolicyRule,
   PolicyResourceType,
   RemoteWorkRules,
+  TimesheetRules,
   WorkforcePolicyItem,
   WorkScheduleRules,
   workforcePolicyStore,
@@ -160,6 +161,15 @@ const PolicyHistoryDrawer = observer(function PolicyHistoryDrawer({
                   <Text fontSize="xs">Saturday: {(version.rules as WorkScheduleRules).saturdayRule.replaceAll("_", " ")}</Text>
                   <Text fontSize="xs">{(version.rules as WorkScheduleRules).timezone}</Text>
                 </HStack>
+              ) : null}
+              {resourceType === "timesheet_policy" && version.rules ? (
+                <Stack mt={3} spacing={1}>
+                  <Text fontSize="sm">Timesheets: {(version.rules as TimesheetRules).required ? "Required on working days" : "Optional"}</Text>
+                  <Text fontSize="sm">Deadline: {(version.rules as TimesheetRules).deadlineDaysAfterShift} day(s) after shift end, at {(version.rules as TimesheetRules).deadlineTime}</Text>
+                  <Text fontSize="sm">Edit window: {(version.rules as TimesheetRules).maxBackdateDays} days</Text>
+                  <Text fontSize="sm">Entry duration: minimum {(version.rules as TimesheetRules).minimumEntryMinutes} minutes, in {(version.rules as TimesheetRules).minuteIncrement}-minute increments</Text>
+                  <Text fontSize="sm">Payroll mode: {(version.rules as TimesheetRules).payrollMode.replaceAll("_", " ")} (integration pending)</Text>
+                </Stack>
               ) : null}
               {resourceType === "holiday_calendar" ? (
                 <Text mt={3} fontSize="xs" color="gray.600">

@@ -19,5 +19,7 @@
 .workforce-calendar .fc .fc-daygrid-more-link { margin: 3px 5px; cursor: pointer; }
 .workforce-calendar .fc .fc-daygrid-day { cursor: pointer; }
 .workforce-calendar .fc .fc-daygrid-day:hover { background: var(--chakra-colors-blue-50); }
+.workforce-calendar .planner-day-button { padding: 2px 4px; border-radius: 3px; }
+.workforce-calendar .planner-day-button:focus-visible { outline: 2px solid var(--chakra-colors-blue-500); outline-offset: 2px; }
 .chakra-ui-dark .workforce-calendar .fc { --fc-border-color: var(--chakra-colors-gray-700); --fc-today-bg-color: var(--chakra-colors-gray-700); }
 .chakra-ui-dark .workforce-calendar .fc .fc-daygrid-day:hover { background: var(--chakra-colors-gray-700); }

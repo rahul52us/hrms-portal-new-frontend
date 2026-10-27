@@ -133,7 +133,7 @@ const sidebarDatas: SidebarItem[] = [
   },
   {
     id: 108,
-    name: "Calendar",
+    name: "Planner",
     icon: <FiCalendar />,
     url: "/dashboard/calendar",
     role: ["admin", "departmenthead", "hradmin", "hr", "user"],
@@ -395,7 +395,8 @@ const filterSidebarItemsByRole = (
       .filter(
         (item) =>
           (!item.role || item.role.some((r) => effectiveRoles.includes(r))) &&
-          (!item.permissionKey || hasPermission(user, item.permissionKey))
+          (!item.permissionKey || hasPermission(user, item.permissionKey)) &&
+          (item.url !== "/dashboard/projects" || user?.projectAccess?.canAccessWorkspace === true)
       )
       .map((item) => ({
         ...item,
