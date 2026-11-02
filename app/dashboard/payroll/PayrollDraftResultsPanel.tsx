@@ -117,6 +117,8 @@ type PayrollResult = {
   payrollDays: {
     paidDays: number;
     unpaidDays: number;
+    attendanceLopDays?: number;
+    timesheetLopDays?: number;
     totalDays: number;
     approvedOvertimeMinutes: number;
   };
@@ -290,7 +292,7 @@ export default function PayrollDraftResultsPanel({ companyId, run, onRunChanged 
             <TableContainer><Table size="sm"><Thead bg={subtle}><Tr><Th>Employee</Th><Th>Organization</Th><Th>Payroll days</Th><Th>Gross</Th><Th>Deductions</Th><Th>Net pay</Th><Th>Validation</Th><Th /></Tr></Thead><Tbody>{items.map((result) => <Tr key={result._id}>
               <Td><Text fontWeight="700">{result.identity.name}</Text><Text fontSize="xs" color={muted}>{result.identity.code}{result.organization.designation ? ` | ${result.organization.designation}` : ""}</Text></Td>
               <Td><Text maxW="240px" whiteSpace="normal">{organization(result)}</Text></Td>
-              <Td><Text>{formatDays(result.payrollDays.paidDays)} paid | {formatDays(result.payrollDays.unpaidDays)} LOP</Text><Text fontSize="xs" color={muted}>{result.payrollDays.approvedOvertimeMinutes || 0} approved OT minutes</Text></Td>
+              <Td><Text>{formatDays(result.payrollDays.paidDays)} paid | {formatDays(result.payrollDays.unpaidDays)} LOP</Text>{result.payrollDays.timesheetLopDays !== undefined ? <Text fontSize="xs" color={muted}>Attendance {result.payrollDays.attendanceLopDays} | Timesheet {result.payrollDays.timesheetLopDays}</Text> : null}<Text fontSize="xs" color={muted}>{result.payrollDays.approvedOvertimeMinutes || 0} approved OT minutes</Text></Td>
               <Td><Text fontWeight="700">{formatMoney(result.totals.grossEarningsMinor, run.currency, minorUnits)}</Text><Text fontSize="xs" color={muted}>LOP reduction {formatMoney(result.totals.earningProrationReductionMinor, run.currency, minorUnits)}</Text></Td>
               <Td>{formatMoney(result.totals.totalDeductionsMinor, run.currency, minorUnits)}</Td>
               <Td><Text fontWeight="800">{formatMoney(result.totals.netPayMinor, run.currency, minorUnits)}</Text></Td>

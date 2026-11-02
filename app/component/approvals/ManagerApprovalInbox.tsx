@@ -57,6 +57,10 @@ import {
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiCheck, FiClock, FiEye, FiRefreshCw, FiX } from "react-icons/fi";
+import { listTimesheetSubmissions, TimesheetSubmission } from "@/app/dashboard/calendar/timesheetApi";
+import { formatMinutes } from "@/app/dashboard/calendar/timesheetUi.utils";
+import TimesheetReviewDrawer from "@/app/dashboard/calendar/TimesheetReviewDrawer";
+import TimesheetApprovalQueue from "@/app/dashboard/calendar/TimesheetApprovalQueue";
 
 type ApprovalItem =
   | { kind: "leave"; request: LeaveRequest }
@@ -65,7 +69,8 @@ type ApprovalItem =
   | { kind: "remote_work"; request: RemoteWorkRequest }
   | { kind: "comp_off"; request: CompOffClaim }
   | { kind: "attendance_regularization"; request: AttendanceRegularizationRequest }
-  | { kind: "attendance_overtime"; request: AttendanceOvertimeReview };
+  | { kind: "attendance_overtime"; request: AttendanceOvertimeReview }
+  | { kind: "timesheet"; request: TimesheetSubmission };
 
 const formatDate = (value: string) => new Intl.DateTimeFormat("en-IN", {
   day: "2-digit",
@@ -83,6 +88,7 @@ function requestEmployee(item: ApprovalItem) {
 }
 
 function requestTitle(item: ApprovalItem) {
+  if (item.kind === "timesheet") return "Daily timesheet";
   if (item.kind === "leave_cancellation") {
     return `Cancel ${item.request.leaveRequest?.leaveTypeNameSnapshot || "approved leave"}`;
   }
@@ -103,6 +109,7 @@ function requestTitle(item: ApprovalItem) {
 }
 
 function requestUnits(item: ApprovalItem) {
+  if (item.kind === "timesheet") return `${formatMinutes(item.request.loggedMinutes)} logged | ${formatMinutes(item.request.shortfallMinutes)} short`;
   if (item.kind === "leave_cancellation") {
     const leave = item.request.leaveRequest;
     const unit = Number(leave?.chargedUnits) === 1
@@ -131,6 +138,7 @@ function requestUnits(item: ApprovalItem) {
 }
 
 function requestDates(item: ApprovalItem) {
+  if (item.kind === "timesheet") return { from: item.request.attendanceDate, to: item.request.attendanceDate };
   if (item.kind === "leave_cancellation") {
     return {
       from: item.request.leaveRequest?.fromDate,
@@ -160,6 +168,7 @@ function approvalStage(item: ApprovalItem) {
 }
 
 const kindLabel = (kind: ApprovalItem["kind"]) =>
+  kind === "timesheet" ? "Timesheet" :
   kind === "leave"
     ? "Leave"
     : kind === "leave_cancellation"
@@ -175,6 +184,7 @@ const kindLabel = (kind: ApprovalItem["kind"]) =>
             : "Comp-off";
 
 const kindColor = (kind: ApprovalItem["kind"]) =>
+  kind === "timesheet" ? "cyan" :
   kind === "leave"
     ? "blue"
     : kind === "leave_cancellation"
@@ -207,6 +217,8 @@ export default function ManagerApprovalInbox() {
   const [compOffClaims, setCompOffClaims] = useState<CompOffClaim[]>([]);
   const [regularizationRequests, setRegularizationRequests] = useState<AttendanceRegularizationRequest[]>([]);
   const [overtimeReviews, setOvertimeReviews] = useState<AttendanceOvertimeReview[]>([]);
+  const [timesheets, setTimesheets] = useState<TimesheetSubmission[]>([]), [timesheetTotal, setTimesheetTotal] = useState(0);
+  const [timesheetReview, setTimesheetReview] = useState(""), [timesheetQueue, setTimesheetQueue] = useState(false);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -216,7 +228,7 @@ export default function ManagerApprovalInbox() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [leaveResult, cancellationResult, encashmentResult, remoteWorkResult, compOffResult, regularizationResult, overtimeResult] = await Promise.all([
+      const [leaveResult, cancellationResult, encashmentResult, remoteWorkResult, compOffResult, regularizationResult, overtimeResult, timesheetResult] = await Promise.all([
         fetchLeaveRequests({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
         fetchLeaveCancellationRequests({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
         fetchLeaveEncashmentRequests({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
@@ -224,6 +236,7 @@ export default function ManagerApprovalInbox() {
         fetchCompOffClaims({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
         fetchAttendanceRegularizationRequests({ scope: "approvals", status: "submitted", page: 1, limit: 20 }),
         fetchAttendanceOvertimeReviews({ scope: "approvals", status: "pending", page: 1, limit: 20 }),
+        listTimesheetSubmissions({ scope: "approvals", page: 1, limit: 20 }),
       ]);
       setLeaveRequests(leaveResult.items || []);
       setLeaveCancellations(cancellationResult.items || []);
@@ -232,6 +245,7 @@ export default function ManagerApprovalInbox() {
       setCompOffClaims(compOffResult.items || []);
       setRegularizationRequests(regularizationResult.items || []);
       setOvertimeReviews(overtimeResult.items || []);
+      setTimesheets(timesheetResult.data); setTimesheetTotal(timesheetResult.pagination.total);
       setTotal(
         Number(leaveResult.pagination?.total || 0) +
         Number(cancellationResult.pagination?.total || 0) +
@@ -239,7 +253,7 @@ export default function ManagerApprovalInbox() {
         Number(remoteWorkResult.pagination?.total || 0) +
         Number(compOffResult.pagination?.total || 0) +
         Number(regularizationResult.pagination?.total || 0) +
-        Number(overtimeResult.pagination?.total || 0)
+        Number(overtimeResult.pagination?.total || 0) + timesheetResult.pagination.total
       );
     } catch (error: any) {
       toast({
@@ -263,11 +277,13 @@ export default function ManagerApprovalInbox() {
     ...compOffClaims.map((request) => ({ kind: "comp_off" as const, request })),
     ...regularizationRequests.map((request) => ({ kind: "attendance_regularization" as const, request })),
     ...overtimeReviews.map((request) => ({ kind: "attendance_overtime" as const, request })),
+    ...timesheets.map((request) => ({ kind: "timesheet" as const, request })),
   ].sort((left, right) => (
     new Date(requestSubmittedAt(right)).getTime() - new Date(requestSubmittedAt(left)).getTime()
-  )), [compOffClaims, leaveCancellations, leaveEncashments, leaveRequests, overtimeReviews, regularizationRequests, remoteWorkRequests]);
+  )), [compOffClaims, leaveCancellations, leaveEncashments, leaveRequests, overtimeReviews, regularizationRequests, remoteWorkRequests, timesheets]);
 
   const open = (item: ApprovalItem) => {
+    if (item.kind === "timesheet") { setTimesheetReview(item.request._id); return; }
     setSelected(item);
     setComment("");
     details.onOpen();
@@ -316,11 +332,11 @@ export default function ManagerApprovalInbox() {
     }
   };
 
-  if (loading) {
+  if (loading && !timesheetReview && !timesheetQueue) {
     return <Skeleton h="160px" borderRadius="14px" />;
   }
 
-  if (!items.length) {
+  if (!items.length && !timesheetReview && !timesheetQueue) {
     return null;
   }
 
@@ -340,9 +356,9 @@ export default function ManagerApprovalInbox() {
               <Heading size="md">Needs your approval</Heading>
               <Badge colorScheme="orange" borderRadius="full" px={2.5}>{total}</Badge>
             </HStack>
-            <Text mt={1} fontSize="sm" color={muted}>Leave, cancellation, encashment, work-from-home, comp-off, attendance corrections, and overtime assigned to you.</Text>
+            <Text mt={1} fontSize="sm" color={muted}>Leave, WFH, comp-off, attendance, overtime, and timesheets assigned to you.</Text>
           </Box>
-          <Button size="sm" variant="outline" leftIcon={<FiRefreshCw />} onClick={load}>Refresh</Button>
+          <HStack flexWrap="wrap">{timesheetTotal ? <Button size="sm" variant="outline" onClick={() => setTimesheetQueue(true)}>Timesheet approvals ({timesheetTotal})</Button> : null}<Button size="sm" variant="outline" leftIcon={<FiRefreshCw />} onClick={load}>Refresh</Button></HStack>
         </Flex>
         <Divider />
         <Stack spacing={0}>
@@ -439,6 +455,8 @@ export default function ManagerApprovalInbox() {
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+      {timesheetReview ? <TimesheetReviewDrawer submissionId={timesheetReview} onClose={() => setTimesheetReview("")} onChanged={() => { void load(); }} /> : null}
+      {timesheetQueue ? <TimesheetApprovalQueue onClose={() => setTimesheetQueue(false)} onChanged={() => { void load(); }} /> : null}
     </>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import PermissionGate from "@/app/component/common/PermissionGate";
+import ManagerApprovalInbox from "@/app/component/approvals/ManagerApprovalInbox";
 import { PERMISSION_KEYS, hasPermission } from "@/app/config/utils/permissions";
 
 import { StatCard } from "@/app/component/common/StatCard/StatCard";
@@ -300,6 +301,8 @@ const HrDashboardPage = observer(() => {
             showBackButton={false}
             colorScheme="blue"
           />
+
+          {auth.sessionReady && auth.user ? <ManagerApprovalInbox /> : null}
 
           {loading ? (
             <Box>

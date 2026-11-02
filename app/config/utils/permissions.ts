@@ -1,6 +1,11 @@
 "use client";
 
 export const PERMISSION_KEYS = {
+  VIEW_TIMESHEETS: "view_timesheets",
+  EXPORT_TIMESHEETS: "export_timesheets",
+  MANAGE_TIMESHEET_EXCEPTIONS: "manage_timesheet_exceptions",
+  REASSIGN_TIMESHEET_APPROVALS: "reassign_timesheet_approvals",
+  APPROVE_TIMESHEETS: "approve_timesheets",
   VIEW_PROJECTS: "view_projects",
   MANAGE_PROJECTS: "manage_projects",
   VIEW_DASHBOARD: "view_dashboard",

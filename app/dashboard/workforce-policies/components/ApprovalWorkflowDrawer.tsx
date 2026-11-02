@@ -47,6 +47,7 @@ const REQUEST_TYPES: Array<{ value: ApprovalRequestType; label: string }> = [
   { value: "comp_off_claim", label: "Comp-off claims" },
   { value: "attendance_regularization_request", label: "Attendance corrections" },
   { value: "attendance_overtime_review", label: "Overtime reviews" },
+  { value: "timesheet_submission", label: "Daily timesheets" },
 ];
 
 const STEP_TYPES: Array<{ value: ApprovalStepType; label: string }> = [

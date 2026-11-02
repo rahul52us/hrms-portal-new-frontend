@@ -99,12 +99,22 @@ export interface RemoteWorkRules {
 }
 
 export interface TimesheetRules {
+  remindersEnabled: boolean;
+  remindBeforeHours: number;
+  reminderEveryDays: number;
+  approverEscalationDays: number;
+  deadlineMode: "after_shift" | "payroll_cycle";
+  payrollCutoffEnabled: boolean;
+  payrollSubmissionDaysAfterCycleEnd: number;
+  payrollSubmissionTime: string;
+  payrollApprovalDaysAfterCycleEnd: number;
+  payrollApprovalTime: string;
+  approvalWorkflowId: string | null;
   required: boolean;
   deadlineDaysAfterShift: number;
   deadlineTime: string;
   maxBackdateDays: number;
   minimumEntryMinutes: number;
-  minuteIncrement: number;
   maximumDailyEntries: number;
   notesRequired: boolean;
   minimumNotesLength: number;
@@ -182,7 +192,7 @@ export interface LeavePolicyRule {
   compOffClaimApprovalWorkflowVersionNumber?: number | null;
 }
 
-export type ApprovalRequestType = "leave_request" | "leave_encashment_request" | "remote_work_request" | "comp_off_claim" | "attendance_regularization_request" | "attendance_overtime_review";
+export type ApprovalRequestType = "leave_request" | "leave_encashment_request" | "remote_work_request" | "comp_off_claim" | "attendance_regularization_request" | "attendance_overtime_review" | "timesheet_submission";
 export type ApprovalStepType =
   | "reporting_manager"
   | "manager_manager"

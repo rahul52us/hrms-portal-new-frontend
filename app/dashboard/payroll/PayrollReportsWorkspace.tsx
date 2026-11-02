@@ -146,7 +146,7 @@ export default function PayrollReportsWorkspace({ companyId }: Props) {
     if (type === "register") return <>
       <Td><Text fontWeight="700">{row.employeeName}</Text><Text fontSize="xs" color={muted}>{row.employeeCode} | {row.designation || "No designation"}</Text></Td>
       <Td>{row.department}<Text fontSize="xs" color={muted}>{row.team} | {row.location}</Text></Td>
-      <Td>{row.paidDays} / {row.unpaidDays}</Td>
+      <Td>{row.paidDays} / {row.unpaidDays}<Text fontSize="xs" color={muted}>Attendance LOP {row.attendanceLopDays ?? row.unpaidDays} | Timesheet LOP {row.timesheetLopDays || 0}</Text></Td>
       <Td isNumeric>{money(row.grossEarningsMinor, currency, minorUnits)}</Td>
       <Td isNumeric>{money(row.totalDeductionsMinor, currency, minorUnits)}</Td>
       <Td isNumeric>{money(row.totalReimbursementsMinor, currency, minorUnits)}</Td>

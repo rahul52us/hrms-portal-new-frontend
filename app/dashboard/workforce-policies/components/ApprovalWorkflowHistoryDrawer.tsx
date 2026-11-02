@@ -35,6 +35,7 @@ const REQUEST_LABELS: Record<string, string> = {
   remote_work_request: "WFH requests",
   comp_off_claim: "Comp-off claims",
   attendance_regularization_request: "Attendance corrections",
+  timesheet_submission: "Daily timesheets",
 };
 
 type Props = {

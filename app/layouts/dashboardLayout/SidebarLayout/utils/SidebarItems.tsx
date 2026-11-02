@@ -16,6 +16,7 @@ interface SidebarItem {
 }
 
 const sidebarDatas: SidebarItem[] = [
+  { id: 1145, name: "Timesheets", icon: <FiClock />, url: "/dashboard/timesheets" },
   {
     id: 1,
     name: "Dashboard",
@@ -396,7 +397,8 @@ const filterSidebarItemsByRole = (
         (item) =>
           (!item.role || item.role.some((r) => effectiveRoles.includes(r))) &&
           (!item.permissionKey || hasPermission(user, item.permissionKey)) &&
-          (item.url !== "/dashboard/projects" || user?.projectAccess?.canAccessWorkspace === true)
+          (item.url !== "/dashboard/projects" || user?.projectAccess?.canAccessWorkspace === true) &&
+          (item.url !== "/dashboard/timesheets" || user?.timesheetAccess?.canAccessWorkspace === true)
       )
       .map((item) => ({
         ...item,

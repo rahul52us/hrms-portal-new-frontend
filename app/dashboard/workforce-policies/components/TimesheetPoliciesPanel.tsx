@@ -2,16 +2,19 @@
 
 import axios from "axios";
 import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
-import { PolicyVersion, TimesheetRules, WorkforcePolicyItem, workforcePolicyStore } from "@/app/store/workforcePolicyStore/workforcePolicyStore";
+import { approvalWorkflowSupportsRequestType, PolicyVersion, TimesheetRules, WorkforcePolicyItem, workforcePolicyStore } from "@/app/store/workforcePolicyStore/workforcePolicyStore";
 import { Alert, AlertIcon, Badge, Box, Button, Checkbox, Flex, FormControl, FormHelperText, FormLabel, Input, Select, SimpleGrid, Skeleton, Stack, Table, TableContainer, Tbody, Td, Text, Textarea, Th, Thead, Tr, useColorModeValue } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import PolicyHistoryDrawer from "./PolicyHistoryDrawer";
 import PolicyCoveragePanel from "./PolicyCoveragePanel";
+import TimesheetImpactPreview from "./TimesheetImpactPreview";
 
 const base = "/workforce-policies/timesheet-policies";
 const defaults: TimesheetRules = { required: true, deadlineDaysAfterShift: 1, deadlineTime: "23:59", maxBackdateDays: 31,
-  minimumEntryMinutes: 15, minuteIncrement: 15, maximumDailyEntries: 50, notesRequired: true,
-  minimumNotesLength: 5, allowExtraHours: false, maximumExtraMinutes: 0, payrollMode: "report_only" };
+  remindersEnabled: true, remindBeforeHours: 24, reminderEveryDays: 1, approverEscalationDays: 2,
+  deadlineMode: "after_shift", payrollCutoffEnabled: false, payrollSubmissionDaysAfterCycleEnd: 1, payrollSubmissionTime: "10:00", payrollApprovalDaysAfterCycleEnd: 1, payrollApprovalTime: "14:00",
+  minimumEntryMinutes: 1, maximumDailyEntries: 50, notesRequired: true,
+  minimumNotesLength: 5, allowExtraHours: false, maximumExtraMinutes: 0, payrollMode: "report_only", approvalWorkflowId: null };
 type RuleForm = { [K in keyof TimesheetRules]: TimesheetRules[K] extends number ? string : TimesheetRules[K] };
 const formRules = (rules: TimesheetRules) => Object.fromEntries(Object.entries(rules).filter(([key]) => key in defaults).map(([key, value]) => [key, typeof value === "number" ? String(value) : value])) as RuleForm;
 const message = (error: any) => error?.response?.data?.message || error?.message || "Unable to save timesheet policy";
@@ -38,7 +41,11 @@ function PolicyEditor({ companyId, selection, onClose, onSaved }: {
       const parsed: any = { ...rules };
       for (const [key, value] of Object.entries(defaults)) {
         if (typeof value === "number") {
-          if (String(rules[key as keyof RuleForm]).trim() === "") throw new Error("Complete all numeric limits; enter 0 only where it is allowed.");
+          if (String(rules[key as keyof RuleForm]).trim() === "") {
+            const hidden = rules.deadlineMode === "payroll_cycle" && ["deadlineDaysAfterShift", "maxBackdateDays"].includes(key) || !rules.payrollCutoffEnabled && ["payrollSubmissionDaysAfterCycleEnd", "payrollApprovalDaysAfterCycleEnd"].includes(key);
+            if (hidden) { parsed[key] = value; continue; }
+            throw new Error("Complete all numeric limits; enter 0 only where it is allowed.");
+          }
           parsed[key] = Number(rules[key as keyof RuleForm]);
         }
       }
@@ -69,7 +76,7 @@ function PolicyEditor({ companyId, selection, onClose, onSaved }: {
   }
   const numberField = (key: keyof RuleForm, label: string, min: number, max: number, help?: string) => (
     <FormControl id={`timesheet-${key}`} isRequired>
-      <FormLabel>{label}</FormLabel><Input type="number" min={min} max={max} step={1} value={String(rules[key])} onChange={(e) => setRule(key, e.target.value as never)} />
+      <FormLabel>{label}</FormLabel><Input aria-label={label} type="number" min={min} max={max} step={1} value={String(rules[key])} onChange={(e) => setRule(key, e.target.value as never)} />
       {help ? <FormHelperText>{help}</FormHelperText> : null}
     </FormControl>
   );
@@ -89,21 +96,35 @@ function PolicyEditor({ companyId, selection, onClose, onSaved }: {
         <FormControl id="timesheet-policy-required"><FormLabel>Working-day requirement</FormLabel><Select value={rules.required ? "required" : "optional"} onChange={(e) => setRule("required", e.target.value === "required")}><option value="required">Required</option><option value="optional">Optional</option></Select></FormControl>
       </SimpleGrid>
       <Box><Text fontWeight="700" mb={3}>Deadlines and editing</Text><SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-        {numberField("deadlineDaysAfterShift", "Submit within (days after shift)", 0, 31, "0 means the date the shift ends.")}
-        <FormControl id="timesheet-deadline-time" isRequired><FormLabel>Deadline time</FormLabel><Input type="time" value={rules.deadlineTime} onChange={(e) => setRule("deadlineTime", e.target.value)} /><FormHelperText>Uses the employee's shift timezone.</FormHelperText></FormControl>
-        {numberField("maxBackdateDays", "Backdated edit window (days)", 0, 366)}
-      </SimpleGrid></Box>
+        <FormControl id="timesheet-deadline-mode"><FormLabel>Submission deadline</FormLabel><Select aria-label="Submission deadline" value={rules.deadlineMode} onChange={(e) => setRules((r) => ({ ...r, deadlineMode: e.target.value as TimesheetRules["deadlineMode"], payrollCutoffEnabled: e.target.value === "payroll_cycle" || r.payrollCutoffEnabled }))}><option value="after_shift">After each shift</option><option value="payroll_cycle">Payroll-cycle cutoff</option></Select>{rules.payrollCutoffEnabled ? <FormHelperText>Uses the company's attendance-cycle end date, not payroll draft creation.</FormHelperText> : null}</FormControl>
+        {rules.deadlineMode === "after_shift" ? <>
+          {numberField("deadlineDaysAfterShift", "Submit within (days after shift)", 0, 31, "0 means the date the shift ends.")}
+          <FormControl id="timesheet-deadline-time" isRequired><FormLabel>Deadline time</FormLabel><Input aria-label="Deadline time" type="time" value={rules.deadlineTime} onChange={(e) => setRule("deadlineTime", e.target.value)} /><FormHelperText>Uses the employee's shift timezone.</FormHelperText></FormControl>
+          {numberField("maxBackdateDays", "Backdated edit window (days)", 0, 366)}
+        </> : null}
+      </SimpleGrid>
+        {rules.deadlineMode === "after_shift" ? <Checkbox id="timesheet-payroll-cutoff-enabled" mt={4} isChecked={rules.payrollCutoffEnabled} onChange={(e) => setRule("payrollCutoffEnabled", e.target.checked)}>Also close submissions at the payroll-cycle cutoff</Checkbox> : null}
+        {rules.payrollCutoffEnabled ? <SimpleGrid mt={4} columns={{ base: 1, md: 2 }} spacing={4}>
+          {numberField("payrollSubmissionDaysAfterCycleEnd", "Employee cutoff: days after cycle end", 0, 31, "0 = cycle end date; 1 = the next date.")}
+          <FormControl id="timesheet-payroll-submission-time" isRequired><FormLabel>Employee cutoff time</FormLabel><Input aria-label="Employee cutoff time" type="time" value={rules.payrollSubmissionTime} onChange={(e) => setRule("payrollSubmissionTime", e.target.value)} /></FormControl>
+          {numberField("payrollApprovalDaysAfterCycleEnd", "Approval due: days after cycle end", 0, 31)}
+          <FormControl id="timesheet-payroll-approval-time" isRequired><FormLabel>Approval deadline time</FormLabel><Input aria-label="Approval deadline time" type="time" value={rules.payrollApprovalTime} onChange={(e) => setRule("payrollApprovalTime", e.target.value)} /><FormHelperText>Uses each employee's shift timezone.</FormHelperText></FormControl>
+        </SimpleGrid> : null}
+      </Box>
       <Box><Text fontWeight="700" mb={3}>Work entries</Text><SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
         {numberField("minimumEntryMinutes", "Minimum entry duration (minutes)", 1, 480)}
-        {numberField("minuteIncrement", "Duration increments (minutes)", 1, 60)}
         {numberField("maximumDailyEntries", "Maximum entries per day", 1, 100)}
         <FormControl id="timesheet-notes-required"><FormLabel>Entry notes</FormLabel><Select value={rules.notesRequired ? "required" : "optional"} onChange={(e) => setRules((r) => ({ ...r, notesRequired: e.target.value === "required", minimumNotesLength: e.target.value === "required" ? "5" : "0" }))}><option value="required">Required</option><option value="optional">Optional</option></Select></FormControl>
         {rules.notesRequired ? numberField("minimumNotesLength", "Minimum notes length (characters)", 0, 500) : null}
       </SimpleGrid></Box>
       <Checkbox id="timesheet-extra-hours" isChecked={rules.allowExtraHours} onChange={(e) => setRules((r) => ({ ...r, allowExtraHours: e.target.checked, maximumExtraMinutes: e.target.checked ? "120" : "0" }))}>Allow logging beyond required hours</Checkbox>
       {rules.allowExtraHours ? numberField("maximumExtraMinutes", "Maximum extra minutes per day", 1, 720, "This does not approve overtime or award comp-off.") : null}
-      <FormControl id="timesheet-payroll-mode"><FormLabel>Planned payroll treatment</FormLabel><Select value={rules.payrollMode} onChange={(e) => setRule("payrollMode", e.target.value as TimesheetRules["payrollMode"])}><option value="report_only">Report only</option><option value="block">Block payroll until resolved</option><option value="shortfall">Additional loss of pay for short hours</option></Select><FormHelperText>Saved for the later payroll integration. No salary deduction is active yet.</FormHelperText></FormControl>
+      <FormControl id="timesheet-approval-flow"><FormLabel>Approval flow</FormLabel><Select value={rules.approvalWorkflowId || ""} onChange={(e) => setRule("approvalWorkflowId", e.target.value || null)}><option value="">Reporting manager</option>{workforcePolicyStore.approvalWorkflows.filter((workflow) => approvalWorkflowSupportsRequestType(workflow, "timesheet_submission")).map((workflow) => <option key={workflow._id} value={workflow._id}>{workflow.name}</option>)}</Select><FormHelperText>Choose a published Daily timesheets workflow for multiple levels. Existing submissions retain their resolved approvers.</FormHelperText></FormControl>
+      <Checkbox id="timesheet-reminders-enabled" isChecked={rules.remindersEnabled} onChange={(e) => setRule("remindersEnabled", e.target.checked)}>Send timesheet reminders</Checkbox>
+      {rules.remindersEnabled ? <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>{numberField("remindBeforeHours", "Remind before due (hours)", 0, 168)}{numberField("reminderEveryDays", "Repeat reminders every (days)", 1, 7)}{numberField("approverEscalationDays", "Approval follow-up after (days)", 1, 31, "Used when there is no payroll-cycle approval deadline.")}</SimpleGrid> : null}
+      <FormControl id="timesheet-payroll-mode"><FormLabel>Payroll treatment</FormLabel><Select value={rules.payrollMode} onChange={(e) => setRule("payrollMode", e.target.value as TimesheetRules["payrollMode"])}><option value="report_only">Report only</option><option value="block">Block payroll until resolved</option><option value="shortfall">Additional loss of pay for short hours</option></Select><FormHelperText>Salary impact requires an audited Timesheet payroll-cycle lock. Pending approvals block locking; attendance LOP is not charged twice.</FormHelperText></FormControl>
       <FormControl id="timesheet-policy-reason" isRequired><FormLabel>Change reason</FormLabel><Textarea value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} /></FormControl>
+      <TimesheetImpactPreview companyId={companyId} policyId={policy?._id || savedDraft?.policyId} at={date} rules={Object.fromEntries(Object.entries(rules).map(([key, value]) => [key, typeof defaults[key as keyof TimesheetRules] === "number" ? Number(value) : value]))} scopeType={mode === "create" ? "company" : undefined} />
     </Stack>
   </DashboardDrawer>;
 }

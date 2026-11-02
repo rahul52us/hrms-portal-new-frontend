@@ -216,16 +216,14 @@ const NotificationComponent = observer(() => {
               {notificationsList.length ? (
                 <>
                   {notificationsList.map((item) => (
+                    <Box key={item._id} data-notification-id={item._id} borderBottom="1px solid" borderColor="gray.200" bg={item.isRead ? "white" : "blue.50"}>
                     <MenuItem
-                      key={item._id}
                       display="flex"
                       flexDirection="column"
                       alignItems="start"
                       gap={2}
                       py={3}
                       px={{ base: 4, md: 5 }}
-                      borderBottom="1px solid"
-                      borderColor="gray.200"
                       bg={item.isRead ? "white" : "blue.50"}
                       _hover={{ bg: "gray.100" }}
                       cursor={item.actionUrl ? "pointer" : "default"}
@@ -245,22 +243,16 @@ const NotificationComponent = observer(() => {
                           <Text>-</Text>
                           <Text textTransform="capitalize">{notificationLabel(item)}</Text>
                         </Flex>
-                        {!item.isRead ? (
-                          <Button
-                            size="xs"
-                            mt={2}
-                            colorScheme="blue"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void handleMarkAsRead(item._id);
-                            }}
-                            isLoading={loadingId === item._id}
-                          >
-                            Mark as read
-                          </Button>
-                        ) : null}
                       </Box>
                     </MenuItem>
+                    {!item.isRead ? (
+                      <Box px={{ base: 4, md: 5 }} pb={3}>
+                        <Button type="button" size="xs" colorScheme="blue" isLoading={loadingId === item._id} onClick={() => void handleMarkAsRead(item._id)}>
+                          Mark as read
+                        </Button>
+                      </Box>
+                    ) : null}
+                    </Box>
                   ))}
                   {notification?.totalPages > page ? (
                     <Flex justify="center" my={3}>

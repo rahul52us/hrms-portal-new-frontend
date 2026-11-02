@@ -41,6 +41,7 @@ export function validateDraft(entries: EntryPayload[], day: TimesheetDay, now: n
   const rules = day.context.rules, timezone = day.context.timezone;
   if (!rules || !timezone) return "A timesheet policy and work schedule are required.";
   if (entries.length > rules.maximumDailyEntries) return `Only ${rules.maximumDailyEntries} entries are allowed per day.`;
+  if (entries.length && !day.context.attendance?.punchSessions.some((session) => session.punchIn)) return "Punch in or request attendance regularization before logging work.";
   const intervals: Array<{ start: number; end: number }> = [];
   const lastDate = day.context.schedule.endTime! <= day.context.schedule.startTime! ? nextTimesheetDate(day.attendanceDate) : day.attendanceDate;
   for (let index = 0; index < entries.length; index++) {
@@ -52,11 +53,9 @@ export function validateDraft(entries: EntryPayload[], day: TimesheetDay, now: n
     if (entry.startDate < day.attendanceDate || entry.endDate > lastDate) return `${label}: use this shift's work date${lastDate !== day.attendanceDate ? " or the next day" : ""}.`;
     if (end > now) return `${label}: future work cannot be logged.`;
     const minutes = (end - start) / 60000;
-    if (minutes < rules.minimumEntryMinutes || minutes % rules.minuteIncrement) return `${label}: use at least ${rules.minimumEntryMinutes} minutes in ${rules.minuteIncrement}-minute increments.`;
+    if (!Number.isSafeInteger(minutes) || minutes < rules.minimumEntryMinutes) return `${label}: use at least ${rules.minimumEntryMinutes} minute(s).`;
     if (rules.notesRequired && entry.notes.trim().length < rules.minimumNotesLength) return `${label}: add at least ${rules.minimumNotesLength} characters of notes.`;
     if (entry.notes.length > 2000) return `${label}: notes cannot exceed 2000 characters.`;
-    const fitsPunch = day.context.attendance?.punchSessions.some((session) => session.punchIn && start >= Date.parse(session.punchIn) && end <= (session.punchOut ? Date.parse(session.punchOut) : now));
-    if (!fitsPunch) return `${label}: work must fit a punched attendance interval. Correct attendance if punches are missing or incorrect.`;
     intervals.push({ start, end });
   }
   intervals.sort((a, b) => a.start - b.start);
@@ -67,6 +66,7 @@ export function requirementReason(day: TimesheetDay) {
   if (day.eligibility.saveIssues.some((issue) => issue.code === "OUTSIDE_EMPLOYMENT")) return "This date is outside active employment.";
   if (day.requiredMinutes == null) return "Required hours cannot be calculated until the work schedule and timesheet policy are configured.";
   if (day.eligibility.setupIssues.length) return "Timesheet setup is incomplete. Review the issues before logging work.";
+  if (day.controls?.exemption) return day.requiredMinutes ? `HR waived ${formatMinutes(day.eligibility.exemptMinutes)}; the remaining ${formatMinutes(day.requiredMinutes)} still needs work entries.` : "HR waived the timesheet requirement for this day.";
   if (!day.eligibility.required) {
     if (["weekly_off", "mandatory_holiday"].includes(day.context.dayType)) return day.context.dayType === "weekly_off" ? "Weekly off: no mandatory timesheet." : "Holiday: no mandatory timesheet.";
     if (day.context.rules?.required === false) return "Timesheets are optional under the effective policy.";

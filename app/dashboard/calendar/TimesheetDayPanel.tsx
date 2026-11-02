@@ -5,9 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import { FiClock, FiPlus, FiTrash2 } from "react-icons/fi";
 import ConfirmationModal from "@/app/component/common/ConfirmationModal/ConfirmationModal";
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
-import { DraftPayload, EntryPayload, getTimesheetDay, getTimesheetHistory, saveTimesheetDay, TimesheetDay, TimesheetDocument, TimesheetRevision } from "./timesheetApi";
+import { DraftPayload, EntryPayload, getTimesheetDay, getTimesheetHistory, saveTimesheetDay, submitTimesheetDay, TimesheetActionPayload, TimesheetDay, TimesheetDocument, TimesheetRevision } from "./timesheetApi";
 import { entryDuration, formatMinutes, nextTimesheetDate, requirementReason, validateDraft } from "./timesheetUi.utils";
 import TimesheetChoiceSelect from "./TimesheetChoiceSelect";
+import TimesheetReviewDrawer from "./TimesheetReviewDrawer";
+import TimesheetControlsPanel from "./TimesheetControlsPanel";
+import TimesheetContextHistory from "./TimesheetContextHistory";
 
 type EntryRow = EntryPayload & { key: string; projectName: string; projectCode: string; workTypeName: string; workTypeCode: string };
 const key = () => crypto.randomUUID();
@@ -34,7 +37,7 @@ function TimesheetHistory({ date, timezone, onBack }: { date: string; timezone: 
     <Text fontSize="lg" fontWeight="700">Timesheet history</Text>
     {error ? <Alert status="error"><AlertIcon />{error}<Button ml="auto" size="sm" onClick={() => setRetry((r) => r + 1)}>Retry</Button></Alert> : loading ? <Skeleton h="160px" /> : !rows.length ? <Text color="gray.500">No saved revisions yet.</Text> : rows.map((revision) => <Box key={revision._id} py={4} borderBottomWidth="1px">
       <Flex justify="space-between" gap={3} wrap="wrap"><Text fontWeight="700">Revision {revision.revision}</Text><Badge>{revision.snapshot.status}</Badge></Flex>
-      <Text mt={1} fontSize="sm" color="gray.500">Saved {timeLabel(revision.createdAt, timezone)} | {formatMinutes(revision.snapshot.loggedMinutes)} logged</Text>
+      <Text mt={1} fontSize="sm" color="gray.500">{(revision.action || "draft_saved").replace(/_/g, " ")} | {timeLabel(revision.createdAt, timezone)} | {formatMinutes(revision.snapshot.loggedMinutes)} logged</Text>
       <Stack mt={3} spacing={3}>{revision.snapshot.entries.map((entry) => <Box key={entry.entryId}>
         <Text fontSize="sm" fontWeight="600">{entry.projectNameSnapshot} / {entry.workTypeNameSnapshot}</Text>
         <Text fontSize="sm">{entry.startDate} {entry.startTime} - {entry.endDate} {entry.endTime} | {formatMinutes(entry.minutes)}</Text>
@@ -53,6 +56,8 @@ export default function TimesheetDayPanel({ date, editing, onEdit, onSaved, onDi
   const [baseline, setBaseline] = useState("[]"), [loading, setLoading] = useState(true), [saving, setSaving] = useState(false);
   const [error, setError] = useState(""), [conflict, setConflict] = useState(false), [history, setHistory] = useState(false);
   const [refresh, setRefresh] = useState(0), [reloadConfirm, setReloadConfirm] = useState(false);
+  const [submitConfirm, setSubmitConfirm] = useState(false), [submissionDetails, setSubmissionDetails] = useState(false);
+  const pendingSubmission = useRef<{ signature: string; payload: TimesheetActionPayload } | null>(null);
   const pendingSave = useRef<{ signature: string; payload: DraftPayload } | null>(null);
   const inFlight = useRef(false), serverOffset = useRef(0), mounted = useRef(true);
   const toast = useToast();
@@ -78,7 +83,20 @@ export default function TimesheetDayPanel({ date, editing, onEdit, onSaved, onDi
     return () => controller.abort();
   }, [date, refresh]);
   const reload = () => { if (dirty) setReloadConfirm(true); else setRefresh((r) => r + 1); };
-  const canEdit = Boolean(day?.eligibility.canSave && (!day.timesheet || day.timesheet.status === "draft"));
+  const canEdit = Boolean(day?.eligibility.canSave && (!day.timesheet || ["draft", "returned", "rejected"].includes(day.timesheet.status)));
+  async function submit() {
+    if (!day?.timesheet || !day.eligibility.canSubmit || dirty || inFlight.current) return;
+    const signature = String(day.timesheet.revision);
+    if (pendingSubmission.current?.signature !== signature) pendingSubmission.current = { signature, payload: { revision: day.timesheet.revision, requestId: key(), acknowledgeShortfall: true } };
+    inFlight.current = true; setSaving(true); setError(""); setSubmitConfirm(false);
+    try {
+      const saved = await submitTimesheetDay(date, pendingSubmission.current.payload);
+      if (!mounted.current) return;
+      pendingSubmission.current = null; onSaved(); setRefresh((r) => r + 1);
+      toast({ title: saved.status === "approved" ? "Timesheet auto-approved" : "Timesheet submitted for approval", status: "success" });
+    } catch (err: any) { if (mounted.current) { setError(getApiErrorMessage(err?.response?.data || err, "Could not submit. Retry safely with the same request.")); setConflict(err?.response?.status === 409); } }
+    finally { inFlight.current = false; if (mounted.current) setSaving(false); }
+  }
   const update = (rowKey: string, changes: Partial<EntryRow>) => setRows((current) => current.map((row) => row.key === rowKey ? { ...row, ...changes } : row));
   const add = () => {
     if (!day) return;
@@ -124,15 +142,18 @@ export default function TimesheetDayPanel({ date, editing, onEdit, onSaved, onDi
   if (editing && history) return <TimesheetHistory date={date} timezone={timezone} onBack={() => setHistory(false)} />;
   return <Stack spacing={4} as={editing ? "form" : "section"} onSubmit={editing ? (event) => { event.preventDefault(); void save(); } : undefined}>
     <Flex justify="space-between" align="center" gap={2} wrap="wrap"><HStack><Text fontWeight="700" fontSize="lg">Timesheet</Text><Badge colorScheme="blue">{day.timesheet?.status || (day.eligibility.required ? "Required" : "Not required")}</Badge>{dirty ? <Badge colorScheme="yellow">Unsaved</Badge> : null}</HStack>
-      {editing ? <HStack><Button type="button" size="sm" variant="outline" isDisabled={saving} onClick={reload}>Reload</Button><Button type="button" size="sm" variant="outline" leftIcon={<FiClock />} isDisabled={saving || !day.timesheet} onClick={() => setHistory(true)}>History</Button></HStack> : <Button size="sm" onClick={onEdit}>{day.timesheet ? "View / edit timesheet" : "Fill timesheet"}</Button>}
+      {editing ? <HStack flexWrap="wrap"><Button type="button" size="sm" variant="outline" isDisabled={saving} onClick={reload}>Reload</Button><Button type="button" size="sm" variant="outline" leftIcon={<FiClock />} isDisabled={saving || !day.timesheet} onClick={() => setHistory(true)}>History</Button>{day.timesheet?.currentSubmission ? <Button type="button" size="sm" variant="outline" isDisabled={saving || dirty} onClick={() => setSubmissionDetails(true)}>Submission details</Button> : null}</HStack> : <Button size="sm" onClick={onEdit}>{day.timesheet ? "View / edit timesheet" : "Fill timesheet"}</Button>}
     </Flex>
     <SimpleGrid columns={3} spacing={3}><Box minW={0}><Text fontSize="xs" color={muted}>Required</Text><Text fontWeight="700" data-testid="timesheet-required">{formatMinutes(day.requiredMinutes)}</Text></Box><Box minW={0}><Text fontSize="xs" color={muted}>Logged</Text><Text fontWeight="700" data-testid="timesheet-logged">{formatMinutes(logged)}</Text></Box><Box minW={0}><Text fontSize="xs" color={muted}>Shortfall</Text><Text fontWeight="700" color={shortfall ? "orange.600" : undefined} data-testid="timesheet-shortfall">{formatMinutes(shortfall)}</Text></Box></SimpleGrid>
     <Text fontSize="sm" color={muted}>{requirementReason(day)}</Text>
+    <TimesheetControlsPanel date={date} timezone={timezone} />
+    <TimesheetContextHistory date={date} />
     {editing ? <>
       <Box py={3} borderTopWidth="1px" borderBottomWidth="1px" borderColor={border}>
         <Text fontSize="sm">Shift: {day.context.schedule.startTime || "Not configured"} - {day.context.schedule.endTime || "--:--"}{overnight ? " (next day)" : ""}{timezone ? ` | ${timezone}` : ""}</Text>
         <Text mt={1} fontSize="sm">Punches: {day.context.attendance?.punchSessions.length ? day.context.attendance.punchSessions.map((session) => `${timeLabel(session.punchIn, timezone)} - ${timeLabel(session.punchOut, timezone)}`).join("; ") : "Not recorded"}</Text>
-        {day.eligibility.deadlineAt ? <Text mt={1} fontSize="xs" color={muted}>Due {timeLabel(day.eligibility.deadlineAt, timezone)} | Editable through {day.eligibility.editableUntilDate}</Text> : null}
+        {day.eligibility.deadlineAt ? <Text mt={1} fontSize="xs" color={muted}>Due {timeLabel(day.eligibility.deadlineAt, timezone)} | Editable through {day.eligibility.editableUntilAt ? timeLabel(day.eligibility.editableUntilAt, timezone) : day.eligibility.editableUntilDate}</Text> : null}
+        {day.eligibility.payrollCycle ? <Text mt={1} fontSize="xs" color={muted}>Payroll cycle: {day.eligibility.payrollCycle.startDate} to {day.eligibility.payrollCycle.endDate} | Submission cutoff: {timeLabel(day.eligibility.payrollCycle.submissionAt, timezone)} | Approval due: {timeLabel(day.eligibility.payrollCycle.approvalAt, timezone)}</Text> : null}
       </Box>
       {issues.length ? <Alert status="warning" alignItems="start"><AlertIcon /><Stack spacing={1}>{issues.map((issue) => <Text key={issue.code} fontSize="sm">{issue.message}</Text>)}</Stack></Alert> : null}
       {day.eligibility.submissionIssues.length ? <Alert status="info"><AlertIcon /><AlertDescription fontSize="sm">{day.eligibility.submissionIssues.map((issue) => issue.message).join(". ")}</AlertDescription></Alert> : null}
@@ -154,11 +175,13 @@ export default function TimesheetDayPanel({ date, editing, onEdit, onSaved, onDi
         </Box>;
       })}
       {!rows.length ? <Text py={5} color={muted}>No work entries for this day.</Text> : null}
-      <Flex justify="space-between" gap={3} wrap="wrap" position="sticky" bottom={0} bg={surface} py={3} borderTopWidth="1px" borderColor={border} zIndex={1}>
+      {canEdit ? <Flex justify="space-between" gap={3} wrap="wrap" position="sticky" bottom={0} bg={surface} py={3} borderTopWidth="1px" borderColor={border} zIndex={1}>
         {canEdit ? <Button type="button" variant="outline" leftIcon={<FiPlus />} isDisabled={saving || rows.length >= (day.context.rules?.maximumDailyEntries || 0)} onClick={add}>Add entry</Button> : <Text fontSize="sm" color={muted}>This day is read-only.</Text>}
-        <Button type="submit" colorScheme="blue" isLoading={saving} isDisabled={!canEdit || !dirty}>Save draft</Button>
-      </Flex>
+        <HStack flexWrap="wrap"><Button type="submit" colorScheme="blue" variant="outline" isLoading={saving} isDisabled={!canEdit || !dirty}>Save draft</Button>{canEdit ? <Tooltip label={dirty ? "Save your changes before submitting" : !day.eligibility.canSubmit ? "Resolve attendance or setup issues before submitting" : "Submit the entire day for approval"}><Button type="button" colorScheme="blue" isDisabled={saving || dirty || !day.eligibility.canSubmit} onClick={() => setSubmitConfirm(true)}>Submit day</Button></Tooltip> : null}</HStack>
+      </Flex> : <Text fontSize="sm" color={muted}>This day is read-only.</Text>}
     </> : null}
     <ConfirmationModal isOpen={reloadConfirm} onClose={() => setReloadConfirm(false)} onConfirm={() => { setReloadConfirm(false); setRefresh((r) => r + 1); }} title="Discard unsaved changes?" description="Reloading replaces your changes with the latest saved draft." confirmText="Discard and reload" cancelText="Keep editing" tone="danger" />
+    <ConfirmationModal isOpen={submitConfirm} onClose={() => setSubmitConfirm(false)} onConfirm={submit} title="Submit this timesheet?" description={`${formatMinutes(logged)} logged against ${formatMinutes(day.requiredMinutes)} required.${shortfall ? ` This day is ${formatMinutes(shortfall)} short.` : ""} Entries become read-only while approval is pending. ${day.context.rules?.payrollMode === "shortfall" ? "Approved shortfalls may add loss of pay when HR locks this payroll cycle." : day.context.rules?.payrollMode === "block" ? "This policy blocks payroll until required work is approved or HR-exempt." : "This policy is report-only and does not deduct salary."}`} confirmText="Submit for approval" cancelText="Keep draft" tone={shortfall ? "warning" : "primary"} />
+    {submissionDetails && day.timesheet?.currentSubmission ? <TimesheetReviewDrawer submissionId={day.timesheet.currentSubmission} onClose={() => setSubmissionDetails(false)} onChanged={() => { setSubmissionDetails(false); setRefresh((r) => r + 1); onSaved(); }} /> : null}
   </Stack>;
 }

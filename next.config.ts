@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const isMobileExport = process.env.NEXT_OUTPUT_EXPORT === "true";
 
 const nextConfig: NextConfig = {
+  distDir: process.env.HRMS_NEXT_DIST_DIR || ".next",
   reactStrictMode: false,
   ...(isMobileExport
     ? {

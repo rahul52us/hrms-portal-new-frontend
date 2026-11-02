@@ -7,6 +7,7 @@ import { addDays, addMonths, endOfMonth, endOfWeek, format, parseISO, startOfMon
 import { observer } from "mobx-react-lite";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AsyncSelect from "react-select/async";
 import { FiChevronLeft, FiChevronRight, FiFilter, FiPlus, FiRefreshCw } from "react-icons/fi";
@@ -22,6 +23,7 @@ const emptyOptions: CalendarOptions = { scopes: ["mine"], departments: [], locat
 const today = () => format(new Date(), "yyyy-MM-dd");
 
 function CalendarWorkspace() {
+  const workDate = useSearchParams().get("workDate");
   const surface = useColorModeValue("white", "gray.800");
   const border = useColorModeValue("gray.200", "gray.700");
   const muted = useColorModeValue("gray.600", "gray.400");
@@ -47,13 +49,19 @@ function CalendarWorkspace() {
   const [initialPane, setInitialPane] = useState<"details" | "timesheet">("details");
   const [planner, setPlanner] = useState<{ key: string; data: TimesheetPlanner | null; error: string; loading: boolean }>({ key: "", data: null, error: "", loading: false });
   const resolvedAnchor = useRef(false), userNavigated = useRef(false);
+  useEffect(() => {
+    const date = workDate;
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(`${date}T00:00:00Z`)) && new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date) {
+      resolvedAnchor.current = true; userNavigated.current = true; setScope("mine"); setDepartmentId(""); setTeamId(""); setOfficeLocationId(""); setEmployee(null); setAnchor(date); setSelectedDate(date); setInitialPane("timesheet");
+    }
+  }, [workDate]);
   const [revision, setRevision] = useState(0);
   const ready = stores.auth.sessionReady && Boolean(stores.auth.user);
   const role = String(stores.auth.user?.role || "").toLowerCase();
   const range = useMemo(() => {
     const date = parseISO(anchor);
-    const from = mode === "week" ? startOfWeek(date, { weekStartsOn: 1 }) : startOfWeek(startOfMonth(date), { weekStartsOn: 1 });
-    const to = mode === "week" ? endOfWeek(date, { weekStartsOn: 1 }) : endOfWeek(endOfMonth(date), { weekStartsOn: 1 });
+    const from = mode === "week" ? startOfWeek(date, { weekStartsOn: 1 }) : startOfMonth(date);
+    const to = mode === "week" ? endOfWeek(date, { weekStartsOn: 1 }) : endOfMonth(date);
     return { fromDate: format(from, "yyyy-MM-dd"), toDate: format(to, "yyyy-MM-dd") };
   }, [anchor, mode]);
   const params = useMemo(() => ({ scope, departmentId: departmentId || undefined, teamId: teamId || undefined, officeLocationId: officeLocationId || undefined, employeeId: employee?.value, includePending: String(includePending) }), [scope, departmentId, teamId, officeLocationId, employee, includePending]);
@@ -138,7 +146,7 @@ function CalendarWorkspace() {
         {shownDays.length ? shownDays.map((day) => <Flex key={day.date} as="button" aria-label={`Open planner day ${day.date}`} textAlign="left" w="full" py={4} gap={4} align="start" onClick={() => onDay(day.date)} _hover={{ bg: "blue.50" }} borderRadius="sm">
           <Box w="85px" flexShrink={0}><Text fontWeight="700">{format(parseISO(day.date), "EEE, d")}</Text><Text fontSize="xs" color={muted}>{format(parseISO(day.date), "MMM yyyy")}</Text></Box>
           <HStack flexWrap="wrap" gap={2} minW={0}>
-            {scope === "mine" && (category === "all" || category === "timesheet") && timesheetDays.get(day.date) ? <Badge colorScheme={timesheetColors[timesheetDays.get(day.date)!.state]} textTransform="none">{timesheetLabels[timesheetDays.get(day.date)!.state]} | {formatMinutes(timesheetDays.get(day.date)!.loggedMinutes)}{timesheetDays.get(day.date)!.shortHours ? " | Short hours" : ""}</Badge> : null}
+            {scope === "mine" && (category === "all" || category === "timesheet") && timesheetDays.get(day.date) ? <Badge colorScheme={timesheetColors[timesheetDays.get(day.date)!.state]} textTransform="none">{timesheetLabels[timesheetDays.get(day.date)!.state]} | {formatMinutes(timesheetDays.get(day.date)!.loggedMinutes)}{timesheetDays.get(day.date)!.shortHours ? " | Short hours" : ""}{timesheetDays.get(day.date)!.hrExemption ? " | HR exemption" : ""}</Badge> : null}
             {(category === "all" || category === "leave") && day.onLeave > 0 && <Badge colorScheme="blue">{day.onLeave} on leave</Badge>}
             {(category === "all" || category === "wfh") && day.wfh > 0 && <Badge colorScheme="teal">{day.wfh} WFH</Badge>}
             {(category === "all" || category === "leave") && day.pendingLeave > 0 && <Badge colorScheme="yellow">{day.pendingLeave} pending leave</Badge>}
@@ -153,3 +161,4 @@ function CalendarWorkspace() {
   </Box>;
 }
 export default observer(CalendarWorkspace);
+export function CalendarLoading() { return <Box p={6}><Skeleton h="650px" /></Box>; }

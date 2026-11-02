@@ -165,10 +165,12 @@ const PolicyHistoryDrawer = observer(function PolicyHistoryDrawer({
               {resourceType === "timesheet_policy" && version.rules ? (
                 <Stack mt={3} spacing={1}>
                   <Text fontSize="sm">Timesheets: {(version.rules as TimesheetRules).required ? "Required on working days" : "Optional"}</Text>
-                  <Text fontSize="sm">Deadline: {(version.rules as TimesheetRules).deadlineDaysAfterShift} day(s) after shift end, at {(version.rules as TimesheetRules).deadlineTime}</Text>
-                  <Text fontSize="sm">Edit window: {(version.rules as TimesheetRules).maxBackdateDays} days</Text>
-                  <Text fontSize="sm">Entry duration: minimum {(version.rules as TimesheetRules).minimumEntryMinutes} minutes, in {(version.rules as TimesheetRules).minuteIncrement}-minute increments</Text>
-                  <Text fontSize="sm">Payroll mode: {(version.rules as TimesheetRules).payrollMode.replaceAll("_", " ")} (integration pending)</Text>
+                  {(version.rules as TimesheetRules).deadlineMode !== "payroll_cycle" ? <><Text fontSize="sm">Deadline: {(version.rules as TimesheetRules).deadlineDaysAfterShift} day(s) after shift end, at {(version.rules as TimesheetRules).deadlineTime}</Text><Text fontSize="sm">Edit window: {(version.rules as TimesheetRules).maxBackdateDays} days</Text></> : null}
+                  {(version.rules as TimesheetRules).deadlineMode === "payroll_cycle" || (version.rules as TimesheetRules).payrollCutoffEnabled ? <><Text fontSize="sm">Payroll submission cutoff: {(version.rules as TimesheetRules).payrollSubmissionDaysAfterCycleEnd} day(s) after cycle end, at {(version.rules as TimesheetRules).payrollSubmissionTime}</Text><Text fontSize="sm">Approval due: {(version.rules as TimesheetRules).payrollApprovalDaysAfterCycleEnd} day(s) after cycle end, at {(version.rules as TimesheetRules).payrollApprovalTime}</Text></> : null}
+                  <Text fontSize="sm">Approval: {(version.rules as TimesheetRules).approvalWorkflowId ? workforcePolicyStore.approvalWorkflows.find((workflow) => workflow._id === (version.rules as TimesheetRules).approvalWorkflowId)?.name || "Configured workflow" : "Reporting manager"}</Text>
+                  <Text fontSize="sm">Entry duration: minimum {(version.rules as TimesheetRules).minimumEntryMinutes} minute(s), recorded to the minute</Text>
+                  <Text fontSize="sm">Payroll mode: {(version.rules as TimesheetRules).payrollMode.replaceAll("_", " ")}</Text>
+                  <Text fontSize="sm">Reminders: {(version.rules as TimesheetRules).remindersEnabled === false ? "Disabled" : `Every ${(version.rules as TimesheetRules).reminderEveryDays || 1} day(s); approval follow-up after ${(version.rules as TimesheetRules).approverEscalationDays || 2} day(s)`}</Text>
                 </Stack>
               ) : null}
               {resourceType === "holiday_calendar" ? (

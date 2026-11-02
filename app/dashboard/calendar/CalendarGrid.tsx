@@ -27,7 +27,7 @@ export default function CalendarGrid({ anchor, mode, days, category, timesheets,
     const timesheet = timesheets?.get(day.date);
     if (timesheet && (category === "all" || category === "timesheet")) {
       const warning = timesheet.shortHours || ["missing", "returned", "rejected", "setup_incomplete"].includes(timesheet.state);
-      add(`${timesheetLabels[timesheet.state]}${timesheet.loggedMinutes ? ` ${formatMinutes(timesheet.loggedMinutes)}` : ""}${timesheet.shortHours ? " | Short hours" : ""}`, "timesheet", timesheet.state === "approved" ? "#DCFCE7" : warning ? "#FEF3C7" : "#EFF6FF", timesheet.state === "approved" ? "#166534" : warning ? "#92400E" : "#1D4ED8");
+      add(`${timesheetLabels[timesheet.state]}${timesheet.loggedMinutes ? ` ${formatMinutes(timesheet.loggedMinutes)}` : ""}${timesheet.shortHours ? " | Short hours" : ""}${timesheet.hrExemption ? " | HR exemption" : ""}`, "timesheet", timesheet.state === "approved" ? "#DCFCE7" : warning ? "#FEF3C7" : "#EFF6FF", timesheet.state === "approved" ? "#166534" : warning ? "#92400E" : "#1D4ED8");
     }
     if (category === "all" || category === "leave") {
       if (day.onLeave) add(`${day.onLeave} on leave`, "leave", "#DBEAFE", "#1D4ED8");
@@ -48,7 +48,7 @@ export default function CalendarGrid({ anchor, mode, days, category, timesheets,
     }];
   }), [category, days, timesheets]);
   return <FullCalendar ref={ref} plugins={[dayGridPlugin, interactionPlugin]} initialDate={anchor} initialView="dayGridMonth"
-    headerToolbar={false} firstDay={1} fixedWeekCount={false} height="auto" events={events} dayMaxEvents={false}
+    headerToolbar={false} firstDay={1} fixedWeekCount={false} showNonCurrentDates={mode !== "month"} height="auto" events={events} dayMaxEvents={false}
     editable={false} selectable={false} eventOrder="order" displayEventTime={false}
     dateClick={(info) => onDay(info.dateStr)}
     eventClick={(info) => onDay(info.event.extendedProps.date, info.event.extendedProps.category)}

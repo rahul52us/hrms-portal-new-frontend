@@ -1,6 +1,7 @@
 "use client";
 
 import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
+import TimesheetImpactPreview from "./TimesheetImpactPreview";
 import {
   Alert,
   AlertDescription,
@@ -184,6 +185,7 @@ export default function PolicyAssignmentDrawer({
       }
     >
       <Stack spacing={5} maxW="900px" mx="auto">
+        {!isEnding && resourceType === "timesheet_policy" && resourceId ? <TimesheetImpactPreview companyId={companyId} policyId={resourceId} at={effectiveFrom} scopeType={scopeType} scopeId={scopeId} /> : null}
         {isEnding && assignment ? (
           <Alert status="warning" borderRadius="md">
             <AlertIcon />
