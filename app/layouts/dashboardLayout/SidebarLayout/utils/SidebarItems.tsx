@@ -3,7 +3,7 @@ import { expandRoleAliases } from "@/app/config/utils/roleAccess";
 import { PERMISSION_KEYS, hasPermission } from "@/app/config/utils/permissions";
 import { LucideBriefcaseBusiness, Network } from "lucide-react";
 import { BiCategory } from "react-icons/bi";
-import { FiBell, FiCalendar, FiCamera, FiCheckSquare, FiClock, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers, FiPieChart, FiDatabase } from "react-icons/fi";
+import { FiBell, FiCalendar, FiCamera, FiCheckSquare, FiClock, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers, FiUserCheck, FiPieChart, FiDatabase } from "react-icons/fi";
 
 interface SidebarItem {
   id: number;
@@ -63,6 +63,7 @@ const sidebarDatas: SidebarItem[] = [
     role: ["admin", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_USERS,
   },
+  { id: 1146, name: "Onboarding", icon: <FiUserCheck />, url: "/dashboard/onboarding", role: ["admin", "hradmin", "hr", "departmenthead", "user"], permissionKey: PERMISSION_KEYS.VIEW_ONBOARDING_TEMPLATES },
   {
     id: 101,
     name: "Departments",
