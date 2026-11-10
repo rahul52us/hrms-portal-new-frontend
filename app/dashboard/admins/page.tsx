@@ -1,4 +1,5 @@
 "use client";
+import { PrivateAvatar } from "@/app/component/common/PrivateImage";
 
 import {
   Avatar,
@@ -418,7 +419,7 @@ const DirectoryPage = observer(() => {
                     <Box p={6}>
                       <HStack align="start" justify="space-between" mb={4}>
                         <HStack align="center" spacing={4}>
-                          <Avatar
+                          <PrivateAvatar
                             size="md"
                             name={company.company_name}
                             src={company?.logo?.url}

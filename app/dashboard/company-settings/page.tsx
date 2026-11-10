@@ -141,6 +141,7 @@ const CompanySettingsPage = observer(() => {
         ...cleanValues,
         departments,
         isLogoEdit: shouldReplaceLogo,
+        expectedLogoUrl: existingLogoUrl,
       };
 
       if (shouldReplaceLogo) {
@@ -166,7 +167,8 @@ const CompanySettingsPage = observer(() => {
         isClosable: true,
         position: "top-right",
       });
-      loadSettings();
+      await loadSettings();
+      await auth.fetchUser();
     } catch (err: any) {
       toast({
         title: "Unable to save settings",
@@ -307,6 +309,9 @@ const CompanySettingsPage = observer(() => {
                       </Box>
                     </VStack>
                   </SectionCard>
+                  <Button type="submit" colorScheme="blue" alignSelf="flex-end" isLoading={saving}>
+                    Save Company Settings
+                  </Button>
                 </CompanyForm>
             </Box>
           )}

@@ -1,6 +1,8 @@
 "use client";
 
 export const PERMISSION_KEYS = {
+  VIEW_ONBOARDING: "view_onboarding",
+  MANAGE_ONBOARDING: "manage_onboarding",
   VIEW_ONBOARDING_TEMPLATES: "view_onboarding_templates",
   MANAGE_ONBOARDING_TEMPLATES: "manage_onboarding_templates",
   VIEW_TIMESHEETS: "view_timesheets",

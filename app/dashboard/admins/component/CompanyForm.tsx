@@ -1,4 +1,5 @@
 "use client";
+import { PrivateImage } from "@/app/component/common/PrivateImage";
 
 import {
   Badge,
@@ -466,7 +467,7 @@ const CompanyForm = ({
                       border="1px solid"
                       bg="white"
                     >
-                      <Image
+                      <PrivateImage
                         src={preview}
                         alt={`${values.company_name || "Company"} logo`}
                         w="100%"
@@ -504,7 +505,7 @@ const CompanyForm = ({
                         });
                         return;
                       }
-                      if (file.size > 2 * 1024 * 1024) {
+                      if (file.size > 2_000_000) {
                         toast({
                           title: "Logo is too large",
                           description: "Choose an image up to 2 MB.",

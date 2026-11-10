@@ -63,7 +63,7 @@ const sidebarDatas: SidebarItem[] = [
     role: ["admin", "departmenthead", "hradmin", "hr"],
     permissionKey: PERMISSION_KEYS.VIEW_USERS,
   },
-  { id: 1146, name: "Onboarding", icon: <FiUserCheck />, url: "/dashboard/onboarding", role: ["admin", "hradmin", "hr", "departmenthead", "user"], permissionKey: PERMISSION_KEYS.VIEW_ONBOARDING_TEMPLATES },
+  { id: 1146, name: "Onboarding", icon: <FiUserCheck />, url: "/dashboard/onboarding", role: ["admin", "hradmin", "hr", "departmenthead", "user"] },
   {
     id: 101,
     name: "Departments",

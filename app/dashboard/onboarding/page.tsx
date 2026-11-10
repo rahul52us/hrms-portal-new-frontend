@@ -1,2 +1,3 @@
 import OnboardingWorkspace from "./OnboardingWorkspace";
-export default function OnboardingPage() { return <OnboardingWorkspace />; }
+import { Suspense } from "react";
+export default function OnboardingPage() { return <Suspense fallback={null}><OnboardingWorkspace /></Suspense>; }

@@ -24,6 +24,8 @@ import stores from "@/app/store/stores";
 import { observer } from "mobx-react-lite";
 import { useEffect } from "react";
 import EmployeePolicyTab from "./EmployeePolicyTab";
+import Link from "next/link";
+import { hasPermission, PERMISSION_KEYS } from "@/app/config/utils/permissions";
 
 const getUserStatusMeta = (user: any) => {
   if (user?.status === "INACTIVE" || user?.isEnabled === false || user?.is_enabled === false) {
@@ -130,6 +132,7 @@ const UserDetailsModal = ({
       }
     >
       <Box pb={6}>
+        {hasPermission(stores.auth.user, PERMISSION_KEYS.VIEW_ONBOARDING) && user?._id ? <Flex justify="end" mb={3}><Button as={Link} href={`/dashboard/onboarding?employeeId=${encodeURIComponent(String(user._id))}`} size="sm" variant="outline">Open onboarding</Button></Flex> : null}
         <Tabs colorScheme="blue" isLazy>
             <TabList>
               <Tab flex="1" whiteSpace="nowrap">Overview</Tab>

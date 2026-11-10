@@ -2,9 +2,13 @@
 
 import stores from "@/app/store/stores";
 import { readFileAsBase64 } from "@/app/config/utils/utils";
+import DocumentDownloadButton from "@/app/component/common/DocumentDownloadButton";
 import {
   Box,
   Button,
+  Flex,
+  FormControl,
+  FormLabel,
   Grid,
   Input,
   Text,
@@ -44,6 +48,10 @@ const DocumentsManager = observer(() => {
   const user = stores.auth.user;
   const [documents, setDocuments] = useState<EmployeeDocumentRow[]>(documentTemplates);
   const [saving, setSaving] = useState(false);
+  const hydrate = (rows: any[]) => documentTemplates.map((template) => {
+    const saved = rows.find((item: any) => Number(item?.id) === template.id || item?.label === template.label);
+    return { ...template, ...(saved || {}), fileName: saved?.file?.name || saved?.fileName || "", fileUrl: saved?.file?.url || saved?.fileUrl || "", fileType: saved?.file?.type || saved?.fileType || "", effectiveFrom: saved?.effectiveFrom || "", validTill: saved?.validTill || "", isAdd: false, fileBuffer: undefined };
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -55,20 +63,7 @@ const DocumentsManager = observer(() => {
           : [];
         if (!backendDocs.length) return;
 
-        setDocuments(
-          documentTemplates.map((template) => {
-            const saved = backendDocs.find((item: any) => Number(item?.id) === template.id || item?.label === template.label);
-            return {
-              ...template,
-              ...(saved || {}),
-              fileName: saved?.file?.name || saved?.fileName || "",
-              fileUrl: saved?.file?.url || saved?.fileUrl || "",
-              fileType: saved?.file?.type || saved?.fileType || "",
-              effectiveFrom: saved?.effectiveFrom || "",
-              validTill: saved?.validTill || "",
-            };
-          })
-        );
+        setDocuments(hydrate(backendDocs));
       } catch {
         setDocuments(documentTemplates);
       }
@@ -82,6 +77,7 @@ const DocumentsManager = observer(() => {
 
   const handleDocumentFileChange = async (docId: number, file?: File) => {
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024 || !["application/pdf", "image/png", "image/jpeg"].includes(file.type)) { toast({ title: "Choose a PDF, JPG or PNG, up to 5 MB", status: "warning" }); return; }
     const buffer = await readFileAsBase64(file);
     setDocuments((current) =>
       current.map((doc) =>
@@ -91,7 +87,6 @@ const DocumentsManager = observer(() => {
               fileName: file.name,
               fileType: file.type,
               fileBuffer: buffer as unknown as string,
-              fileUrl: URL.createObjectURL(file),
               isAdd: true,
             }
           : doc
@@ -103,7 +98,7 @@ const DocumentsManager = observer(() => {
     if (!user?._id) return;
     setSaving(true);
     try {
-      await stores.userStore.updateUserDocuments(user._id, {
+      const saved = await stores.userStore.updateUserDocuments(user._id, {
         documents: documents.map((doc) => ({
           id: doc.id,
           label: doc.label,
@@ -125,6 +120,7 @@ const DocumentsManager = observer(() => {
           validTill: doc.validTill || "",
         })),
       });
+      setDocuments(hydrate(saved.data.data.documents || []));
       await stores.auth.fetchUser();
       toast({
         title: "Documents saved",
@@ -151,22 +147,19 @@ const DocumentsManager = observer(() => {
   const pageBg = useColorModeValue("gray.50", "gray.950");
 
   return (
-    <Box bg={pageBg} minH="100vh" p={6}>
-      <Box bg={cardBg} borderRadius="24px" p={6} boxShadow="lg">
-        <Box mb={4}>
+    <Box bg={pageBg} minH="100vh" minW={0} p={{ base: 3, md: 6 }}>
+      <Box bg={cardBg} borderRadius="md" minW={0} p={{ base: 3, md: 6 }} borderWidth="1px">
+        <Flex mb={5} justify="space-between" align="center" wrap="wrap" gap={3}>
           <Text fontSize="24px" fontWeight="800">
             Documents
           </Text>
-          <Text fontSize="13px" color="gray.500">
-            Upload and manage your employee documents.
-          </Text>
-        </Box>
-        <Button colorScheme="blue" mb={4} onClick={handleSave} isLoading={saving}>
+        <Button colorScheme="blue" onClick={handleSave} isLoading={saving}>
           Save Documents
         </Button>
-        <Box overflowX="auto">
-          <Box minW="980px" borderWidth="1px" borderRadius="16px" overflow="hidden">
-            <Grid templateColumns="70px 1.6fr 1.4fr 220px 220px" bg="gray.100" px={4} py={3} fontWeight="700">
+        </Flex>
+        <Box minW={0}>
+          <Box minW={0}>
+            <Grid display={{ base: "none", lg: "grid" }} templateColumns="48px minmax(160px,1.3fr) minmax(180px,1.5fr) minmax(140px,1fr) minmax(140px,1fr)" gap={3} bg={pageBg} px={3} py={3} fontSize="sm" fontWeight="600">
               <Text>Sr.No.</Text>
               <Text>Documents</Text>
               <Text>Uploaded Files</Text>
@@ -174,20 +167,21 @@ const DocumentsManager = observer(() => {
               <Text>Valid Till</Text>
             </Grid>
             {documents.map((doc, index) => (
-              <Grid key={doc.id} templateColumns="70px 1.6fr 1.4fr 220px 220px" px={4} py={3} borderTopWidth="1px" gap={3} alignItems="center">
-                <Text>{index + 1}</Text>
-                <Text fontWeight="600">{doc.label}</Text>
-                <Box>
+              <Grid key={doc.id} templateColumns={{ base: "minmax(0,1fr)", sm: "repeat(2,minmax(0,1fr))", lg: "48px minmax(160px,1.3fr) minmax(180px,1.5fr) minmax(140px,1fr) minmax(140px,1fr)" }} px={{ base: 0, lg: 3 }} py={4} borderTopWidth="1px" gap={3} alignItems="start" minW={0}>
+                <Text display={{ base: "none", lg: "block" }}>{index + 1}</Text>
+                <Text gridColumn={{ base: "1 / -1", lg: "auto" }} fontWeight="600" overflowWrap="anywhere">{doc.label}</Text>
+                <Box gridColumn={{ base: "1 / -1", lg: "auto" }} minW={0}>
                   <Button as="label" size="sm" variant="outline" cursor="pointer" mb={2}>
                     {doc.fileName ? "Change File" : "Upload File"}
-                    <input hidden type="file" onChange={(event) => handleDocumentFileChange(doc.id, event.target.files?.[0])} />
+                    <input hidden type="file" accept="application/pdf,image/png,image/jpeg" onChange={(event) => handleDocumentFileChange(doc.id, event.target.files?.[0])} />
                   </Button>
-                  <Text fontSize="13px" color={doc.fileName ? "orange.500" : "gray.500"} noOfLines={1}>
+                  <Text fontSize="13px" color={doc.fileName ? undefined : "gray.500"} overflowWrap="anywhere">
                     {doc.fileName || "file not uploaded."}
                   </Text>
+                  {doc.fileUrl && !doc.isAdd ? <DocumentDownloadButton url={doc.fileUrl} name={doc.fileName || "Document"} size="xs" variant="link" mt={1}>Download</DocumentDownloadButton> : null}
                 </Box>
-                <Input type="date" size="sm" value={doc.effectiveFrom || ""} onChange={(e) => handleDocumentChange(doc.id, "effectiveFrom", e.target.value)} />
-                <Input type="date" size="sm" value={doc.validTill || ""} onChange={(e) => handleDocumentChange(doc.id, "validTill", e.target.value)} />
+                <FormControl minW={0}><FormLabel htmlFor={`document-${doc.id}-effective`} display={{ base: "block", lg: "none" }} fontSize="xs">Effective from</FormLabel><Input id={`document-${doc.id}-effective`} aria-label={`${doc.label} effective from`} type="date" size="sm" minW={0} value={doc.effectiveFrom || ""} onChange={(e) => handleDocumentChange(doc.id, "effectiveFrom", e.target.value)} /></FormControl>
+                <FormControl minW={0}><FormLabel htmlFor={`document-${doc.id}-expiry`} display={{ base: "block", lg: "none" }} fontSize="xs">Valid till</FormLabel><Input id={`document-${doc.id}-expiry`} aria-label={`${doc.label} valid till`} type="date" size="sm" minW={0} value={doc.validTill || ""} onChange={(e) => handleDocumentChange(doc.id, "validTill", e.target.value)} /></FormControl>
               </Grid>
             ))}
           </Box>

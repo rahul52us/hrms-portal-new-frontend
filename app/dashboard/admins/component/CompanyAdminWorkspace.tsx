@@ -1,4 +1,5 @@
 "use client";
+import { PrivateAvatar } from "@/app/component/common/PrivateImage";
 
 import {
   Alert,
@@ -499,6 +500,7 @@ const CompanyAdminWorkspace = ({
         verified_email_allowed: values.verified_email_allowed,
         registeredAddress: values.registeredAddress,
         isLogoEdit: shouldReplaceLogo,
+        expectedLogoUrl: existingLogoUrl,
       };
 
       if (shouldReplaceLogo) {
@@ -652,7 +654,7 @@ const CompanyAdminWorkspace = ({
                 onClick={onBack}
                 borderRadius="full"
               />
-              <Avatar
+              <PrivateAvatar
                 size="md"
                 name={company?.company_name}
                 src={company?.logo?.url}

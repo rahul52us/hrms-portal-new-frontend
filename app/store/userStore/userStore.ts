@@ -2,6 +2,8 @@ import { makeAutoObservable, runInAction } from "mobx";
 import axios from "axios";
 import { authStore } from "../authStore/authStore";
 class UserStore {
+  documentRevisions = new Map<string, number>();
+  documentAttempts = new Map<string, { signature: string; requestId: string }>();
   assignmentHistory: any[] = [];
   assignmentHistoryLoading = false;
   assignmentHistoryError: string | null = null;
@@ -124,7 +126,13 @@ class UserStore {
   updateUserDocuments = async (id: string, payload: any) => {
     this.isLoading = true;
     try {
-      const response = await axios.put(`/user/updateDocuments/${id}`, payload);
+      const revision = payload.revision ?? this.documentRevisions.get(id);
+      if (revision === undefined) throw new Error("Reload the documents before saving");
+      const body = { ...payload, revision }, signature = JSON.stringify(body);
+      if (this.documentAttempts.get(id)?.signature !== signature) this.documentAttempts.set(id, { signature, requestId: crypto.randomUUID() });
+      const response = await axios.put(`/user/updateDocuments/${id}`, { ...body, requestId: payload.requestId || this.documentAttempts.get(id)!.requestId });
+      if (response.data.replayed) response.data.data = (await axios.get(`/user/updateDocuments/${id}`)).data.data;
+      runInAction(() => { this.documentRevisions.set(id, response.data.data.revision); this.documentAttempts.delete(id); });
       return response;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
@@ -136,6 +144,7 @@ class UserStore {
   fetchUserDocuments = async (id: string) => {
     try {
       const response = await axios.get(`/user/updateDocuments/${id}`);
+      runInAction(() => this.documentRevisions.set(id, response.data.data.revision || 0));
       return response;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);

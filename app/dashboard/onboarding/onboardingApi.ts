@@ -17,6 +17,6 @@ export const dueLabel = (days: number) => days === 0 ? "On joining day" : `${Mat
 export async function onboardingGet<T>(path: string, params?: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
   return (await axios.get(`/onboarding${path}`, { params, signal })).data;
 }
-export async function onboardingSave(path: string, body: unknown, method: "post" | "put" = "post"): Promise<{ data: Template; replayed: boolean }> {
+export async function onboardingSave<T = Template>(path: string, body: unknown, method: "post" | "put" = "post"): Promise<{ data: T; replayed: boolean }> {
   return (await axios[method](`/onboarding${path}`, body)).data;
 }

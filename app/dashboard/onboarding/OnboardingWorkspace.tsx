@@ -1,58 +1,40 @@
 "use client";
-
-import { Alert, AlertIcon, Badge, Box, Button, Flex, FormControl, FormLabel, Heading, HStack, IconButton, Input, Select, Skeleton, Stack, Table, TableContainer, Tbody, Td, Text, Th, Thead, Tooltip, Tr, useColorModeValue } from "@chakra-ui/react";
+import { Alert, AlertIcon, Box, Button, Heading, Skeleton, Stack, Tab, TabList, TabPanel, TabPanels, Tabs } from "@chakra-ui/react";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
-import { FiPlus, FiRefreshCw } from "react-icons/fi";
+import { useSearchParams } from "next/navigation";
 import stores from "@/app/store/stores";
-import { hasPermission, PERMISSION_KEYS } from "@/app/config/utils/permissions";
-import { getApiErrorMessage } from "@/app/config/utils/apiError";
 import PermissionGate from "@/app/component/common/PermissionGate";
-import Pagination from "@/app/component/common/pagination/Pagination";
-import { emptyPage, onboardingGet, Page, Template } from "./onboardingApi";
-import TemplateDrawer from "./TemplateDrawer";
+import { getApiErrorMessage } from "@/app/config/utils/apiError";
+import { onboardingGet } from "./onboardingApi";
+import ChecklistTemplatesWorkspace from "./ChecklistTemplatesWorkspace";
+import EmployeeOnboardingList from "./EmployeeOnboardingList";
 
 export default observer(function OnboardingWorkspace() {
-  const border = useColorModeValue("gray.200", "gray.700");
-  const [search, setSearch] = useState(""), [query, setQuery] = useState(""), [status, setStatus] = useState("all"), [page, setPage] = useState(1);
-  const [rows, setRows] = useState<Template[]>([]), [pagination, setPagination] = useState(emptyPage);
-  const [loading, setLoading] = useState(true), [error, setError] = useState(""), [refresh, setRefresh] = useState(0);
-  const [opened, setOpened] = useState<{ id?: string } | null>(null);
+  const queryString = useSearchParams().toString();
   const user = stores.auth.user, ready = stores.auth.sessionReady && Boolean(user);
+  const companyAccount = Boolean(user?.company) && String(user?.role).toLowerCase() !== "superadmin";
   const accountKey = `${user?._id || ""}:${user?.company?._id || user?.company || ""}`;
-  const canView = String(user?.role || "").toLowerCase() !== "superadmin" && hasPermission(user, PERMISSION_KEYS.VIEW_ONBOARDING_TEMPLATES);
-  const canManage = hasPermission(user, PERMISSION_KEYS.MANAGE_ONBOARDING_TEMPLATES);
-  useEffect(() => { setOpened(null); setRows([]); setPagination(emptyPage); setPage(1); }, [accountKey]);
-  useEffect(() => { const timer = setTimeout(() => { setQuery(search.trim()); setPage(1); }, 300); return () => clearTimeout(timer); }, [search]);
+  const [options, setOptions] = useState<{ canView: boolean; canManage: boolean; canViewTemplates: boolean } | null>(null);
+  const [error, setError] = useState(""), [reload, setReload] = useState(0), [tab, setTab] = useState(0);
+  const [initial, setInitial] = useState<{ employeeId?: string; instanceId?: string }>({});
   useEffect(() => {
-    if (!ready || !canView) return;
-    const controller = new AbortController(); setLoading(true); setError("");
-    onboardingGet<Page<Template>>("/templates", { search: query || undefined, status, page, limit: 20 }, controller.signal)
-      .then((result) => { if (!controller.signal.aborted) { setRows(result.data); setPagination(result.pagination); } })
-      .catch((err) => { if (!controller.signal.aborted) { setError(getApiErrorMessage(err?.response?.data || err, "Unable to load checklist templates")); setRows([]); } })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    if (!ready || !companyAccount) return;
+    const controller = new AbortController(); setOptions(null); setError("");
+    const params = new URLSearchParams(queryString);
+    setInitial({ employeeId: params.get("employeeId") || undefined, instanceId: params.get("instanceId") || undefined });
+    onboardingGet<{ data: NonNullable<typeof options> }>("/workspace", undefined, controller.signal).then(({ data }) => {
+      if (!controller.signal.aborted) { setOptions(data); setTab(params.get("tab") === "templates" && data.canViewTemplates ? (data.canView ? 3 : 2) : 0); }
+    }).catch((err) => { if (!controller.signal.aborted) setError(getApiErrorMessage(err?.response?.data || err, "Unable to load onboarding")); });
     return () => controller.abort();
-  }, [ready, canView, accountKey, query, status, page, refresh]);
+  }, [ready, companyAccount, accountKey, reload, queryString]);
   if (!ready) return <Stack p={6}><Skeleton h="40px" /><Skeleton h="150px" /></Stack>;
-  return <PermissionGate allowed={canView} title="Onboarding access required" description="Contact your company administrator for checklist template access."><Box p={{ base: 3, md: 6 }} minW={0}><Stack maxW="1500px" mx="auto" spacing={5}>
-    <Flex justify="space-between" align="center" wrap="wrap" gap={3}><Heading size="lg">Onboarding</Heading><HStack>
-      <Tooltip label="Refresh templates"><IconButton aria-label="Refresh templates" variant="outline" icon={<FiRefreshCw />} onClick={() => setRefresh((n) => n + 1)} /></Tooltip>
-      {canManage && <Button colorScheme="blue" leftIcon={<FiPlus />} onClick={() => setOpened({})}>New checklist template</Button>}
-    </HStack></Flex>
-    <Heading size="sm">Checklist templates</Heading>
-    {error && <Alert status="error"><AlertIcon />{error}</Alert>}
-    <Flex gap={4} align="end" wrap="wrap"><FormControl flex="1" minW={{ base: "100%", sm: "220px" }}><FormLabel htmlFor="onboarding-search">Search templates</FormLabel><Input id="onboarding-search" placeholder="Template name" maxLength={100} value={search} onChange={(e) => setSearch(e.target.value)} /></FormControl>
-      <FormControl w={{ base: "100%", sm: "190px" }}><FormLabel htmlFor="onboarding-status">Status</FormLabel><Select id="onboarding-status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}><option value="all">All statuses</option><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></Select></FormControl></Flex>
-    <Box borderWidth="1px" borderColor={border} borderRadius="md" overflow="hidden" minW={0}>
-      {loading ? <Stack p={5}><Skeleton h="55px" /><Skeleton h="55px" /></Stack> : <>
-        <TableContainer><Table size="sm"><Thead><Tr><Th>Template</Th><Th>Tasks</Th><Th>Status</Th><Th>Published version</Th><Th>Last updated</Th></Tr></Thead><Tbody>
-          {rows.map((row) => <Tr key={row._id}><Td py={4} whiteSpace="normal" maxW="420px"><Button variant="link" textAlign="left" whiteSpace="normal" overflowWrap="anywhere" onClick={() => setOpened({ id: row._id })}>{row.name}</Button><Text mt={1} fontSize="sm" color="gray.500" noOfLines={2}>{row.description}</Text></Td>
-            <Td>{row.taskCount || 0}</Td><Td><HStack wrap="wrap"><Badge colorScheme={row.status === "published" ? "green" : row.status === "draft" ? "yellow" : "gray"}>{row.status}</Badge>{row.publishedVersion > 0 && row.hasDraft && <Badge colorScheme="yellow">Unpublished changes</Badge>}</HStack></Td><Td>{row.publishedVersion ? `v${row.publishedVersion}` : "Not published"}</Td><Td>{new Date(row.updatedAt).toLocaleDateString("en-GB")}</Td></Tr>)}
-        </Tbody></Table></TableContainer>
-        {!rows.length && <Text p={10} textAlign="center" color="gray.500">{query || status !== "all" ? "No matching checklist templates." : "No checklist templates yet."}</Text>}
-        <Flex p={3} gap={3} justify="space-between" align="center" wrap="wrap"><Text fontSize="sm" color="gray.500">{pagination.total} {pagination.total === 1 ? "template" : "templates"}</Text>{pagination.totalPages > 1 && <Pagination currentPage={page} totalPages={pagination.totalPages} onPageChange={setPage} />}</Flex>
-      </>}
-    </Box>
-    {opened && <TemplateDrawer templateId={opened.id} canManage={canManage} onClose={() => setOpened(null)} onChanged={() => setRefresh((n) => n + 1)} />}
+  const panels = [...(options?.canView ? [{ name: "Employee onboarding", scope: "organization" }] : []), { name: "My onboarding", scope: "mine" }, { name: "My tasks", scope: "tasks" }, ...(options?.canViewTemplates ? [{ name: "Checklist templates", scope: "templates" }] : [])];
+  return <PermissionGate allowed={companyAccount} title="Company account required" description="Employee onboarding is managed inside a company."><Box p={{ base: 3, md: 6 }} minW={0}><Stack maxW="1500px" mx="auto" spacing={5}>
+    <Heading size="lg">Onboarding</Heading>
+    {error && <Alert status="error"><AlertIcon />{error}<Button ml="auto" size="sm" onClick={() => setReload((n) => n + 1)}>Retry</Button></Alert>}
+    {!options ? !error && <Skeleton h="150px" /> : <Tabs index={tab} onChange={setTab} isLazy><TabList overflowX="auto">{panels.map((item) => <Tab key={item.scope} whiteSpace="nowrap" flexShrink={0}>{item.name}</Tab>)}</TabList><TabPanels>{panels.map((item) => <TabPanel key={item.scope} px={0}>
+      {item.scope === "templates" ? <ChecklistTemplatesWorkspace embedded /> : <EmployeeOnboardingList key={`${accountKey}:${item.scope}`} scope={item.scope} canManage={options.canManage && item.scope === "organization"} employeeId={item.scope === "organization" ? initial.employeeId : undefined} initialInstanceId={initial.instanceId} />}
+    </TabPanel>)}</TabPanels></Tabs>}
   </Stack></Box></PermissionGate>;
 });

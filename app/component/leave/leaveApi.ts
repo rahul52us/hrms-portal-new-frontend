@@ -222,7 +222,12 @@ export async function submitLeaveRequest(payload: Record<string, any>) {
   return response.data?.data as LeaveRequest;
 }
 
+const attachmentAttempts = new Map<string, string>();
 export async function uploadLeaveAttachment(file: File, companyId?: string) {
+  if (!file.size || file.size > 5 * 1024 * 1024) throw new Error("Documents must be 5 MB or smaller");
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  const fingerprint = `${companyId || ""}:${file.name}:${file.type}:${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  if (!attachmentAttempts.has(fingerprint)) attachmentAttempts.set(fingerprint, crypto.randomUUID());
   const data = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ""));
@@ -235,7 +240,9 @@ export async function uploadLeaveAttachment(file: File, companyId?: string) {
     type: file.type,
     size: file.size,
     data,
+    requestId: attachmentAttempts.get(fingerprint),
   });
+  attachmentAttempts.delete(fingerprint);
   return response.data?.data as LeaveAttachment;
 }
 

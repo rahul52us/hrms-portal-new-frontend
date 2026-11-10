@@ -29,6 +29,8 @@ import { observer } from "mobx-react-lite";
 import stores from "../../../../store/stores";
 import { Folder, Upload, FileText, Download, Trash2, ChevronDown } from "lucide-react";
 import CustomInput from "../../../../component/config/component/customInput/CustomInput";
+import DocumentDownloadButton from "@/app/component/common/DocumentDownloadButton";
+import { getApiErrorMessage } from "@/app/config/utils/apiError";
 
 type Props = {
   userId: string;
@@ -52,6 +54,13 @@ const DocumentsForm = observer(({ userId }: Props) => {
   const sectionTitleColor = useColorModeValue("blue.600", "blue.300");
   const tableBg = useColorModeValue("white", "whiteAlpha.50");
   const labelColor = useColorModeValue("gray.800", "gray.300");
+  const blueSurface = useColorModeValue("blue.50", "blue.900/30");
+  const muted = useColorModeValue("gray.500", "gray.400");
+  const panelShadow = useColorModeValue("0 4px 20px rgba(0,0,0,0.03)", "0 4px 20px rgba(0,0,0,0.2)");
+  const uploadSurface = useColorModeValue("gray.50", "whiteAlpha.100");
+  const fileLabel = useColorModeValue("gray.600", "gray.400");
+  const selectedName = useColorModeValue("gray.800", "white");
+  const tableHeader = useColorModeValue("gray.50", "whiteAlpha.50");
 
   useEffect(() => {
     loadMasterData();
@@ -104,6 +113,7 @@ const DocumentsForm = observer(({ userId }: Props) => {
 
     setUploading(true);
     try {
+      if (selectedFile.size > 5 * 1024 * 1024 || !["application/pdf", "image/png", "image/jpeg"].includes(selectedFile.type)) throw new Error("Choose a PDF, JPG or PNG, up to 5 MB");
       const base64 = await toBase64(selectedFile);
       
       const newDoc = {
@@ -129,7 +139,7 @@ const DocumentsForm = observer(({ userId }: Props) => {
       
       loadDocuments();
     } catch (error: any) {
-      toast({ title: "Upload failed", description: error.message || "Something went wrong", status: "error" });
+      toast({ title: "Upload failed", description: getApiErrorMessage(error, "Unable to upload document"), status: "error" });
     } finally {
       setUploading(false);
     }
@@ -148,7 +158,7 @@ const DocumentsForm = observer(({ userId }: Props) => {
       toast({ title: "Document deleted", status: "success" });
       loadDocuments();
     } catch (error: any) {
-      toast({ title: "Deletion failed", status: "error" });
+      toast({ title: "Deletion failed", description: getApiErrorMessage(error, "Reload the documents and try again"), status: "error" });
     } finally {
       setUploading(false);
     }
@@ -159,14 +169,14 @@ const DocumentsForm = observer(({ userId }: Props) => {
       <VStack spacing={{ base: 5, md: 8 }} align="stretch">
         {/* Header */}
         <HStack spacing={4} align="center">
-          <Box display="inline-flex" p={2.5} borderRadius="lg" bg={useColorModeValue("blue.50", "blue.900/30")} color={sectionTitleColor} boxShadow="sm">
+          <Box display="inline-flex" p={2.5} borderRadius="lg" bg={blueSurface} color={sectionTitleColor} boxShadow="sm">
             <Folder size={20} />
           </Box>
           <Box>
             <Text fontSize="lg" fontWeight="800" bgGradient={headerGradient} bgClip="text" letterSpacing="tight">
               Documents
             </Text>
-            <Text fontSize="xs" color={useColorModeValue("gray.500", "gray.400")} fontWeight="600" mt={0.5}>
+            <Text fontSize="xs" color={muted} fontWeight="600" mt={0.5}>
               Manage and upload employee documents.
             </Text>
           </Box>
@@ -177,12 +187,12 @@ const DocumentsForm = observer(({ userId }: Props) => {
           borderWidth={{ base: "0", md: "1px" }} 
           borderColor={cardBorder} 
           borderRadius={{ base: "none", md: "3xl" }}
-          bg={{ base: "transparent", md: useColorModeValue("white", "whiteAlpha.50") }}
-          boxShadow={{ base: "none", md: useColorModeValue("0 4px 20px rgba(0,0,0,0.03)", "0 4px 20px rgba(0,0,0,0.2)") }}
+          bg={{ base: "transparent", md: tableBg }}
+          boxShadow={{ base: "none", md: panelShadow }}
         >
           <VStack spacing={6} align="stretch">
             {/* Upload Section */}
-            <Box p={{ base: 4, md: 6 }} borderRadius="2xl" bg={useColorModeValue("gray.50", "whiteAlpha.100")} borderWidth="1px" borderColor={cardBorder} position="relative" overflow="hidden">
+            <Box p={{ base: 4, md: 6 }} borderRadius="2xl" bg={uploadSurface} borderWidth="1px" borderColor={cardBorder} position="relative" overflow="hidden">
               <Box position="absolute" top="-20px" right="-20px" w="100px" h="100px" bg="blue.200" filter="blur(50px)" opacity={0.4} borderRadius="full" zIndex={0} pointerEvents="none" />
               
               <VStack spacing={5} align="stretch" position="relative" zIndex={1}>
@@ -203,7 +213,7 @@ const DocumentsForm = observer(({ userId }: Props) => {
                   </Box>
                   
                   <Box>
-                    <FormLabel fontSize="xs" fontWeight="700" color={useColorModeValue("gray.600", "gray.400")}>FILE SELECTION</FormLabel>
+                    <FormLabel fontSize="xs" fontWeight="700" color={fileLabel}>FILE SELECTION</FormLabel>
                     {selectedFile ? (
                       <Flex 
                         align="center" 
@@ -212,14 +222,14 @@ const DocumentsForm = observer(({ userId }: Props) => {
                         borderWidth="1px" 
                         borderColor="blue.400" 
                         borderRadius="xl"
-                        bg={useColorModeValue("blue.50", "blue.900/30")}
+                        bg={blueSurface}
                       >
                         <HStack spacing={3}>
                           <Box p={2} bg="white" borderRadius="md" boxShadow="sm">
                             <FileText size={20} color="#3182ce" />
                           </Box>
                           <VStack align="start" spacing={0}>
-                            <Text fontSize="sm" fontWeight="700" color={useColorModeValue("gray.800", "white")} isTruncated maxW="200px">
+                            <Text fontSize="sm" fontWeight="700" color={selectedName} isTruncated maxW="200px">
                               {selectedFile.name}
                             </Text>
                             <Text fontSize="xs" color="gray.500" fontWeight="600">
@@ -242,7 +252,7 @@ const DocumentsForm = observer(({ userId }: Props) => {
                         type="file-drag"
                         name="documentFile"
                         parentStyle={{ width: "100%" }}
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        accept=".pdf,.jpg,.jpeg,.png"
                         onChange={(e: any) => setSelectedFile(e.target.files?.[0] || null)}
                       />
                     )}
@@ -277,14 +287,14 @@ const DocumentsForm = observer(({ userId }: Props) => {
               
               {loading ? (
                 <Flex justify="center" p={{ base: 4, md: 8 }}><Spinner size="xl" color="blue.500" /></Flex>
-              ) : existingDocuments.length === 0 ? (
+              ) : !existingDocuments.some((doc) => doc.file?.url) ? (
                 <Flex justify="center" p={{ base: 4, md: 8 }} bg={tableBg} borderRadius="xl" borderWidth="1px" borderColor={cardBorder} borderStyle="dashed">
                   <Text color="gray.500" fontSize="sm" fontWeight="600">No documents found.</Text>
                 </Flex>
               ) : (
                 <Box overflowX="auto" borderRadius={{ base: "md", md: "xl" }} borderWidth="1px" borderColor={cardBorder} w="100%">
                   <Table variant="simple" bg={tableBg} size={{ base: "sm", md: "md" }}>
-                    <Thead bg={useColorModeValue("gray.50", "whiteAlpha.50")}>
+                    <Thead bg={tableHeader}>
                       <Tr>
                         <Th px={{ base: 2, md: 4 }} whiteSpace="nowrap">Type / Title</Th>
                         <Th px={{ base: 2, md: 4 }} whiteSpace="nowrap">File Name</Th>
@@ -292,9 +302,9 @@ const DocumentsForm = observer(({ userId }: Props) => {
                       </Tr>
                     </Thead>
                     <Tbody>
-                      {existingDocuments.map((doc, idx) => (
+                      {existingDocuments.map((doc, idx) => doc.file?.url ? (
                         <Tr key={idx}>
-                          <Td fontWeight="600" fontSize={{ base: "xs", md: "sm" }} px={{ base: 2, md: 4 }}>{doc.title || doc.documentType || "Document"}</Td>
+                          <Td fontWeight="600" fontSize={{ base: "xs", md: "sm" }} px={{ base: 2, md: 4 }}>{doc.title || doc.label || doc.documentType || "Document"}</Td>
                           <Td px={{ base: 2, md: 4 }}>
                             <HStack>
                               <FileText size={16} color="gray" />
@@ -306,21 +316,23 @@ const DocumentsForm = observer(({ userId }: Props) => {
                           <Td textAlign="right" px={{ base: 2, md: 4 }}>
                             <HStack justify="flex-end" spacing={1}>
                               {doc.file?.url && (
-                                <Button 
-                                  as="a" 
-                                  href={doc.file.url} 
-                                  target="_blank"
+                                <DocumentDownloadButton
+                                  url={doc.file.url}
+                                  name={doc.file.name || "Document"}
+                                  aria-label={`Download ${doc.file.name || "document"}`}
                                   size="sm" 
                                   variant="ghost" 
                                   colorScheme="blue"
                                 >
                                   <Download size={16} />
-                                </Button>
+                                </DocumentDownloadButton>
                               )}
                               <Button 
                                 size="sm" 
                                 variant="ghost" 
                                 colorScheme="red"
+                                aria-label={`Remove ${doc.file?.name || "document"}`}
+                                title="Remove document"
                                 onClick={() => handleDelete(idx)}
                                 isDisabled={uploading}
                               >
@@ -329,7 +341,7 @@ const DocumentsForm = observer(({ userId }: Props) => {
                             </HStack>
                           </Td>
                         </Tr>
-                      ))}
+                      ) : null)}
                     </Tbody>
                   </Table>
                 </Box>

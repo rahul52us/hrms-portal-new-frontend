@@ -1,6 +1,7 @@
 "use client";
 
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
+import DocumentDownloadButton from "@/app/component/common/DocumentDownloadButton";
 import {
   EligibleLeaveItem,
   LeaveAttachment,
@@ -804,6 +805,7 @@ export default function EmployeeRequestsWorkspace() {
                           </HStack>
                           <Text mt={1} fontSize="sm">{requestDateText(item)}</Text>
                           <Text mt={1} fontSize="xs" color={muted}>{requestDetail(item)}</Text>
+                          {(item.kind === "leave" || item.kind === "attendance_regularization") && item.request.attachments?.length ? <Flex mt={2} gap={2} wrap="wrap">{item.request.attachments.map((file: any) => <DocumentDownloadButton key={file.attachment || file.url} url={file.url} name={file.name} size="xs" variant="outline" />)}</Flex> : null}
                         </Box>
                         <HStack alignSelf={{ lg: "center" }}>
                           {item.kind === "leave" &&

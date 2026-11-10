@@ -1,4 +1,5 @@
 "use client";
+import { PrivateAvatar } from "@/app/component/common/PrivateImage";
 
 import { observer } from "mobx-react-lite";
 import styled, { keyframes } from "styled-components";
@@ -70,8 +71,9 @@ const SidebarLogo: React.FC<SidebarLogoProps> = observer(({ showBrand = false })
         $hoverBoxShadow={ringHoverShadow}
       >
         {logoUrl ? (
-          <Avatar
+          <PrivateAvatar
             src={logoUrl}
+            name={companyName}
             size="sm"
             borderRadius="10px"
             bg={brandScale[500] || "transparent"}

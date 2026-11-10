@@ -1,4 +1,5 @@
 "use client";
+import { PrivateImage } from "@/app/component/common/PrivateImage";
 
 import {
   Avatar,
@@ -69,13 +70,12 @@ const CompanyAvatar = ({
   return (
     <Box position="relative" flexShrink={0}>
       {company?.logo?.url ? (
-        <Image
+        <PrivateImage
           src={company.logo.url}
           alt={company.company_name}
           boxSize={`${size}px`}
           borderRadius="9px"
           objectFit="cover"
-          fallbackSrc="https://via.placeholder.com/40?text=Co"
         />
       ) : (
         <Avatar

@@ -3,6 +3,7 @@
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
 import { hasPermission, PERMISSION_KEYS } from "@/app/config/utils/permissions";
 import stores from "@/app/store/stores";
+import DocumentDownloadButton from "@/app/component/common/DocumentDownloadButton";
 import {
   LeaveRequest,
   actOnLeaveRequest,
@@ -252,7 +253,7 @@ export default function LeaveRequestsPanel({ companyId, borderColor, muted }: { 
                     {selected.attachments?.length ? (
                       <Box mt={3}>
                         {selected.attachments.map((attachment) => (
-                          <Button as="a" href={attachment.url} target="_blank" rel="noreferrer" key={attachment.url} mr={2} mb={2} size="sm" variant="outline">{attachment.name}</Button>
+                          <DocumentDownloadButton url={attachment.url} name={attachment.name} companyId={companyId} key={attachment.url} mr={2} mb={2} size="sm" variant="outline" />
                         ))}
                       </Box>
                     ) : <Text mt={3} fontSize="sm" color={muted}>The employee has not uploaded a document yet.</Text>}

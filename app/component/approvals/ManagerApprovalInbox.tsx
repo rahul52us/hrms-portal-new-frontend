@@ -1,6 +1,7 @@
 "use client";
 
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
+import DocumentDownloadButton from "@/app/component/common/DocumentDownloadButton";
 import {
   LeaveCancellationRequest,
   LeaveEncashmentRequest,
@@ -441,6 +442,7 @@ export default function ManagerApprovalInbox() {
                   <Text fontSize="xs" color={muted}>Reason</Text>
                   <Text mt={1}>{selected.request.reason || "No reason provided"}</Text>
                 </Box>
+                {(selected.kind === "leave" || selected.kind === "attendance_regularization") && selected.request.attachments?.length ? <Box><Text fontWeight="600" mb={2}>Supporting documents</Text><Stack align="start">{selected.request.attachments.map((file: any) => <DocumentDownloadButton key={file.attachment || file.url} url={file.url} name={file.name} size="sm" variant="outline" />)}</Stack></Box> : null}
                 <Box>
                   <Text fontSize="sm" fontWeight="700" mb={2}>Decision comment</Text>
                   <Textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Required when rejecting" />
