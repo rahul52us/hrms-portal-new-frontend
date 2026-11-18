@@ -15,7 +15,6 @@ import {
   Text,
   Tooltip,
   VStack,
-  Avatar,
   Icon,
   IconButton,
   Stat,
@@ -28,6 +27,7 @@ import {
   useBreakpointValue,
   useColorModeValue,
 } from "@chakra-ui/react";
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import { 
   FiBriefcase, 
   FiMapPin, 

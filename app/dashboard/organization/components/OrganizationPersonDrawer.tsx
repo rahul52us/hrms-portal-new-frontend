@@ -7,7 +7,6 @@ import {
 } from "@/app/store/organizationStore/organizationStore";
 import stores from "@/app/store/stores";
 import {
-  Avatar,
   Badge,
   Box,
   Button,
@@ -28,6 +27,7 @@ import {
   useColorModeValue,
   useToast,
 } from "@chakra-ui/react";
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import { useEffect, useState } from "react";
 
 type Props = {

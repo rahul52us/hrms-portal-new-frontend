@@ -5,7 +5,6 @@ import {
   OrganizationPageInfo,
 } from "@/app/store/organizationStore/organizationStore";
 import {
-  Avatar,
   Badge,
   Box,
   Button,
@@ -18,6 +17,7 @@ import {
   Tooltip,
   useColorModeValue,
 } from "@chakra-ui/react";
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import { ChevronDown, ChevronRight, Eye } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Tree, TreeNode } from "react-organizational-chart";

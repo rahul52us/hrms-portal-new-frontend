@@ -380,7 +380,7 @@ class UserStore {
       formData.append("dryRun", "true");
       Object.entries(options || {}).forEach(([key, value]) => {
         if (value !== undefined && value !== null && `${value}` !== "") {
-          formData.append(key, String(value));
+          formData.append(key, key === "onboarding" ? JSON.stringify(value) : String(value));
         }
       });
       const response = await axios.post("/admin/users/bulk", formData, {
@@ -404,7 +404,7 @@ class UserStore {
       formData.append("file", file);
       Object.entries(options || {}).forEach(([key, value]) => {
         if (value !== undefined && value !== null && `${value}` !== "") {
-          formData.append(key, String(value));
+          formData.append(key, key === "onboarding" ? JSON.stringify(value) : String(value));
         }
       });
       const response = await axios.post("/admin/users/bulk", formData, {

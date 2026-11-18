@@ -9,11 +9,14 @@ import Pagination from "@/app/component/common/pagination/Pagination";
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
 import { dueLabel, emptyPage, History, onboardingGet, onboardingSave, ownerLabels, Page, Template, TemplateContent } from "./onboardingApi";
 import TemplateTaskEditor, { taskForm, TaskForm, taskPayload } from "./TemplateTaskEditor";
+import { categoryLabel } from "../assets/assetApi";
 
 function Checklist({ content }: { content: TemplateContent }) {
   return <Stack spacing={4}><Text whiteSpace="pre-wrap" overflowWrap="anywhere" color="gray.500">{content.description}</Text>{!content.tasks.length && <Text color="gray.500">No tasks added.</Text>}{content.tasks.map((task, index) => <Box key={task._id || index} borderBottomWidth="1px" pb={4} minW={0}>
     <Flex gap={2} align="start" wrap="wrap"><Text fontWeight="700" overflowWrap="anywhere">{index + 1}. {task.title}</Text>{task.required && <Badge colorScheme="blue">Required</Badge>}{task.requiresDocument && <Badge colorScheme="cyan">Document</Badge>}</Flex>
     <Text fontSize="sm" mt={1}>{ownerLabels[task.owner]}{task.owner === "specific_user" ? `: ${task.ownerNameSnapshot || "Previously selected person"}` : ""} | {dueLabel(task.dueDays)}</Text>
+    {task.kind === "policy_acknowledgement" && <Text fontSize="sm" mt={1}>Policy acknowledgement: {task.policyNameSnapshot} | v{task.policyVersionNumber}</Text>}
+    {task.kind === "asset_provisioning" && task.assetRequirement && <Text fontSize="sm" mt={1}>{task.assetRequirement.quantity} {categoryLabel(task.assetRequirement.category, task.assetRequirement.categoryName)} unit(s) | Complete after {task.assetRequirement.receiptRequired ? "employee receipt acknowledgement" : "physical handover"}</Text>}
     {task.instructions && <Text fontSize="sm" mt={2} whiteSpace="pre-wrap" overflowWrap="anywhere">{task.instructions}</Text>}
   </Box>)}</Stack>;
 }

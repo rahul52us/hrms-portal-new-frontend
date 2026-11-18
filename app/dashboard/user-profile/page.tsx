@@ -2,7 +2,6 @@
 
 import axios from "axios";
 import {
-  Avatar,
   Badge,
   Box,
   Divider,
@@ -21,6 +20,7 @@ import {
   useToast,
   SimpleGrid,
 } from "@chakra-ui/react";
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
 import { FiDollarSign, FiFolder, FiShield, FiStar, FiUser, FiUsers, FiMail, FiMapPin } from "react-icons/fi";

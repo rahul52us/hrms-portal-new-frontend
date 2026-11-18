@@ -7,7 +7,6 @@ import { PERMISSION_KEYS, hasPermission } from "@/app/config/utils/permissions";
 import { StatCard } from "@/app/component/common/StatCard/StatCard";
 import stores from "@/app/store/stores";
 import {
-  Avatar,
   Badge,
   Box,
   Button,
@@ -25,6 +24,7 @@ import {
   useColorMode,
   Skeleton
 } from "@chakra-ui/react";
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
 import { observer } from "mobx-react-lite";
 import { useRouter } from "next/navigation";

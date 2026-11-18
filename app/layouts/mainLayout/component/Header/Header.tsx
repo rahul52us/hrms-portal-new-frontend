@@ -5,7 +5,6 @@ import { isEmployeeRole, isLearnerRole, isManagerRole } from '@/app/config/utils
 import stores from '@/app/store/stores';
 import { MoonIcon, SunIcon } from '@chakra-ui/icons';
 import {
-  Avatar,
   Box,
   Button,
   Link as ChakraLink,
@@ -24,6 +23,7 @@ import {
   Text,
   useColorMode,
 } from '@chakra-ui/react';
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import { observer } from 'mobx-react-lite';
 import NextLink from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';

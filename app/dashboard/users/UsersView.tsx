@@ -39,6 +39,7 @@ import ProfileDetailsDrawer from "./components/ProfileDetailsDrawer";
 import ChangeManagerModal from "./components/ChangeManagerModal";
 import { StatCard } from "../../component/common/StatCard/StatCard";
 import { FiUsers, FiFilter, FiCheckCircle, FiClock, FiShield } from "react-icons/fi";
+import { creationOnboardingPayload, CreationOnboardingSelection } from "../onboarding/CreationOnboardingFields";
 
 type UsersViewProps = {
   scopedCompanyId?: string;
@@ -46,6 +47,7 @@ type UsersViewProps = {
 };
 
 type UserFormState = {
+  onboarding?: CreationOnboardingSelection | null;
   id?: string;
   employeeNumber: string;
   name: string;
@@ -54,6 +56,7 @@ type UserFormState = {
   confirmPassword: string;
   sendInvite: boolean;
   pic: any;
+  expectedPhotoUrl: string;
   mobileNumber: string;
   department: string;
   team: string;
@@ -93,6 +96,7 @@ type UserFormState = {
 };
 
 type BulkFormState = {
+  onboarding?: CreationOnboardingSelection | null;
   companyId: string;
   companyName: string;
   createCompany: boolean;
@@ -201,6 +205,7 @@ const initialForm = (): UserFormState => ({
   confirmPassword: "",
   sendInvite: true,
   pic: { file: null, isAdd: 0, isDeleted: 0, url: "" },
+  expectedPhotoUrl: "",
   mobileNumber: "",
   department: "",
   team: "",
@@ -482,7 +487,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
 
     setSelectedFile(null);
     userStore.bulkPreview = [];
-  }, [bulkForm.companyId, bulkForm.uploadRole, isBulkModalOpen, userStore]);
+  }, [bulkForm.companyId, bulkForm.uploadRole, bulkForm.onboarding, isBulkModalOpen, userStore]);
 
   useEffect(() => {
     if (!listTabs.some((item) => item.value === listTab)) {
@@ -552,6 +557,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       ...prev,
       companyId: isSuperadmin ? scopedCompanyId || prev.companyId : auth.company || prev.companyId,
       uploadRole: "",
+      onboarding: null,
     }));
   }, [auth.company, isSuperadmin, scopedCompanyId, userStore]);
 
@@ -692,6 +698,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       confirmPassword: "",
       sendInvite: false,
       pic: user.pic ? { ...user.pic, file: null, isAdd: 0, isDeleted: 0, url: user.pic.url || "" } : { file: null, isAdd: 0, isDeleted: 0, url: "" },
+      expectedPhotoUrl: user.pic?.url || "",
       mobileNumber: user.mobileNumber || "",
       department: user.department || "",
       team: user.team || "",
@@ -975,6 +982,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     const isHrRole = roleValue === "hradmin" || roleValue === "hr";
     const payload: any = {
       employeeNumber,
+      expectedPhotoUrl: userForm.expectedPhotoUrl,
       name,
       username: username || undefined,
       mobileNumber,
@@ -1062,6 +1070,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
     }
 
     try {
+      if (!userForm.id) payload.onboarding = creationOnboardingPayload(userForm.onboarding);
       const response = userForm.id
         ? await userStore.updateManagedUser(userForm.id, payload)
         : await userStore.createManagedUser(payload);
@@ -1163,7 +1172,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
             uploadRole: bulkForm.uploadRole,
           };
 
-        await userStore.previewUploadUsers(file, bulkUploadOptions);
+        await userStore.previewUploadUsers(file, { ...bulkUploadOptions, onboarding: creationOnboardingPayload(bulkForm.onboarding) });
       } catch (err: any) {
         showToast({
           title: "Preview failed",
@@ -1178,6 +1187,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
       bulkForm.companyName,
       bulkForm.createCompany,
       bulkForm.uploadRole,
+      bulkForm.onboarding,
       isSuperadmin,
       toast,
       userStore,
@@ -1250,7 +1260,7 @@ const UsersView = observer(({ scopedCompanyId: scopedCompanyIdProp, embedded = f
               uploadRole: bulkForm.uploadRole,
             };
 
-      const response = await userStore.uploadUsers(selectedFile, bulkUploadOptions);
+      const response = await userStore.uploadUsers(selectedFile, { ...bulkUploadOptions, onboarding: creationOnboardingPayload(bulkForm.onboarding) });
       const createdCount = response?.data?.createdCount || 0;
       const failedCount = response?.data?.failedCount || 0;
 

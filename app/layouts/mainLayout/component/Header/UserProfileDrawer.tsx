@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Avatar,
   Box,
   Button,
   Drawer,
@@ -20,6 +19,7 @@ import {
   Textarea,
   useToast,
 } from "@chakra-ui/react";
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import { observer } from "mobx-react-lite";
 import { useEffect, useMemo, useState } from "react";
 import stores from "@/app/store/stores";

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Avatar,
   Box,
   Button,
   Checkbox,
@@ -26,6 +25,7 @@ import {
   Wrap,
   WrapItem,
 } from "@chakra-ui/react";
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import debounce from "lodash/debounce";
 import React, {
   useCallback,

@@ -3,7 +3,6 @@
 import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
 import axios from "axios";
 import {
-  Avatar,
   Badge,
   Box,
   Button,
@@ -39,6 +38,7 @@ import {
   useDisclosure,
   useToast,
 } from "@chakra-ui/react";
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiEdit2, FiRefreshCw, FiSearch, FiUploadCloud, FiXCircle } from "react-icons/fi";
 import CompensationImportDrawer from "./CompensationImportDrawer";

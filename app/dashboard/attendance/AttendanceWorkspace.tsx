@@ -8,7 +8,6 @@ import {
   Alert,
   AlertDescription,
   AlertIcon,
-  Avatar,
   Badge,
   Box,
   Button,
@@ -37,6 +36,7 @@ import {
   useColorModeValue,
   useDisclosure,
 } from "@chakra-ui/react";
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import { observer } from "mobx-react-lite";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {

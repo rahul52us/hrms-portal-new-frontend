@@ -1,6 +1,5 @@
 'use client';
 import {
-  Avatar,
   Box,
   Flex,
   Heading,
@@ -11,6 +10,7 @@ import {
   MenuList,
   Text,
 } from '@chakra-ui/react';
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import { FiMenu } from 'react-icons/fi';
 import React from 'react';
 import stores from '../../../store/stores';

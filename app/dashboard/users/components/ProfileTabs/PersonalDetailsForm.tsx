@@ -22,6 +22,7 @@ import { FormErrorMessage } from "@chakra-ui/react";
 import { User, Calendar, Users, Briefcase, Image as ImageIcon, Trash2 } from "lucide-react";
 import CustomInput from "../../../../component/config/component/customInput/CustomInput";
 import stores from "@/app/store/stores";
+import { PrivateImage } from "@/app/component/common/PrivateImage";
 
 type Props = {
   data: any;
@@ -61,6 +62,7 @@ const PersonalDetailsForm = observer(({ data, user, onSave, isSaving }: Props) =
 
   const [formData, setFormData] = useState<any>({
     pic: { file: null, url: "", isDeleted: 0, isAdd: 0 },
+    expectedPhotoUrl: "",
     employeeNumber: "",
     designation: "",
     fullName: "",
@@ -91,6 +93,16 @@ const PersonalDetailsForm = observer(({ data, user, onSave, isSaving }: Props) =
   const headerGradient = useColorModeValue("linear(to-r, blue.600, purple.600)", "linear(to-r, blue.300, purple.300)");
   const sectionTitleColor = useColorModeValue("blue.600", "blue.300");
   const muted = useColorModeValue("gray.500", "gray.400");
+  const photoBackground = useColorModeValue("gray.50", "whiteAlpha.50");
+  const photoFrame = useColorModeValue("white", "gray.700");
+  const photoBorder = useColorModeValue("gray.400", "gray.600");
+  const [previewUrl, setPreviewUrl] = useState("");
+  useEffect(() => {
+    if (!(formData.pic?.file instanceof File)) { setPreviewUrl(""); return; }
+    const url = URL.createObjectURL(formData.pic.file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [formData.pic?.file]);
 
   useEffect(() => {
     const cId = user?.company?._id || user?.companyId || stores.companyStore.getActiveCompanyId();
@@ -104,13 +116,10 @@ const PersonalDetailsForm = observer(({ data, user, onSave, isSaving }: Props) =
 
   useEffect(() => {
     if (data?.personalDetails || user) {
-      console.log("DEBUG USER DEPT/LOC", { 
-        department: user?.department, 
-        loc: user?.officeLocation 
-      });
       const genderStringMap: Record<number, string> = { 1: "male", 2: "female", 3: "other" };
       setFormData({
         pic: user?.pic ? { ...user.pic, file: null, isAdd: 0, isDeleted: 0, url: user.pic.url || "" } : { file: null, isAdd: 0, isDeleted: 0, url: "" },
+        expectedPhotoUrl: user?.pic?.url || "",
         employeeNumber: user?.employeeNumber || user?.code || "",
         designation: user?.designation || "",
         department: (user?.department?._id || user?.department || "").toString(),
@@ -161,7 +170,6 @@ const PersonalDetailsForm = observer(({ data, user, onSave, isSaving }: Props) =
       if (!payload.department) delete payload.department;
       if (!payload.officeLocation) delete payload.officeLocation;
 
-      console.log("DEBUG SUBMIT PAYLOAD", payload);
       onSave(payload);
     } catch (err: any) {
       console.error("Validation error:", err);
@@ -178,12 +186,6 @@ const PersonalDetailsForm = observer(({ data, user, onSave, isSaving }: Props) =
       setErrors(newErrors);
     }
   };
-
-  console.log("DEBUG RENDER:", {
-    userDept: user?.department,
-    formDataDept: formData.department,
-    departmentsLength: stores.departmentStore.departments?.length,
-  });
 
   return (
     <Box as="form" onSubmit={handleSubmit} noValidate>
@@ -218,25 +220,25 @@ const PersonalDetailsForm = observer(({ data, user, onSave, isSaving }: Props) =
                   direction={{ base: "column", sm: "row" }}
                   spacing={6} 
                   align={{ base: "center", sm: "center" }} 
-                  bg={useColorModeValue("gray.50", "whiteAlpha.50")} 
+                  bg={photoBackground}
                   p={{ base: 4, sm: 6 }} 
                   borderRadius="2xl" 
                   border="1px dashed" 
-                  borderColor={useColorModeValue("gray.400", "gray.600")}
+                  borderColor={photoBorder}
                   textAlign={{ base: "center", sm: "left" }}
                 >
                   <Box
                     borderRadius="full"
                     overflow="hidden"
                     border="4px solid"
-                    borderColor={useColorModeValue("white", "gray.700")}
+                    borderColor={photoFrame}
                     boxShadow="md"
                     w={{ base: "100px", sm: "120px" }}
                     h={{ base: "100px", sm: "120px" }}
                     flexShrink={0}
                   >
-                    <img
-                      src={formData.pic.file ? URL.createObjectURL(formData.pic.file) : (formData.pic.url ? `${formData.pic.url}${formData.pic.url.includes('?') ? '&' : '?'}t=${user?.updatedAt ? new Date(user.updatedAt).getTime() : Date.now()}` : "")}
+                    <PrivateImage
+                      src={previewUrl || formData.pic.url || ""}
                       alt="preview"
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />

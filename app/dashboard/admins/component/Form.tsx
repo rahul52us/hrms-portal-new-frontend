@@ -1,5 +1,6 @@
 "use client";
 
+import { PrivateImage } from "@/app/component/common/PrivateImage";
 import {
   Box,
   Button,
@@ -175,7 +176,7 @@ const Form = ({
                       borderColor="gray.200"
                       maxW="200px"
                     >
-                      <img
+                      <PrivateImage
                         src={preview}
                         alt="preview"
                         style={{

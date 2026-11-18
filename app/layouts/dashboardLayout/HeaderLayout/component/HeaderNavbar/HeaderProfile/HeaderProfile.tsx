@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Avatar,
   Button,
   Menu,
   MenuButton,
@@ -19,6 +18,7 @@ import {
   useColorMode,
   Flex,
 } from "@chakra-ui/react";
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import { observer } from "mobx-react-lite";
 import {
   FaCog,

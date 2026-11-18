@@ -113,8 +113,9 @@ const BulkUploadResultModal = ({
                           </Badge>
                         </Td>
                         <Td>
-                          <Text fontSize="xs" color={item.success ? "gray.500" : "red.500"}>
+                          <Text fontSize="xs" whiteSpace="normal" maxW="320px" color={item.success ? "gray.500" : "red.500"}>
                             {item.success ? "Employee created successfully" : item.error}
+                            {item.onboarding ? ` | Onboarding assigned: ${item.onboarding.templateName}` : ""}
                           </Text>
                         </Td>
                       </Tr>

@@ -5,7 +5,6 @@ import {
   OrganizationPageInfo,
 } from "@/app/store/organizationStore/organizationStore";
 import {
-  Avatar,
   Badge,
   Box,
   Button,
@@ -24,6 +23,7 @@ import {
   Tr,
   useColorModeValue,
 } from "@chakra-ui/react";
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import { Eye } from "lucide-react";
 
 type Props = {

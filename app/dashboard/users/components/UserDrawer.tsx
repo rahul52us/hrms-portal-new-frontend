@@ -25,6 +25,8 @@ import DashboardDrawer from "../../../component/common/Drawer/DashboardDrawer";
 import CustomInput from "../../../component/config/component/customInput/CustomInput";
 import { genderOptions } from "../../../config/constant";
 import ManagerHierarchy from "./ManagerHierarchy";
+import { PrivateImage } from "@/app/component/common/PrivateImage";
+import CreationOnboardingFields from "../../onboarding/CreationOnboardingFields";
 
 const SectionCard = ({ title, icon, children }: any) => {
   return (
@@ -384,7 +386,7 @@ const UserDrawer = ({
                       borderColor="gray.200"
                       maxW="200px"
                     >
-                      <img
+                      <PrivateImage
                         src={preview}
                         alt="preview"
                         style={{
@@ -927,6 +929,7 @@ const UserDrawer = ({
               </SectionCard>
             )}
 
+            {!userForm.id && <CreationOnboardingFields value={userForm.onboarding} disabled={loading} onChange={(onboarding) => setUserForm((previous: any) => ({ ...previous, onboarding }))} />}
       </VStack>
     </DashboardDrawer>
   );

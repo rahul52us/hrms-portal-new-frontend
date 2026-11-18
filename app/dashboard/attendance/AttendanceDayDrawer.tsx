@@ -8,7 +8,6 @@ import {
   Alert,
   AlertDescription,
   AlertIcon,
-  Avatar,
   Badge,
   Box,
   Button,
@@ -21,6 +20,7 @@ import {
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import {

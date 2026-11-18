@@ -25,6 +25,7 @@ import {
   useColorModeValue,
 } from "@chakra-ui/react";
 import ReactSelect from "react-select";
+import CreationOnboardingFields from "../../onboarding/CreationOnboardingFields";
 
 type Props = {
   isOpen: boolean;
@@ -119,6 +120,7 @@ const BulkUploadModal = ({
     "Designation",
     "Joining Date",
     "Reporting Manager Email (Optional)",
+    "Password",
   ];
   const companyReady = Boolean(bulkForm.companyId);
 
@@ -211,7 +213,8 @@ const BulkUploadModal = ({
               )}
             </Box>
 
-            {/* ================= DROPZONE ================= */}            
+            <CreationOnboardingFields bulk value={bulkForm.onboarding} disabled={loading} onChange={(onboarding) => setBulkForm((previous: any) => ({ ...previous, onboarding }))} />
+            {/* ================= DROPZONE ================= */}
             {companyReady && bulkForm.uploadRole ? (
               <Box
                 {...getRootProps()}
@@ -284,6 +287,7 @@ const BulkUploadModal = ({
                         <Th>Company Status</Th>
                         <Th>Reporting Manager</Th>
                         <Th>Action</Th>
+                        {bulkForm.onboarding && <Th>Onboarding</Th>}
                         <Th>Errors</Th>
                       </Tr>
                     </Thead>
@@ -291,7 +295,7 @@ const BulkUploadModal = ({
                     <Tbody>
                       {loading ? (
                         <Tr>
-                          <Td colSpan={13} textAlign="center" py={6}>
+                          <Td colSpan={bulkForm.onboarding ? 14 : 13} textAlign="center" py={6}>
                             Loading preview...
                           </Td>
                         </Tr>
@@ -336,6 +340,7 @@ const BulkUploadModal = ({
                               </Badge>
                             </Td>
 
+                            {bulkForm.onboarding && <Td><Badge colorScheme={row.onboardingPlanned ? "blue" : "gray"}>{row.onboardingPlanned ? "Planned" : "Not assigned"}</Badge></Td>}
                             <Td>
                               {row.errors?.length > 0 ? (
                                 <Text color="red.500" fontSize="xs">

@@ -3,7 +3,7 @@ import { expandRoleAliases } from "@/app/config/utils/roleAccess";
 import { PERMISSION_KEYS, hasPermission } from "@/app/config/utils/permissions";
 import { LucideBriefcaseBusiness, Network } from "lucide-react";
 import { BiCategory } from "react-icons/bi";
-import { FiBell, FiCalendar, FiCamera, FiCheckSquare, FiClock, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers, FiUserCheck, FiPieChart, FiDatabase } from "react-icons/fi";
+import { FiBell, FiCalendar, FiCamera, FiCheckSquare, FiClock, FiCreditCard, FiFileText, FiMapPin, FiSettings, FiShield, FiUser, FiUsers, FiUserCheck, FiPieChart, FiDatabase, FiPackage } from "react-icons/fi";
 
 interface SidebarItem {
   id: number;
@@ -64,6 +64,7 @@ const sidebarDatas: SidebarItem[] = [
     permissionKey: PERMISSION_KEYS.VIEW_USERS,
   },
   { id: 1146, name: "Onboarding", icon: <FiUserCheck />, url: "/dashboard/onboarding", role: ["admin", "hradmin", "hr", "departmenthead", "user"] },
+  { id: 1147, name: "Assets", icon: <FiPackage />, url: "/dashboard/assets", role: ["admin", "hradmin", "hr", "departmenthead", "user", "payrollexecutive"] },
   {
     id: 101,
     name: "Departments",
@@ -197,13 +198,6 @@ const sidebarDatas: SidebarItem[] = [
         name: "My Activity Update",
         icon: <FiFileText />,
         url: "/employee/activity-update",
-        role: ["user"],
-      },
-      {
-        id: 209,
-        name: "Asset Allocated",
-        icon: <FiFileText />,
-        url: "/employee/assets",
         role: ["user"],
       },
       {

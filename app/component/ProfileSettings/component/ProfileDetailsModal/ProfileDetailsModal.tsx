@@ -5,7 +5,6 @@ import {
   InfoIcon,
 } from "@chakra-ui/icons"; // Assuming standard chakra icons
 import {
-  Avatar,
   Badge,
   Box,
   Button,
@@ -29,6 +28,7 @@ import {
   useToast,
   VStack,
 } from "@chakra-ui/react";
+import { PrivateAvatar as Avatar } from "@/app/component/common/PrivateImage";
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
 import stores from "../../../../store/stores";

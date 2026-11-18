@@ -1,6 +1,8 @@
 import axios from "axios";
 
 export type Task = {
+  kind?: "standard" | "policy_acknowledgement" | "asset_provisioning"; policyVersionId?: string | null; policyNameSnapshot?: string; policyVersionNumber?: number | null;
+  assetRequirement?: { category: string; categoryName?: string; quantity: number; receiptRequired: boolean } | null;
   _id?: string; title: string; instructions: string; owner: "employee" | "reporting_manager" | "hr" | "specific_user";
   ownerUser: string | null; ownerNameSnapshot: string; dueDays: number; required: boolean; requiresDocument: boolean;
 };

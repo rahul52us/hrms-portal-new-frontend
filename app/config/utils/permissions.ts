@@ -1,6 +1,15 @@
 "use client";
 
 export const PERMISSION_KEYS = {
+  APPROVE_ASSET_DISPOSALS: "approve_asset_disposals",
+  MANAGE_ASSET_DOCUMENTS: "manage_asset_documents",
+  MANAGE_ASSET_CATEGORIES: "manage_asset_categories",
+  IMPORT_ASSETS: "import_assets",
+  EXPORT_ASSETS: "export_assets",
+  VIEW_ASSETS: "view_assets",
+  MANAGE_ASSETS: "manage_assets",
+  APPROVE_ASSET_WRITE_OFFS: "approve_asset_write_offs",
+  MANAGE_ASSET_CLEARANCES: "manage_asset_clearances",
   VIEW_ONBOARDING: "view_onboarding",
   MANAGE_ONBOARDING: "manage_onboarding",
   VIEW_ONBOARDING_TEMPLATES: "view_onboarding_templates",
