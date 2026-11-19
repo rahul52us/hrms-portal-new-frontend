@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import stores from "@/app/store/stores";
 import PermissionGate from "@/app/component/common/PermissionGate";
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
+import { normalizeRole } from "@/app/config/utils/roleAccess";
 import { onboardingGet } from "./onboardingApi";
 import ChecklistTemplatesWorkspace from "./ChecklistTemplatesWorkspace";
 import EmployeeOnboardingList from "./EmployeeOnboardingList";
@@ -16,9 +17,11 @@ import OnboardingPoliciesWorkspace from "./OnboardingPoliciesWorkspace";
 export default observer(function OnboardingWorkspace() {
   const queryString = useSearchParams().toString();
   const user = stores.auth.user, ready = stores.auth.sessionReady && Boolean(user);
-  const companyAccount = Boolean(user?.company) && String(user?.role).toLowerCase() !== "superadmin";
+  const role = normalizeRole(user?.role);
+  const companyAccount = Boolean(user?.company) && role !== "superadmin";
+  const showMyOnboarding = role !== "hradmin";
   const accountKey = `${user?._id || ""}:${user?.company?._id || user?.company || ""}`;
-  const [options, setOptions] = useState<{ canView: boolean; canManage: boolean; canViewTemplates: boolean; canManageAutomation: boolean; canManageDocumentSecurity: boolean } | null>(null);
+  const [options, setOptions] = useState<{ canView: boolean; canManage: boolean; canViewAssignedTasks: boolean; canViewTemplates: boolean; canManageAutomation: boolean; canManageDocumentSecurity: boolean } | null>(null);
   const [error, setError] = useState(""), [reload, setReload] = useState(0), [tab, setTab] = useState(0);
   const [initial, setInitial] = useState<{ employeeId?: string; instanceId?: string }>({});
   useEffect(() => {
@@ -29,14 +32,14 @@ export default observer(function OnboardingWorkspace() {
     onboardingGet<{ data: NonNullable<typeof options> }>("/workspace", undefined, controller.signal).then(({ data }) => {
       if (!controller.signal.aborted) {
         setOptions(data);
-        const scopes = [...(data.canView ? ["organization"] : []), "mine", "tasks", ...(data.canViewTemplates ? ["templates", "policies"] : []), ...(data.canManageAutomation ? ["automation"] : []), ...(data.canManageDocumentSecurity ? ["security"] : [])];
+        const scopes = [...(data.canView ? ["organization"] : []), ...(showMyOnboarding ? ["mine"] : []), ...(data.canViewAssignedTasks ? ["tasks"] : []), ...(data.canViewTemplates ? ["templates", "policies"] : []), ...(data.canManageAutomation ? ["automation"] : []), ...(data.canManageDocumentSecurity ? ["security"] : [])];
         const requested = scopes.indexOf(params.get("tab") || ""); setTab(requested >= 0 ? requested : 0);
       }
     }).catch((err) => { if (!controller.signal.aborted) setError(getApiErrorMessage(err?.response?.data || err, "Unable to load onboarding")); });
     return () => controller.abort();
-  }, [ready, companyAccount, accountKey, reload, queryString]);
+  }, [ready, companyAccount, accountKey, reload, queryString, showMyOnboarding]);
   if (!ready) return <Stack p={6}><Skeleton h="40px" /><Skeleton h="150px" /></Stack>;
-  const panels = [...(options?.canView ? [{ name: "Employee onboarding", scope: "organization" }] : []), { name: "My onboarding", scope: "mine" }, { name: "My tasks", scope: "tasks" }, ...(options?.canViewTemplates ? [{ name: "Checklist templates", scope: "templates" }, { name: "Policy library", scope: "policies" }] : []), ...(options?.canManageAutomation ? [{ name: "Automation", scope: "automation" }] : []), ...(options?.canManageDocumentSecurity ? [{ name: "Document security", scope: "security" }] : [])];
+  const panels = [...(options?.canView ? [{ name: "Employee onboarding", scope: "organization" }] : []), ...(showMyOnboarding ? [{ name: "My onboarding", scope: "mine" }] : []), ...(options?.canViewAssignedTasks ? [{ name: "My tasks", scope: "tasks" }] : []), ...(options?.canViewTemplates ? [{ name: "Checklist templates", scope: "templates" }, { name: "Policy library", scope: "policies" }] : []), ...(options?.canManageAutomation ? [{ name: "Automation", scope: "automation" }] : []), ...(options?.canManageDocumentSecurity ? [{ name: "Document security", scope: "security" }] : [])];
   return <PermissionGate allowed={companyAccount} title="Company account required" description="Employee onboarding is managed inside a company."><Box p={{ base: 3, md: 6 }} minW={0}><Stack maxW="1500px" mx="auto" spacing={5}>
     <Heading size="lg">Onboarding</Heading>
     {error && <Alert status="error"><AlertIcon />{error}<Button ml="auto" size="sm" onClick={() => setReload((n) => n + 1)}>Retry</Button></Alert>}
