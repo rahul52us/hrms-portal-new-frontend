@@ -18,15 +18,7 @@ import {
   Tr,
 } from "@chakra-ui/react";
 import { ApprovalWorkflowItem, ApprovalWorkflowVersion, workforcePolicyStore } from "@/app/store/workforcePolicyStore/workforcePolicyStore";
-
-const REQUEST_LABELS: Record<string, string> = {
-  leave_request: "Leave",
-  leave_encashment_request: "Leave encashment",
-  remote_work_request: "WFH",
-  comp_off_claim: "Comp-off",
-  attendance_regularization_request: "Attendance corrections",
-  timesheet_submission: "Daily timesheets",
-};
+import { formatApprovalRequestType } from "./approvalWorkflowLabels";
 
 type Props = {
   canManage: boolean;
@@ -68,7 +60,7 @@ export default function ApprovalWorkflowsPanel({ canManage, borderColor, muted, 
               return (
                 <Tr key={item._id}>
                   <Td><Text fontWeight="700">{item.name}</Text><Text fontSize="xs" color={muted}>{item.code}</Text></Td>
-                  <Td><HStack spacing={1} flexWrap="wrap">{item.applicableTo.map((type) => <Badge key={type} colorScheme="blue">{REQUEST_LABELS[type] || type}</Badge>)}</HStack></Td>
+                  <Td><HStack spacing={1} flexWrap="wrap">{item.applicableTo.map((type) => <Badge key={type} colorScheme="blue" textTransform="none">{formatApprovalRequestType(type)}</Badge>)}</HStack></Td>
                   <Td>
                     {published ? (
                       <><Text fontWeight="600">v{published.versionNumber}</Text><Text fontSize="xs" color={muted}>{published.autoApprove ? "Automatic approval" : `${published.steps.length} approval level${published.steps.length === 1 ? "" : "s"}`}</Text><Text fontSize="xs" color={muted}>{published.effectiveFrom ? `Effective ${new Date(published.effectiveFrom).toLocaleDateString()}` : "Effective from publication"}</Text></>
@@ -94,7 +86,7 @@ export default function ApprovalWorkflowsPanel({ canManage, borderColor, muted, 
         {items.map((item) => (
           <Box key={item._id} borderWidth="1px" borderColor={borderColor} borderRadius="md" p={4}>
             <HStack justify="space-between" align="start"><Box><Text fontWeight="800">{item.name}</Text><Text fontSize="xs" color={muted}>{item.code}</Text></Box><Badge colorScheme={item.status === "active" ? "green" : "gray"}>{item.status}</Badge></HStack>
-            <HStack mt={3} spacing={1} flexWrap="wrap">{item.applicableTo.map((type) => <Badge key={type} colorScheme="blue">{REQUEST_LABELS[type] || type}</Badge>)}</HStack>
+            <HStack mt={3} spacing={1} flexWrap="wrap">{item.applicableTo.map((type) => <Badge key={type} colorScheme="blue" textTransform="none">{formatApprovalRequestType(type)}</Badge>)}</HStack>
             <Text mt={3} fontSize="sm">{item.effectivePublishedVersion ? `Current v${item.effectivePublishedVersion.versionNumber}` : item.latestPublishedVersion ? `Next published v${item.latestPublishedVersion.versionNumber}` : "No published version"}</Text>
             <HStack mt={3}><Button size="xs" variant="outline" onClick={() => onHistory(item)}>History</Button>{canManage && item.status === "active" ? <Button size="xs" onClick={() => item.draftVersion ? onEdit("edit_draft", item, item.draftVersion) : onEdit("new_version", item, item.latestPublishedVersion || null)}>{item.draftVersion ? "Edit draft" : "New version"}</Button> : null}</HStack>
           </Box>

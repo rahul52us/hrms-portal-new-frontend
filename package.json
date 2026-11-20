@@ -12,6 +12,7 @@
     "test:store-actions": "node ../scripts/test-mobx-store-actions.cjs",
     "test:policy-drafts": "node ../scripts/test-workforce-policy-drafts.cjs",
     "test:policy-assignment-selector": "node ../scripts/test-policy-assignment-selector.cjs",
+    "test:approval-labels": "node ../scripts/test-approval-workflow-labels.cjs",
     "cap:sync:android": "cap sync android",
     "cap:sync:android:dev": "set CAPACITOR_DEV_SERVER=true&& cap sync android",
     "cap:open:android": "cap open android",

@@ -20,6 +20,7 @@ import {
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { ApprovalWorkflowItem, ApprovalWorkflowVersion, workforcePolicyStore } from "@/app/store/workforcePolicyStore/workforcePolicyStore";
+import { formatApprovalRequestType } from "./approvalWorkflowLabels";
 
 const STEP_LABELS: Record<string, string> = {
   reporting_manager: "Reporting manager",
@@ -27,15 +28,6 @@ const STEP_LABELS: Record<string, string> = {
   department_head: "Department head",
   hr: "Scoped HR queue",
   specific_users: "Specific users",
-};
-
-const REQUEST_LABELS: Record<string, string> = {
-  leave_request: "Leave requests",
-  leave_encashment_request: "Leave encashment",
-  remote_work_request: "WFH requests",
-  comp_off_claim: "Comp-off claims",
-  attendance_regularization_request: "Attendance corrections",
-  timesheet_submission: "Daily timesheets",
 };
 
 type Props = {
@@ -103,8 +95,8 @@ export default function ApprovalWorkflowHistoryDrawer({ isOpen, onClose, company
               </HStack>
               <HStack mt={3} spacing={1} flexWrap="wrap">
                 {(version.applicableTo?.length ? version.applicableTo : workflow?.applicableTo || []).map((requestType) => (
-                  <Badge key={`${version._id}-${requestType}`} colorScheme="purple">
-                    {REQUEST_LABELS[requestType] || requestType}
+                  <Badge key={`${version._id}-${requestType}`} colorScheme="purple" textTransform="none">
+                    {formatApprovalRequestType(requestType)}
                   </Badge>
                 ))}
               </HStack>
