@@ -1,6 +1,5 @@
 "use client";
 
-import axios from "axios";
 import PermissionGate from "@/app/component/common/PermissionGate";
 import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
 import { hasPermission, PERMISSION_KEYS } from "@/app/config/utils/permissions";
@@ -108,7 +107,6 @@ const WorkforcePoliciesWorkspace = observer(() => {
   );
   const [tabIndex, setTabIndex] = useState(0);
   const [search, setSearch] = useState("");
-  const [employeeOptions, setEmployeeOptions] = useState<AssignmentScopeOption[]>([]);
   const [editor, setEditor] = useState<EditorState>({
     type: "attendance_policy",
     mode: "create",
@@ -167,32 +165,12 @@ const WorkforcePoliciesWorkspace = observer(() => {
   }, [canView, companyId, refresh]);
 
   useEffect(() => {
-    if (!companyId || !canManage) {
-      setEmployeeOptions([]);
-      return;
-    }
+    if (!companyId || !canManage) return;
     Promise.all([
       departmentStore.fetchDepartments(companyId, 1, 100),
       locationStore.fetchLocations(companyId, 1, 100),
-      axios.get("/admin/users", { params: { companyId, page: 1, limit: 100 } }),
     ])
-      .then(([, , usersResponse]) => {
-        const users = usersResponse.data?.data?.users || [];
-        setEmployeeOptions(
-          users
-            .filter((user: any) =>
-              /^(user|manager|departmenthead|department head|department-head|l\d+[-\s]?manager)$/i.test(
-                String(user?.role || "")
-              )
-            )
-            .map((user: any) => ({
-              id: user._id,
-              label: `${user.name || user.username} (${user.username || user.role})`,
-              type: "employee" as const,
-            }))
-        );
-      })
-      .catch(() => setEmployeeOptions([]));
+      .catch(() => undefined);
   }, [canManage, companyId]);
 
   const scopeOptions: AssignmentScopeOption[] = (() => {
@@ -215,7 +193,7 @@ const WorkforcePoliciesWorkspace = observer(() => {
           type: "team" as const,
         }))
     );
-    return [...locationOptions, ...departmentOptions, ...teamOptions, ...employeeOptions];
+    return [...locationOptions, ...departmentOptions, ...teamOptions];
   })();
 
   const filteredAttendance = workforcePolicyStore.attendancePolicies.filter((item) =>

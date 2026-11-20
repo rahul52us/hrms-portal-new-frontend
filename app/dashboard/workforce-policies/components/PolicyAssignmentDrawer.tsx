@@ -2,6 +2,7 @@
 
 import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
 import TimesheetImpactPreview from "./TimesheetImpactPreview";
+import PolicyAssignmentEmployeeSelect, { PolicyEmployeeOption } from "./PolicyAssignmentEmployeeSelect";
 import {
   Alert,
   AlertDescription,
@@ -86,6 +87,7 @@ export default function PolicyAssignmentDrawer({
   const [resourceId, setResourceId] = useState("");
   const [scopeType, setScopeType] = useState<PolicyScopeType>("company");
   const [scopeId, setScopeId] = useState("");
+  const [employeeOption, setEmployeeOption] = useState<PolicyEmployeeOption | null>(null);
   const [effectiveFrom, setEffectiveFrom] = useState(todayValue());
   const [effectiveTo, setEffectiveTo] = useState("");
   const [reason, setReason] = useState("");
@@ -100,10 +102,11 @@ export default function PolicyAssignmentDrawer({
     setResourceId(isEnding ? "" : initialResourceId);
     setScopeType("company");
     setScopeId("");
+    setEmployeeOption(null);
     setEffectiveFrom(todayValue());
     setEffectiveTo(isEnding ? todayValue() : "");
     setReason("");
-  }, [allowedResourceTypes, initialResourceId, initialResourceType, isEnding, isOpen]);
+  }, [allowedResourceTypes, companyId, initialResourceId, initialResourceType, isEnding, isOpen]);
 
   const resources =
     resourceType === "attendance_policy"
@@ -243,6 +246,7 @@ export default function PolicyAssignmentDrawer({
                 onChange={(event) => {
                   setScopeType(event.target.value as PolicyScopeType);
                   setScopeId("");
+                  setEmployeeOption(null);
                 }}
               >
                 <option value="company">Company default</option>
@@ -254,10 +258,10 @@ export default function PolicyAssignmentDrawer({
             </FormControl>
             {scopeType !== "company" ? (
               <FormControl isRequired>
-                <FormLabel fontSize="sm">{scopeType.charAt(0).toUpperCase() + scopeType.slice(1)}</FormLabel>
-                <Select value={scopeId} onChange={(event) => setScopeId(event.target.value)} placeholder={`Select ${scopeType}`}>
+                <FormLabel htmlFor={scopeType === "employee" ? "policy-assignment-employee" : undefined} fontSize="sm">{scopeType.charAt(0).toUpperCase() + scopeType.slice(1)}</FormLabel>
+                {scopeType === "employee" ? isOpen && <PolicyAssignmentEmployeeSelect key={companyId} companyId={companyId} value={employeeOption} isDisabled={workforcePolicyStore.submitting} onChange={(option) => { setEmployeeOption(option); setScopeId(option?.value || ""); }} /> : <Select value={scopeId} onChange={(event) => setScopeId(event.target.value)} placeholder={`Select ${scopeType}`}>
                   {availableScopes.map((option) => <option key={`${option.type}-${option.id}`} value={option.id}>{option.label}</option>)}
-                </Select>
+                </Select>}
               </FormControl>
             ) : null}
             <FormControl isRequired>
