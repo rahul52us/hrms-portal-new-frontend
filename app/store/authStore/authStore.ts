@@ -1,5 +1,5 @@
 // stores/authStore.ts
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 import axios from "axios";
 import { AUTH_TOKEN, BACKEND_URL, ENCRYPT_SECRET_KEY, USER_SESSION_DATA } from "../../config/utils/variables";
 import stores from "../stores";
@@ -90,8 +90,10 @@ class AuthStore {
         await this.fetchUser();
       }
     } finally {
-      this.isLoading = false;
-      this.sessionReady = true;
+      runInAction(() => {
+        this.isLoading = false;
+        this.sessionReady = true;
+      });
     }
   };
 
@@ -186,26 +188,27 @@ class AuthStore {
         username: payload.username,
         password: payload.password,
       });
-      this.token =
+      const token =
         response?.data?.data?.authorization_token ||
         response?.data?.data?.accessToken ||
         response?.data?.data?.token ||
         response?.data?.accessToken ||
         response?.data?.token ||
         null;
+      runInAction(() => { this.token = token; });
 
       if (this.token && typeof window !== "undefined") {
         localStorage.setItem(AUTH_TOKEN, this.token);
       }
 
       await this.fetchUser();
-      this.sessionReady = true;
+      runInAction(() => { this.sessionReady = true; });
       return response?.data;
     } catch (err: any) {
-      this.error = err?.response?.data?.message || "Login failed.";
+      runInAction(() => { this.error = err?.response?.data?.message || "Login failed."; });
       return Promise.reject(err?.response?.data || err);
     } finally {
-      this.isLoading = false;
+      runInAction(() => { this.isLoading = false; });
     }
   };
 
@@ -260,22 +263,25 @@ class AuthStore {
       delete identity.activeCompany;
       delete identity.effectiveRole;
 
-      this.user = {
-        ...identity,
-        company: activeCompany?._id || activeMembership?.companyId || identity?.company,
-        companyDetails: activeCompany || identity?.companyDetails,
-        role: resolvedRole,
-      };
-      this.memberships = memberships;
-      this.activeMembership = activeMembership;
-      this.company = this.user.company;
-      this.role = resolvedRole;
+      // Publish the resolved identity together so observers never see mixed company/role state.
+      runInAction(() => {
+        this.user = {
+          ...identity,
+          company: activeCompany?._id || activeMembership?.companyId || identity?.company,
+          companyDetails: activeCompany || identity?.companyDetails,
+          role: resolvedRole,
+        };
+        this.memberships = memberships;
+        this.activeMembership = activeMembership;
+        this.company = this.user.company;
+        this.role = resolvedRole;
+      });
       this.saveUserToSessionStorage(this.user);
 
       // If there's a company field
       // this.company = this.user?.company;
     } catch (err: any) {
-      this.error = err?.response?.data?.message || "Failed to fetch user info.";
+      runInAction(() => { this.error = err?.response?.data?.message || "Failed to fetch user info."; });
     }
   };
 

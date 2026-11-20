@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "test:auth-logo": "node ../scripts/verify-auth-logo.cjs",
+    "test:store-actions": "node ../scripts/test-mobx-store-actions.cjs",
     "cap:sync:android": "cap sync android",
     "cap:sync:android:dev": "set CAPACITOR_DEV_SERVER=true&& cap sync android",
     "cap:open:android": "cap open android",

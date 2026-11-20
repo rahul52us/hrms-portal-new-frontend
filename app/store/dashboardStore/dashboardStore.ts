@@ -1,4 +1,4 @@
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 import axios from "axios";
 import { authStore } from "../authStore/authStore";
 
@@ -73,16 +73,22 @@ class DashboardStore {
     this.scopedSummaryError = null;
     try {
       const { data } = await axios.get(`/dashboard/summary`, { params });
-      this.scopedSummary = data?.data || null;
+      runInAction(() => {
+        this.scopedSummary = data?.data || null;
+      });
       return this.scopedSummary;
     } catch (err: any) {
-      this.scopedSummaryError =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        "Failed to load dashboard summary";
+      runInAction(() => {
+        this.scopedSummaryError =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Failed to load dashboard summary";
+      });
       return Promise.reject(err?.response?.data || err);
     } finally {
-      this.scopedSummaryLoading = false;
+      runInAction(() => {
+        this.scopedSummaryLoading = false;
+      });
     }
   };
 
@@ -91,16 +97,22 @@ class DashboardStore {
     this.hrSummaryError = null;
     try {
       const { data } = await axios.get("/dashboard/hr-summary", { params });
-      this.hrSummary = data?.data || null;
+      runInAction(() => {
+        this.hrSummary = data?.data || null;
+      });
       return this.hrSummary;
     } catch (err: any) {
-      this.hrSummaryError =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        "Failed to load HR dashboard";
+      runInAction(() => {
+        this.hrSummaryError =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Failed to load HR dashboard";
+      });
       return Promise.reject(err?.response?.data || err);
     } finally {
-      this.hrSummaryLoading = false;
+      runInAction(() => {
+        this.hrSummaryLoading = false;
+      });
     }
   };
 
@@ -119,15 +131,19 @@ class DashboardStore {
 
       const { data } = await axios.get("/notification", { params });
 
-      this.notification.data = data?.data || [];
-      this.notification.totalPages = data?.totalPages || 0;
-      this.notification.unreadCount = data?.unreadCount || 0;
+      runInAction(() => {
+        this.notification.data = data?.data || [];
+        this.notification.totalPages = data?.totalPages || 0;
+        this.notification.unreadCount = data?.unreadCount || 0;
+      });
 
       return data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err);
     } finally {
-      this.notification.loading = false;
+      runInAction(() => {
+        this.notification.loading = false;
+      });
     }
   };
 
@@ -156,12 +172,16 @@ class DashboardStore {
     try {
       const { data } = await axios.get(`/dashboard/counts`);
 
-      this.count.data = data?.data || {};
+      runInAction(() => {
+        this.count.data = data?.data || {};
+      });
       return data.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err);
     } finally {
-      this.count.loading = false;
+      runInAction(() => {
+        this.count.loading = false;
+      });
     }
   };
 
@@ -172,18 +192,22 @@ class DashboardStore {
         params: { workflowId },
       });
 
-      this.workflowUserCount.data = data?.data || {
-        pending: 0,
-        approved: 0,
-        rejected: 0,
-        total: 0,
-      };
+      runInAction(() => {
+        this.workflowUserCount.data = data?.data || {
+          pending: 0,
+          approved: 0,
+          rejected: 0,
+          total: 0,
+        };
+      });
 
       return data?.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err);
     } finally {
-      this.workflowUserCount.loading = false;
+      runInAction(() => {
+        this.workflowUserCount.loading = false;
+      });
     }
   };
 
@@ -194,18 +218,22 @@ class DashboardStore {
         params: { workflowId },
       });
 
-      this.workflowAdminSummary.data = data?.data || {
-        total: 0,
-        approved: 0,
-        rejected: 0,
-        pending: 0,
-      };
+      runInAction(() => {
+        this.workflowAdminSummary.data = data?.data || {
+          total: 0,
+          approved: 0,
+          rejected: 0,
+          pending: 0,
+        };
+      });
 
       return data?.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err);
     } finally {
-      this.workflowAdminSummary.loading = false;
+      runInAction(() => {
+        this.workflowAdminSummary.loading = false;
+      });
     }
   };
 
@@ -216,12 +244,16 @@ class DashboardStore {
         params: { workflowId },
       });
 
-      this.workflowAdminLevelCount.data = data?.data || [];
+      runInAction(() => {
+        this.workflowAdminLevelCount.data = data?.data || [];
+      });
       return data?.data || [];
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err);
     } finally {
-      this.workflowAdminLevelCount.loading = false;
+      runInAction(() => {
+        this.workflowAdminLevelCount.loading = false;
+      });
     }
   };
 
@@ -229,12 +261,16 @@ class DashboardStore {
     this.masterData.loading = true;
     try {
       const { data } = await axios.post(`/masters`,{company : authStore.company});
-      this.masterData.data = data?.data || {};
+      runInAction(() => {
+        this.masterData.data = data?.data || {};
+      });
       return data.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err);
     } finally {
-      this.masterData.loading = false;
+      runInAction(() => {
+        this.masterData.loading = false;
+      });
     }
   };
 
@@ -266,7 +302,9 @@ getPatientDashboardCount = async(sendData : any = {}) => {
   try {
       const { data } = await axios.post(`/dashboard/getPatientDashboardCount`, {...sendData,company : authStore.company});
       const results = data?.data || {}
-      this.patientCount.data = {...results}
+      runInAction(() => {
+        this.patientCount.data = {...results}
+      });
       return data.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err);

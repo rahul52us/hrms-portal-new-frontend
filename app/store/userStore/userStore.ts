@@ -56,12 +56,18 @@ class UserStore {
     try {
       const response = await axios.get("/user/settings");
 
-      this.userSettings = response.data?.settings || {};
+      runInAction(() => {
+        this.userSettings = response.data?.settings || {};
+      });
     } catch (err: any) {
-      this.error = err?.response?.data?.message || "Failed to fetch settings.";
+      runInAction(() => {
+        this.error = err?.response?.data?.message || "Failed to fetch settings.";
+      });
       throw err;
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -77,7 +83,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -93,7 +101,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -119,7 +129,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -137,7 +149,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -161,7 +175,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
+      runInAction(() => {
         this.isLoading = false;
+      });
     }
   };
 
@@ -171,19 +187,23 @@ class UserStore {
       const response = await axios.put(`/admin/users/${id}/status`, {
         isEnabled,
       });
-      this.users = this.users.map((user: any) =>
-        user?._id === id
-          ? {
-              ...user,
-              ...(response?.data?.data?.user || {}),
-            }
-          : user
-      );
+      runInAction(() => {
+        this.users = this.users.map((user: any) =>
+          user?._id === id
+            ? {
+                ...user,
+                ...(response?.data?.data?.user || {}),
+              }
+            : user
+        );
+      });
       return response?.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.submitting = false;
+      runInAction(() => {
+        this.submitting = false;
+      });
     }
   };
 
@@ -213,13 +233,17 @@ class UserStore {
         ...payload,
         company,
       });
-      this.user.data = response?.data?.data?.data || []
-      this.user.totalPages = response?.data?.data?.totalPages || 1
+      runInAction(() => {
+        this.user.data = response?.data?.data?.data || []
+        this.user.totalPages = response?.data?.data?.totalPages || 1
+      });
       return response;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.user.loading = false;
+      runInAction(() => {
+        this.user.loading = false;
+      });
     }
   };
 
@@ -227,25 +251,31 @@ class UserStore {
     this.loading = true;
     try {
       const response: any = await axios.get("/admin/users", { params });
-      this.users = response?.data?.data?.users || [];
-      this.availableRoles = response?.data?.data?.availableRoles || [];
-      this.pagination = {
-        page: response?.data?.data?.page || 1,
-        totalPages: response?.data?.data?.totalPages || 1,
-        total: response?.data?.data?.total || 0,
-      };
+      runInAction(() => {
+        this.users = response?.data?.data?.users || [];
+        this.availableRoles = response?.data?.data?.availableRoles || [];
+        this.pagination = {
+          page: response?.data?.data?.page || 1,
+          totalPages: response?.data?.data?.totalPages || 1,
+          total: response?.data?.data?.total || 0,
+        };
+      });
       return response?.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.loading = false;
+      runInAction(() => {
+        this.loading = false;
+      });
     }
   };
 
   fetchEmployeeStats = async (params: any = {}) => {
     try {
       const response: any = await axios.get("/dashboard/hr-employee-stats", { params });
-      this.employeeStats = response?.data?.data || { total: 0, active: 0, inactive: 0, pending: 0, passwordReady: 0 };
+      runInAction(() => {
+        this.employeeStats = response?.data?.data || { total: 0, active: 0, inactive: 0, pending: 0, passwordReady: 0 };
+      });
       return response?.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
@@ -262,7 +292,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.loading = false;
+      runInAction(() => {
+        this.loading = false;
+      });
     }
   };
 
@@ -274,7 +306,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.submitting = false;
+      runInAction(() => {
+        this.submitting = false;
+      });
     }
   };
 
@@ -286,7 +320,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.submitting = false;
+      runInAction(() => {
+        this.submitting = false;
+      });
     }
   };
 
@@ -298,7 +334,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.submitting = false;
+      runInAction(() => {
+        this.submitting = false;
+      });
     }
   };
 
@@ -310,7 +348,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.submitting = false;
+      runInAction(() => {
+        this.submitting = false;
+      });
     }
   };
 
@@ -363,12 +403,16 @@ class UserStore {
     this.submitting = true;
     try {
       const response = await axios.delete(`/admin/users/${id}`);
-      this.users = this.users.filter((user: any) => user?._id !== id);
+      runInAction(() => {
+        this.users = this.users.filter((user: any) => user?._id !== id);
+      });
       return response?.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.submitting = false;
+      runInAction(() => {
+        this.submitting = false;
+      });
     }
   };
 
@@ -388,12 +432,16 @@ class UserStore {
           "Content-Type": "multipart/form-data",
         },
       });
-      this.bulkPreview = response?.data?.data?.preview || [];
+      runInAction(() => {
+        this.bulkPreview = response?.data?.data?.preview || [];
+      });
       return response?.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.uploadLoading = false;
+      runInAction(() => {
+        this.uploadLoading = false;
+      });
     }
   };
 
@@ -416,7 +464,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.uploadLoading = false;
+      runInAction(() => {
+        this.uploadLoading = false;
+      });
     }
   };
 
@@ -474,7 +524,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.submitting = false;
+      runInAction(() => {
+        this.submitting = false;
+      });
     }
   };
 
@@ -484,12 +536,16 @@ class UserStore {
       const response = await axios.get("/admin/users/permissions/config", {
         params: companyId ? { companyId } : undefined,
       });
-      this.permissionConfig = response?.data?.data || this.permissionConfig;
+      runInAction(() => {
+        this.permissionConfig = response?.data?.data || this.permissionConfig;
+      });
       return response?.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.permissionLoading = false;
+      runInAction(() => {
+        this.permissionLoading = false;
+      });
     }
   };
 
@@ -505,17 +561,21 @@ class UserStore {
         permissions,
       });
       if (response?.data?.data?.rolePermissions) {
-        this.permissionConfig = {
-          ...this.permissionConfig,
-          companyId: response.data.data.companyId || this.permissionConfig.companyId,
-          rolePermissions: response.data.data.rolePermissions,
-        };
+        runInAction(() => {
+          this.permissionConfig = {
+            ...this.permissionConfig,
+            companyId: response.data.data.companyId || this.permissionConfig.companyId,
+            rolePermissions: response.data.data.rolePermissions,
+          };
+        });
       }
       return response?.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.permissionSaving = false;
+      runInAction(() => {
+        this.permissionSaving = false;
+      });
     }
   };
 
@@ -527,13 +587,17 @@ class UserStore {
       });
       const updatedUser = response?.data?.data?.user;
       if (updatedUser?._id) {
-        this.users = this.users.map((user) => (user._id === updatedUser._id ? updatedUser : user));
+        runInAction(() => {
+          this.users = this.users.map((user) => (user._id === updatedUser._id ? updatedUser : user));
+        });
       }
       return response?.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.permissionSaving = false;
+      runInAction(() => {
+        this.permissionSaving = false;
+      });
     }
   };
 
@@ -550,15 +614,19 @@ class UserStore {
       });
       const updatedUser = response?.data?.data?.user;
       if (updatedUser?._id) {
-        this.users = this.users.map((user) =>
-          user._id === updatedUser._id ? updatedUser : user
-        );
+        runInAction(() => {
+          this.users = this.users.map((user) =>
+            user._id === updatedUser._id ? updatedUser : user
+          );
+        });
       }
       return response?.data;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.permissionSaving = false;
+      runInAction(() => {
+        this.permissionSaving = false;
+      });
     }
   };
 
@@ -570,7 +638,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.loading = false;
+      runInAction(() => {
+        this.loading = false;
+      });
     }
   };
 
@@ -582,7 +652,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -591,12 +663,18 @@ class UserStore {
     try {
       const response = await axios.put("/user/settings", settings);
 
-      this.userSettings = response.data?.settings || {};
+      runInAction(() => {
+        this.userSettings = response.data?.settings || {};
+      });
     } catch (err: any) {
-      this.error = err?.response?.data?.message || "Failed to update settings.";
+      runInAction(() => {
+        this.error = err?.response?.data?.message || "Failed to update settings.";
+      });
       throw err;
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -606,13 +684,19 @@ class UserStore {
     try {
       const response = await axios.put("/user/preferences", preferences);
 
-      this.userPreferences = response.data?.preferences || {};
+      runInAction(() => {
+        this.userPreferences = response.data?.preferences || {};
+      });
     } catch (err: any) {
-      this.error =
-        err?.response?.data?.message || "Failed to update preferences.";
+      runInAction(() => {
+        this.error =
+          err?.response?.data?.message || "Failed to update preferences.";
+      });
       throw err;
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -724,7 +808,9 @@ class UserStore {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.submitting = false;
+      runInAction(() => {
+        this.submitting = false;
+      });
     }
   };
 }

@@ -1,4 +1,4 @@
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 import axios from "axios";
 import { authStore } from "../authStore/authStore";
 
@@ -20,11 +20,10 @@ class CompanyStores {
   error: string | null = null;
 
   constructor() {
-    makeAutoObservable(this);
-
     if (typeof window !== "undefined") {
       this.selectedCompanyId = localStorage.getItem(COMPANY_CONTEXT_KEY) || "";
     }
+    makeAutoObservable(this);
   }
 
   setSelectedCompanyId = (companyId: string) => {
@@ -80,12 +79,18 @@ class CompanyStores {
     this.isLoading = true;
     try {
       const response = await axios.get("/user/settings");
-      this.userSettings = response.data?.settings || {};
+      runInAction(() => {
+        this.userSettings = response.data?.settings || {};
+      });
     } catch (err: any) {
-      this.error = err?.response?.data?.message || "Failed to fetch settings.";
+      runInAction(() => {
+        this.error = err?.response?.data?.message || "Failed to fetch settings.";
+      });
       throw err;
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -100,7 +105,9 @@ class CompanyStores {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
   updateCompanyPreferences = async (payload: any) => {
@@ -114,7 +121,9 @@ class CompanyStores {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -126,7 +135,9 @@ class CompanyStores {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -138,7 +149,9 @@ class CompanyStores {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -146,9 +159,11 @@ class CompanyStores {
     this.isLoading = true;
     try {
       const response = await axios.delete(`/company/${companyId}`);
-      this.companies.data = (this.companies.data || []).filter(
-        (company: any) => company?._id !== companyId
-      );
+      runInAction(() => {
+        this.companies.data = (this.companies.data || []).filter(
+          (company: any) => company?._id !== companyId
+        );
+      });
 
       if (this.selectedCompanyId === companyId) {
         this.setSelectedCompanyId("");
@@ -159,7 +174,9 @@ class CompanyStores {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -174,19 +191,23 @@ class CompanyStores {
         isActive,
         scope,
       });
-      this.companies.data = (this.companies.data || []).map((company: any) =>
-        company?._id === companyId
-          ? {
-              ...company,
-              ...(response.data?.data?.company || response.data?.data || {}),
-            }
-          : company
-      );
+      runInAction(() => {
+        this.companies.data = (this.companies.data || []).map((company: any) =>
+          company?._id === companyId
+            ? {
+                ...company,
+                ...(response.data?.data?.company || response.data?.data || {}),
+              }
+            : company
+        );
+      });
       return response;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -194,13 +215,17 @@ class CompanyStores {
     this.companies.loading = true;
     try {
       const response = await axios.get("/company/manage", { params });
-      this.companies.data = response.data?.data || [];
+      runInAction(() => {
+        this.companies.data = response.data?.data || [];
+      });
       this.initializeCompanyContext();
       return response;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.companies.loading = false;
+      runInAction(() => {
+        this.companies.loading = false;
+      });
     }
   };
 
@@ -220,12 +245,16 @@ class CompanyStores {
     this.isLoading = true;
     try {
       const response = await axios.get(`/company/${authStore.company}`);
-      this.companyDetails = response.data?.data
+      runInAction(() => {
+        this.companyDetails = response.data?.data
+      });
       return response;
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -237,7 +266,9 @@ class CompanyStores {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 
@@ -252,7 +283,9 @@ class CompanyStores {
     } catch (err: any) {
       return Promise.reject(err?.response?.data || err.message);
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 }
