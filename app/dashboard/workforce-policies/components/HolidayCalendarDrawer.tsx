@@ -7,6 +7,7 @@ import {
   Checkbox,
   Flex,
   FormControl,
+  FormHelperText,
   FormLabel,
   HStack,
   IconButton,
@@ -119,7 +120,6 @@ export default function HolidayCalendarDrawer({
     if (mode === "create" && (!name.trim() || !code.trim())) {
       return "Calendar name and code are required.";
     }
-    if (!effectiveFrom) return "Effective-from date is required before publishing.";
     if (mode !== "create" && changeReason.trim().length < 3) {
       return "Describe why this calendar version is changing.";
     }
@@ -128,7 +128,8 @@ export default function HolidayCalendarDrawer({
     const dates = holidays.map((holiday) => holiday.date);
     if (new Set(dates).size !== dates.length) return "A calendar cannot contain duplicate holiday dates.";
     return "";
-  }, [changeReason, code, effectiveFrom, holidays, mode, name]);
+  }, [changeReason, code, holidays, mode, name]);
+  const publishValidationError = validationError || (!effectiveFrom ? "Effective-from date is required before publishing." : "");
 
   const updateHoliday = (id: string, key: keyof HolidayRow, value: any) => {
     setHolidays((current) =>
@@ -137,8 +138,9 @@ export default function HolidayCalendarDrawer({
   };
 
   const save = async (publish: boolean) => {
-    if (validationError) {
-      toast({ title: validationError, status: "warning", duration: 3500 });
+    const error = publish ? publishValidationError : validationError;
+    if (error) {
+      toast({ title: error, status: "warning", duration: 3500 });
       return;
     }
     try {
@@ -207,7 +209,7 @@ export default function HolidayCalendarDrawer({
         <Flex w="full" justify="flex-end" gap={3}>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button variant="outline" onClick={() => save(false)} isLoading={workforcePolicyStore.submitting}>Save draft</Button>
-          <Button colorScheme="blue" onClick={() => save(true)} isLoading={workforcePolicyStore.submitting} isDisabled={Boolean(validationError)}>Save and publish</Button>
+          <Button colorScheme="blue" onClick={() => save(true)} isLoading={workforcePolicyStore.submitting} isDisabled={Boolean(publishValidationError)}>Save and publish</Button>
         </Flex>
       }
     >
@@ -235,9 +237,10 @@ export default function HolidayCalendarDrawer({
         <Box bg={cardBg} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={5} shadow="sm">
           <Text mb={4} fontSize="sm" fontWeight="800" color="blue.600" textTransform="uppercase" letterSpacing="wide">Validity and timezone</Text>
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
-            <FormControl isRequired>
+            <FormControl>
               <FormLabel fontSize="sm" fontWeight="600">Effective from</FormLabel>
               <Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} bg={inputBg} />
+              <FormHelperText>Required to publish; optional for drafts.</FormHelperText>
             </FormControl>
             <FormControl isRequired>
               <FormLabel fontSize="sm" fontWeight="600">Timezone</FormLabel>
