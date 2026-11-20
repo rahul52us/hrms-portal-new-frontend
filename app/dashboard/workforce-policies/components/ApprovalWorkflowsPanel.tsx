@@ -1,4 +1,5 @@
 "use client";
+import { formatPolicyDate } from "@/app/config/utils/policyDates";
 
 import {
   Badge,
@@ -63,7 +64,7 @@ export default function ApprovalWorkflowsPanel({ canManage, borderColor, muted, 
                   <Td><HStack spacing={1} flexWrap="wrap">{item.applicableTo.map((type) => <Badge key={type} colorScheme="blue" textTransform="none">{formatApprovalRequestType(type)}</Badge>)}</HStack></Td>
                   <Td>
                     {published ? (
-                      <><Text fontWeight="600">v{published.versionNumber}</Text><Text fontSize="xs" color={muted}>{published.autoApprove ? "Automatic approval" : `${published.steps.length} approval level${published.steps.length === 1 ? "" : "s"}`}</Text><Text fontSize="xs" color={muted}>{published.effectiveFrom ? `Effective ${new Date(published.effectiveFrom).toLocaleDateString()}` : "Effective from publication"}</Text></>
+                      <><Text fontWeight="600">v{published.versionNumber}</Text><Text fontSize="xs" color={muted}>{published.autoApprove ? "Automatic approval" : `${published.steps.length} approval level${published.steps.length === 1 ? "" : "s"}`}</Text><Text fontSize="xs" color={muted}>{published.effectiveFrom ? `Effective ${formatPolicyDate(published.effectiveFrom)}` : "Effective from publication"}</Text></>
                     ) : <Badge colorScheme="orange">Draft only</Badge>}
                     {item.draftVersion ? <Badge ml={2} colorScheme="yellow">Draft v{item.draftVersion.versionNumber}</Badge> : null}
                   </Td>

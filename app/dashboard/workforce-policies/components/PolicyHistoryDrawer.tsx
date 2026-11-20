@@ -1,6 +1,7 @@
 "use client";
 
 import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
+import { formatPolicyDate } from "@/app/config/utils/policyDates";
 import {
   Alert,
   AlertDescription,
@@ -32,13 +33,7 @@ type Props = {
 };
 
 function formatDate(value?: string | null) {
-  if (!value) return "Open ended";
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(value));
+  return formatPolicyDate(value, "Open ended");
 }
 
 function formatCredit(value: number) {

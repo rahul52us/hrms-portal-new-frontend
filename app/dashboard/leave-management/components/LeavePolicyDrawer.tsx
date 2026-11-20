@@ -1,4 +1,5 @@
 "use client";
+import { policyDateValue, todayPolicyDate as localDateValue } from "@/app/config/utils/policyDates";
 
 import {
   Accordion,
@@ -57,11 +58,6 @@ type Props = {
   onSaved: () => Promise<void> | void;
   onPublished?: (policyId: string) => void;
 };
-
-function localDateValue() {
-  const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
 
 function calculateAccrualAmount(
   annualEntitlement: number,
@@ -356,7 +352,7 @@ export default function LeavePolicyDrawer({
     setEffectiveFrom(
       mode === "new_version"
         ? ""
-        : String(version?.effectiveFrom || "").slice(0, 10) || localDateValue()
+        : policyDateValue(version?.effectiveFrom) || localDateValue()
     );
     setLeaveYearStartMonth(String(version?.leaveYearStartMonth || 1));
     setLeaveYearStartDay(String(version?.leaveYearStartDay || 1));

@@ -1,6 +1,7 @@
 "use client";
 
 import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
+import { policyDateValue as dateValue } from "@/app/config/utils/policyDates";
 import {
   Alert,
   AlertDescription,
@@ -61,7 +62,6 @@ type Props = {
   onSaved: () => Promise<void> | void;
 };
 
-const dateValue = (value?: string | null) => value ? new Date(value).toISOString().slice(0, 10) : "";
 
 export default function RemoteWorkPolicyDrawer({ isOpen, onClose, companyId, mode, resource, version, onSaved }: Props) {
   const toast = useToast();

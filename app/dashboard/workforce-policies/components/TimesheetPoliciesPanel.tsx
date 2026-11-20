@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
+import { formatPolicyDate, policyDateValue } from "@/app/config/utils/policyDates";
 import { approvalWorkflowSupportsRequestType, PolicyVersion, TimesheetRules, WorkforcePolicyItem, workforcePolicyStore } from "@/app/store/workforcePolicyStore/workforcePolicyStore";
 import { Alert, AlertIcon, Badge, Box, Button, Checkbox, Flex, FormControl, FormHelperText, FormLabel, Input, Select, SimpleGrid, Skeleton, Stack, Table, TableContainer, Tbody, Td, Text, Textarea, Th, Thead, Tr, useColorModeValue } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -28,7 +29,7 @@ function PolicyEditor({ companyId, selection, onClose, onSaved }: {
   const [name, setName] = useState(policy?.name || "");
   const [code, setCode] = useState(policy?.code || "");
   const [codeEdited, setCodeEdited] = useState(false);
-  const [date, setDate] = useState(mode === "edit" ? source?.effectiveFrom?.slice(0, 10) || "" : "");
+  const [date, setDate] = useState(mode === "edit" ? policyDateValue(source?.effectiveFrom) : "");
   const [reason, setReason] = useState(mode === "edit" ? source?.changeReason || "" : mode === "create" ? "Initial timesheet policy" : "");
   const [rules, setRules] = useState<RuleForm>(formRules({ ...defaults, ...(source?.rules as TimesheetRules || {}) }));
   const [savedDraft, setSavedDraft] = useState<{ policyId: string; version: PolicyVersion } | null>(mode === "edit" && source && policy ? { policyId: policy._id, version: source } : null);
@@ -156,7 +157,7 @@ export default function TimesheetPoliciesPanel({ companyId, canManage, onAssignm
     {error ? <Alert status="error"><AlertIcon />{error}<Button ml="auto" size="sm" onClick={load}>Retry</Button></Alert> : null}
     {coverage ? <PolicyCoveragePanel companyId={companyId} borderColor={border} muted={muted} onManageAssignments={onAssignments} timesheetOnly /> : loading ? <Skeleton h="100px" /> : !items.length ? <Text py={8} color={muted}>No timesheet policies found.</Text> : <>
       <TableContainer><Table size="sm"><Thead><Tr><Th>Policy</Th><Th>Published</Th><Th>Draft</Th><Th>Status</Th><Th>Actions</Th></Tr></Thead><Tbody>
-        {items.map((policy) => <Tr key={policy._id}><Td><Text fontWeight="600">{policy.name}</Text><Text fontSize="xs" color={muted}>{policy.code}</Text></Td><Td>{policy.latestPublishedVersion ? `v${policy.latestPublishedVersion.versionNumber} from ${policy.latestPublishedVersion.effectiveFrom?.slice(0, 10)}` : "Not published"}</Td><Td>{policy.draftVersion ? `v${policy.draftVersion.versionNumber}` : "None"}</Td><Td><Badge>{policy.status}</Badge></Td><Td><Flex gap={2}>
+        {items.map((policy) => <Tr key={policy._id}><Td><Text fontWeight="600">{policy.name}</Text><Text fontSize="xs" color={muted}>{policy.code}</Text></Td><Td>{policy.latestPublishedVersion ? `v${policy.latestPublishedVersion.versionNumber} from ${formatPolicyDate(policy.latestPublishedVersion.effectiveFrom)}` : "Not published"}</Td><Td>{policy.draftVersion ? `v${policy.draftVersion.versionNumber}` : "None"}</Td><Td><Badge>{policy.status}</Badge></Td><Td><Flex gap={2}>
           <Button size="xs" variant="outline" onClick={() => { setHistory(policy); void workforcePolicyStore.fetchResourceDetail("timesheet_policy", policy._id, companyId).catch(() => undefined); }}>History</Button>
           {canManage && policy.status === "active" ? <Button size="xs" onClick={() => setSelection({ policy, mode: policy.draftVersion ? "edit" : "version" })}>{policy.draftVersion ? "Edit draft" : "New version"}</Button> : null}
         </Flex></Td></Tr>)}

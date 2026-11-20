@@ -1,6 +1,7 @@
 "use client";
 
 import PermissionGate from "@/app/component/common/PermissionGate";
+import { formatPolicyDate } from "@/app/config/utils/policyDates";
 import { PageBanner } from "@/app/component/common/PageBanner/PageBanner";
 import { hasPermission, PERMISSION_KEYS } from "@/app/config/utils/permissions";
 import { departmentStore } from "@/app/store/departmentStore/departmentStore";
@@ -87,13 +88,7 @@ type EditorState = {
 };
 
 function formatDate(value?: string | null) {
-  if (!value) return "Not published";
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(value));
+  return formatPolicyDate(value, "Not published");
 }
 
 const WorkforcePoliciesWorkspace = observer(() => {

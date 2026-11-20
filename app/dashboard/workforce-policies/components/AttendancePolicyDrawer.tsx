@@ -1,6 +1,7 @@
 "use client";
 
 import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
+import { policyDateValue as dateValue } from "@/app/config/utils/policyDates";
 import {
   Alert,
   AlertDescription,
@@ -110,10 +111,6 @@ type Props = {
   version?: PolicyVersion | null;
   onSaved: () => Promise<void> | void;
 };
-
-function dateValue(value?: string | null) {
-  return value ? new Date(value).toISOString().slice(0, 10) : "";
-}
 
 function parseAllowedNetworks(value: string) {
   return Array.from(new Set(

@@ -1,4 +1,5 @@
 "use client";
+import { formatPolicyDate } from "@/app/config/utils/policyDates";
 
 import {
   Alert,
@@ -23,13 +24,7 @@ import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
 
 const formatDate = (value?: string | null) => {
-  if (!value) return "Open ended";
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(value));
+  return formatPolicyDate(value, "Open ended");
 };
 
 const getResourceName = (assignment: WorkforcePolicyAssignment) =>

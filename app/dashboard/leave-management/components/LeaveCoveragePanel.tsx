@@ -1,4 +1,5 @@
 "use client";
+import { formatPolicyDate, todayPolicyDate as localDateValue } from "@/app/config/utils/policyDates";
 
 import {
   Alert,
@@ -23,19 +24,8 @@ import { FormEvent, useEffect, useState } from "react";
 import { FiSearch, FiSettings } from "react-icons/fi";
 import { workforcePolicyStore } from "@/app/store/workforcePolicyStore/workforcePolicyStore";
 
-function localDateValue() {
-  const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
 const formatDate = (value?: string | null) => {
-  if (!value) return "Open ended";
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(value));
+  return formatPolicyDate(value, "Open ended");
 };
 
 const LeaveCoveragePanel = observer(function LeaveCoveragePanel({

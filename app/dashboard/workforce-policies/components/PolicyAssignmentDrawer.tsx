@@ -1,6 +1,7 @@
 "use client";
 
 import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
+import { todayPolicyDate as todayValue } from "@/app/config/utils/policyDates";
 import TimesheetImpactPreview from "./TimesheetImpactPreview";
 import PolicyAssignmentEmployeeSelect, { PolicyEmployeeOption } from "./PolicyAssignmentEmployeeSelect";
 import {
@@ -59,10 +60,6 @@ type Props = {
   assignment?: WorkforcePolicyAssignment | null;
   onSaved: () => Promise<void> | void;
 };
-
-function todayValue() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export default function PolicyAssignmentDrawer({
   isOpen,

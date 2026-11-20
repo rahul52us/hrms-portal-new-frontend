@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
+import { policyDateValue, todayPolicyDate as localDateValue } from "@/app/config/utils/policyDates";
 import {
   Alert,
   AlertDescription,
@@ -57,11 +58,6 @@ const STEP_TYPES: Array<{ value: ApprovalStepType; label: string }> = [
   { value: "hr", label: "HR queue in employee scope" },
   { value: "specific_users", label: "Specific users" },
 ];
-
-function localDateValue() {
-  const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
 
 function emptyStep(index: number): ApprovalWorkflowStep {
   return {
@@ -131,7 +127,7 @@ export default function ApprovalWorkflowDrawer({
     setEffectiveFrom(
       mode === "new_version"
         ? localDateValue()
-        : String(source?.effectiveFrom || "").slice(0, 10) || localDateValue()
+        : policyDateValue(source?.effectiveFrom) || localDateValue()
     );
     setAutoApprove(Boolean(source?.autoApprove));
     setSteps(source?.steps?.length ? normalizeSteps(source.steps) : [emptyStep(0)]);

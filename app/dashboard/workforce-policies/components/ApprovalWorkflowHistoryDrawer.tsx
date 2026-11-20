@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import DashboardDrawer from "@/app/component/common/Drawer/DashboardDrawer";
+import { formatPolicyDate } from "@/app/config/utils/policyDates";
 import {
   Alert,
   AlertDescription,
@@ -90,7 +91,7 @@ export default function ApprovalWorkflowHistoryDrawer({ isOpen, onClose, company
           {versions.map((version) => (
             <Box key={version._id} borderWidth="1px" borderRadius="md" p={4}>
               <HStack justify="space-between" align="start">
-                <Box><Text fontWeight="800">Version {version.versionNumber}</Text><Text fontSize="xs" color="gray.500">Effective from {version.effectiveFrom ? new Date(version.effectiveFrom).toLocaleDateString() : "publication date"}</Text><Text fontSize="xs" color="gray.500">{version.changeReason || "No change reason recorded"}</Text></Box>
+                <Box><Text fontWeight="800">Version {version.versionNumber}</Text><Text fontSize="xs" color="gray.500">Effective from {version.effectiveFrom ? formatPolicyDate(version.effectiveFrom) : "publication date"}</Text><Text fontSize="xs" color="gray.500">{version.changeReason || "No change reason recorded"}</Text></Box>
                 <Badge colorScheme={version.status === "published" ? "green" : version.status === "draft" ? "yellow" : "gray"}>{version.status}</Badge>
               </HStack>
               <HStack mt={3} spacing={1} flexWrap="wrap">
