@@ -27,10 +27,9 @@ export function AuthLayout({
              {/* Container for the illustration - Removed white background */}
              <div className="relative w-full h-full flex items-center justify-center p-10 lg:p-16">
 
-                {/* Using the exact SVG requested by the user */}
                 <img
                   src="/images/logo.svg"
-                  alt="HRMS Dashboard Illustration"
+                  alt="HRMS logo"
                   className="w-full h-full object-contain drop-shadow-sm"
                 />
 
