@@ -15,6 +15,7 @@ import {
   WorkforcePolicyAssignment,
   WorkforcePolicyItem,
   workforcePolicyStore,
+  policyReadContextKey,
 } from "@/app/store/workforcePolicyStore/workforcePolicyStore";
 import {
   Alert,
@@ -94,6 +95,7 @@ function formatDate(value?: string | null) {
 const WorkforcePoliciesWorkspace = observer(() => {
   const { auth, companyStore } = stores;
   const role = String(auth.role || auth.user?.role || "").toLowerCase();
+  const readContext = policyReadContextKey(auth.user, role);
   const isSuperadmin = role === "superadmin";
   const canView = hasPermission(auth.user, PERMISSION_KEYS.VIEW_WORKFORCE_POLICIES);
   const canManage = hasPermission(
@@ -149,7 +151,7 @@ const WorkforcePoliciesWorkspace = observer(() => {
   const refresh = useCallback(async () => {
     if (!companyId || !canView) return;
     await workforcePolicyStore.fetchWorkspace(companyId);
-  }, [canView, companyId]);
+  }, [canView, companyId, readContext]);
 
   useEffect(() => {
     if (!companyId || !canView) {
@@ -482,4 +484,6 @@ const WorkforcePoliciesWorkspace = observer(() => {
   );
 });
 
-export default WorkforcePoliciesWorkspace;
+export default observer(function ScopedWorkforcePoliciesWorkspace() {
+  return <WorkforcePoliciesWorkspace key={`${policyReadContextKey(stores.auth.user, stores.auth.role)}:${stores.companyStore.getActiveCompanyId()}`} />;
+});

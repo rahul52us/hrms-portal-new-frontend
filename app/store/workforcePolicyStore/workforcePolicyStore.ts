@@ -344,8 +344,13 @@ type PaginationState = {
 
 const EMPTY_PAGINATION: PaginationState = { page: 1, limit: 20, total: 0, totalPages: 1 };
 
+export function policyReadContextKey(user: any, role = user?.role) {
+  return JSON.stringify([user?._id, role, user?.role, user?.company, user?.department, user?.hrScope, user?.effectivePermissions, user?.permissions, user?.accessRole]);
+}
+
 class WorkforcePolicyStore {
   private detailRequestSequence = 0;
+  private readSequences = { workspace: 0, assignments: 0, coverage: 0, audit: 0 };
   attendancePolicies: WorkforcePolicyItem[] = [];
   workSchedules: WorkforcePolicyItem[] = [];
   holidayCalendars: WorkforcePolicyItem[] = [];
@@ -387,6 +392,8 @@ class WorkforcePolicyStore {
 
   clear = () => {
     this.detailRequestSequence += 1;
+    for (const key of Object.keys(this.readSequences) as Array<keyof typeof this.readSequences>) this.readSequences[key] += 1;
+    this.loading = this.detailLoading = this.assignmentsLoading = this.coverageLoading = this.auditLoading = false;
     this.attendancePolicies = [];
     this.workSchedules = [];
     this.holidayCalendars = [];
@@ -419,20 +426,10 @@ class WorkforcePolicyStore {
       this.clear();
       return;
     }
+    if (this.activeCompanyId !== companyId) this.clear();
+    const sequence = ++this.readSequences.workspace;
     this.loading = true;
     this.error = null;
-    if (this.activeCompanyId !== companyId) {
-      this.attendancePolicies = [];
-      this.workSchedules = [];
-      this.holidayCalendars = [];
-      this.leaveTypes = [];
-      this.leavePolicies = [];
-      this.remoteWorkPolicies = [];
-      this.timesheetPolicies = [];
-      this.approvalWorkflows = [];
-      this.assignments = [];
-      this.assignmentsPagination = { ...EMPTY_PAGINATION };
-    }
     this.activeCompanyId = companyId;
     try {
       const [attendance, schedules, calendars, leaveTypes, leavePolicies, remoteWorkPolicies, approvalWorkflows, assignments, timesheetPolicies] = await Promise.all([
@@ -447,6 +444,7 @@ class WorkforcePolicyStore {
         axios.get("/workforce-policies/timesheet-policies", { params: { companyId, limit: 100 } }),
       ]);
       runInAction(() => {
+        if (sequence !== this.readSequences.workspace) return;
         this.attendancePolicies = attendance.data?.data || [];
         this.workSchedules = schedules.data?.data || [];
         this.holidayCalendars = calendars.data?.data || [];
@@ -460,12 +458,13 @@ class WorkforcePolicyStore {
       });
     } catch (error: any) {
       runInAction(() => {
+        if (sequence !== this.readSequences.workspace) return;
         this.error = this.getError(error, "Failed to load workforce policies");
       });
       throw error;
     } finally {
       runInAction(() => {
-        this.loading = false;
+        if (sequence === this.readSequences.workspace) this.loading = false;
       });
     }
   };
@@ -480,12 +479,14 @@ class WorkforcePolicyStore {
       state?: string;
     } = {}
   ) => {
+    const sequence = ++this.readSequences.assignments;
     this.assignmentsLoading = true;
     try {
       const response = await axios.get("/workforce-policies/assignments", {
         params: { companyId, page: 1, limit: 20, ...params },
       });
       runInAction(() => {
+        if (sequence !== this.readSequences.assignments) return;
         this.assignments = response.data?.data || [];
         this.assignmentsPagination = response.data?.pagination || { ...EMPTY_PAGINATION };
       });
@@ -494,7 +495,7 @@ class WorkforcePolicyStore {
       throw new Error(this.getError(error, "Failed to load policy assignments"));
     } finally {
       runInAction(() => {
-        this.assignmentsLoading = false;
+        if (sequence === this.readSequences.assignments) this.assignmentsLoading = false;
       });
     }
   };
@@ -520,6 +521,7 @@ class WorkforcePolicyStore {
       resourceType?: PolicyResourceType;
     }
   ) => {
+    const sequence = ++this.readSequences.coverage;
     this.coverageLoading = true;
     this.coverageError = null;
     try {
@@ -527,6 +529,7 @@ class WorkforcePolicyStore {
         params: { companyId, limit: 20, ...params },
       });
       runInAction(() => {
+        if (sequence !== this.readSequences.coverage) return;
         this.coverageItems = response.data?.data || [];
         this.coverageSummary = response.data?.summary || {
           employeesOnPage: 0,
@@ -539,13 +542,14 @@ class WorkforcePolicyStore {
     } catch (error: any) {
       const message = this.getError(error, "Failed to load policy coverage");
       runInAction(() => {
+        if (sequence !== this.readSequences.coverage) return;
         this.coverageItems = [];
         this.coverageError = message;
       });
       throw new Error(message);
     } finally {
       runInAction(() => {
-        this.coverageLoading = false;
+        if (sequence === this.readSequences.coverage) this.coverageLoading = false;
       });
     }
   };
@@ -554,6 +558,7 @@ class WorkforcePolicyStore {
     companyId: string,
     params: { page?: number; limit?: number; entityType?: string } = {}
   ) => {
+    const sequence = ++this.readSequences.audit;
     this.auditLoading = true;
     this.auditError = null;
     try {
@@ -561,6 +566,7 @@ class WorkforcePolicyStore {
         params: { companyId, page: 1, limit: 20, ...params },
       });
       runInAction(() => {
+        if (sequence !== this.readSequences.audit) return;
         this.auditLogs = response.data?.data || [];
         this.auditPagination = response.data?.pagination || { ...EMPTY_PAGINATION };
       });
@@ -568,13 +574,14 @@ class WorkforcePolicyStore {
     } catch (error: any) {
       const message = this.getError(error, "Failed to load policy audit history");
       runInAction(() => {
+        if (sequence !== this.readSequences.audit) return;
         this.auditLogs = [];
         this.auditError = message;
       });
       throw new Error(message);
     } finally {
       runInAction(() => {
-        this.auditLoading = false;
+        if (sequence === this.readSequences.audit) this.auditLoading = false;
       });
     }
   };

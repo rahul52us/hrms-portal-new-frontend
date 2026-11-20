@@ -1,5 +1,6 @@
 // stores/authStore.ts
-import { makeAutoObservable, runInAction } from "mobx";
+import { makeAutoObservable, reaction, runInAction } from "mobx";
+import { policyReadContextKey, workforcePolicyStore } from "../workforcePolicyStore/workforcePolicyStore";
 import axios from "axios";
 import { AUTH_TOKEN, BACKEND_URL, ENCRYPT_SECRET_KEY, USER_SESSION_DATA } from "../../config/utils/variables";
 import stores from "../stores";
@@ -34,6 +35,8 @@ class AuthStore {
 
   constructor() {
     makeAutoObservable(this);
+    // Invalidate cached policy reads on account, role, permission, or HR/department scope changes.
+    reaction(() => policyReadContextKey(this.user, this.role), () => workforcePolicyStore.clear());
     axios.defaults.baseURL = BACKEND_URL
     axios.defaults.timeout = 0;
 

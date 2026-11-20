@@ -13,6 +13,7 @@ import {
   WorkforcePolicyAssignment,
   WorkforcePolicyItem,
   workforcePolicyStore,
+  policyReadContextKey,
 } from "@/app/store/workforcePolicyStore/workforcePolicyStore";
 import {
   Alert,
@@ -81,6 +82,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
   const { auth, companyStore } = stores;
   const toast = useToast();
   const role = String(auth.role || auth.user?.role || "").toLowerCase();
+  const readContext = policyReadContextKey(auth.user, role);
   const isSuperadmin = role === "superadmin";
   const canViewConfiguration = hasPermission(auth.user, PERMISSION_KEYS.VIEW_WORKFORCE_POLICIES);
   const canViewOperations = hasPermission(auth.user, PERMISSION_KEYS.VIEW_LEAVE_REQUESTS);
@@ -122,7 +124,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
   const refresh = useCallback(async () => {
     if (!companyId || !canViewConfiguration) return;
     await workforcePolicyStore.fetchWorkspace(companyId);
-  }, [canViewConfiguration, companyId]);
+  }, [canViewConfiguration, companyId, readContext]);
 
   useEffect(() => {
     if (!companyId || !canViewConfiguration) return;
@@ -409,4 +411,6 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
   );
 });
 
-export default LeaveManagementWorkspace;
+export default observer(function ScopedLeaveManagementWorkspace() {
+  return <LeaveManagementWorkspace key={`${policyReadContextKey(stores.auth.user, stores.auth.role)}:${stores.companyStore.getActiveCompanyId()}`} />;
+});
