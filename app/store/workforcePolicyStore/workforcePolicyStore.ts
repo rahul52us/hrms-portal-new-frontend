@@ -330,7 +330,7 @@ export interface PolicyAuditLog {
   entityType: string;
   entityId: string;
   action: string;
-  actor?: { _id: string; name?: string; username?: string; role?: string } | null;
+  actor?: { _id: string; name?: string; username?: string; code?: string; role?: string } | null;
   details?: Record<string, any>;
   createdAt?: string;
 }
@@ -556,7 +556,7 @@ class WorkforcePolicyStore {
 
   fetchAudit = async (
     companyId: string,
-    params: { page?: number; limit?: number; entityType?: string } = {}
+    params: { page?: number; limit?: number; entityType?: string; search?: string; fromDate?: string; toDate?: string; timezone?: string } = {}
   ) => {
     const sequence = ++this.readSequences.audit;
     this.auditLoading = true;
@@ -576,6 +576,7 @@ class WorkforcePolicyStore {
       runInAction(() => {
         if (sequence !== this.readSequences.audit) return;
         this.auditLogs = [];
+        this.auditPagination = { ...EMPTY_PAGINATION };
         this.auditError = message;
       });
       throw new Error(message);

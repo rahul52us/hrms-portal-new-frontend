@@ -11,6 +11,7 @@ import {
   DrawerHeader,
   DrawerOverlay,
   FormControl,
+  FormErrorMessage,
   FormLabel,
   Input,
   Select,
@@ -18,6 +19,7 @@ import {
   Stack,
   Text,
   Textarea,
+  Tooltip,
   useToast,
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
@@ -25,6 +27,7 @@ import {
   LeaveTypeItem,
   workforcePolicyStore,
 } from "@/app/store/workforcePolicyStore/workforcePolicyStore";
+import { leaveTypeFieldErrors } from "./leaveFormValidation";
 
 type Props = {
   isOpen: boolean;
@@ -65,12 +68,8 @@ export default function LeaveTypeDrawer({
     setDisplayOrder(String(leaveType?.displayOrder || 0));
   }, [isOpen, leaveType]);
 
-  const validationError = useMemo(() => {
-    if (!name.trim()) return "Leave type name is required.";
-    if (!code.trim()) return "Leave type code is required.";
-    if (!/^#[0-9a-fA-F]{6}$/.test(color)) return "Choose a valid six-digit color.";
-    return "";
-  }, [code, color, name]);
+  const fieldErrors = useMemo(() => leaveTypeFieldErrors({ name, code, color }), [code, color, name]);
+  const validationError = Object.values(fieldErrors)[0] || "";
 
   const save = async () => {
     if (validationError) {
@@ -117,13 +116,15 @@ export default function LeaveTypeDrawer({
         <DrawerBody py={5}>
           <Stack spacing={5}>
             <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={4}>
-              <FormControl isRequired>
+              <FormControl isRequired isInvalid={Boolean(fieldErrors.name)}>
                 <FormLabel fontSize="sm">Name</FormLabel>
                 <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Casual Leave" />
+                <FormErrorMessage>{fieldErrors.name}</FormErrorMessage>
               </FormControl>
-              <FormControl isRequired>
+              <FormControl isRequired isInvalid={Boolean(fieldErrors.code)}>
                 <FormLabel fontSize="sm">Code</FormLabel>
                 <Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="CL" />
+                <FormErrorMessage>{fieldErrors.code}</FormErrorMessage>
               </FormControl>
             </SimpleGrid>
             <FormControl>
@@ -148,17 +149,20 @@ export default function LeaveTypeDrawer({
               <Checkbox isChecked={balanceTracked} onChange={(event) => setBalanceTracked(event.target.checked)}>Track balance</Checkbox>
               <Checkbox isChecked={allowHalfDay} isDisabled={unit !== "days"} onChange={(event) => setAllowHalfDay(event.target.checked)}>Allow half day</Checkbox>
             </SimpleGrid>
-            <FormControl>
+            <FormControl isInvalid={Boolean(fieldErrors.color)}>
               <FormLabel fontSize="sm">Display color</FormLabel>
               <Input type="color" value={color} onChange={(event) => setColor(event.target.value)} maxW="100px" p={1} />
+              <FormErrorMessage>{fieldErrors.color}</FormErrorMessage>
             </FormControl>
           </Stack>
         </DrawerBody>
-        <DrawerFooter borderTopWidth="1px" gap={3}>
+        <DrawerFooter borderTopWidth="1px" gap={3} flexWrap="wrap">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button colorScheme="blue" onClick={save} isLoading={workforcePolicyStore.submitting} isDisabled={Boolean(validationError)}>
-            {leaveType ? "Save changes" : "Create leave type"}
-          </Button>
+          <Tooltip label={validationError} isDisabled={!validationError} shouldWrapChildren hasArrow>
+            <Button colorScheme="blue" onClick={save} isLoading={workforcePolicyStore.submitting} isDisabled={Boolean(validationError)}>
+              {leaveType ? "Save changes" : "Create leave type"}
+            </Button>
+          </Tooltip>
         </DrawerFooter>
       </DrawerContent>
     </Drawer>

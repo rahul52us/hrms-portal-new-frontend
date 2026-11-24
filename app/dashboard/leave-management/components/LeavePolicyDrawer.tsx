@@ -10,6 +10,7 @@ import {
   Alert,
   AlertDescription,
   AlertIcon,
+  Badge,
   Box,
   Button,
   Checkbox,
@@ -23,6 +24,7 @@ import {
   DrawerOverlay,
   Flex,
   FormControl,
+  FormErrorMessage,
   FormLabel,
   HStack,
   Input,
@@ -31,6 +33,7 @@ import {
   Stack,
   Text,
   Textarea,
+  Tooltip,
   useToast,
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
@@ -44,6 +47,7 @@ import {
   WorkforcePolicyItem,
   workforcePolicyStore,
 } from "@/app/store/workforcePolicyStore/workforcePolicyStore";
+import { leavePolicyFieldErrors, leavePolicyRuleFieldErrors } from "./leaveFormValidation";
 
 type EditorMode = "create" | "edit_draft" | "new_version";
 
@@ -381,117 +385,10 @@ export default function LeavePolicyDrawer({
     (workflow) => approvalWorkflowSupportsRequestType(workflow, "leave_encashment_request")
   );
 
-  const validationError = useMemo(() => {
-    if (mode === "create" && !name.trim()) return "Policy name is required.";
-    if (mode === "create" && !code.trim()) return "Policy code is required.";
-    if (!effectiveFrom) return "Effective-from date is required.";
-    if (!rules.length) return "Add at least one leave type rule.";
-    if (mode === "new_version" && changeReason.trim().length < 3) {
-      return "Enter a reason for the new version.";
-    }
-    return "";
-  }, [changeReason, code, effectiveFrom, mode, name, rules.length]);
-
-  const publishValidationError = useMemo(() => {
-    if (validationError) return validationError;
-    const emptyEntitlementRule = rules.find((rule) => {
-      const leaveType = leaveTypeById.get(rule.leaveType);
-      const balanceTracked = leaveType?.balanceTracked ?? rule.balanceTracked !== false;
-      return balanceTracked && rule.entitlementMode === "fixed" && rule.annualEntitlement <= 0;
-    });
-    if (emptyEntitlementRule) {
-      const leaveType = leaveTypeById.get(emptyEntitlementRule.leaveType);
-      return `${leaveType?.code || emptyEntitlementRule.leaveTypeCodeSnapshot || "Leave type"} annual entitlement must be greater than zero.`;
-    }
-    for (const rule of rules) {
-      const leaveType = leaveTypeById.get(rule.leaveType);
-      const code = leaveType?.code || rule.leaveTypeCodeSnapshot || "Leave type";
-      if (!rule.requestApprovalWorkflow) {
-        return `${code} must select a published leave-request approval workflow.`;
-      }
-      if (rule.entitlementMode === "fixed" && rule.creditComponents.some((component) => component.amount <= 0)) {
-        return `${code} automatic credit amounts must be greater than zero.`;
-      }
-      if (rule.entitlementMode === "earned") {
-        if (!rule.compOffClaimApprovalWorkflow) {
-          return `${code} must select a published comp-off claim approval workflow.`;
-        }
-        if (rule.compOffValidityDays < 1 || rule.compOffValidityDays > 730) {
-          return `${code} credit validity must be between 1 and 730 days.`;
-        }
-        if (rule.compOffHalfDayMinutes < 1 || rule.compOffFullDayMinutes < 1) {
-          return `${code} earning thresholds must be greater than zero.`;
-        }
-        if (rule.compOffHalfDayMinutes > rule.compOffFullDayMinutes) {
-          return `${code} half-day threshold cannot exceed the full-day threshold.`;
-        }
-      }
-      if (rule.documentRequiredFromUnits !== null && rule.documentRequiredFromUnits !== undefined) {
-        if (rule.documentRequiredFromUnits <= 0) {
-          return `${code} document threshold must be greater than zero.`;
-        }
-        const documentIncrement = leaveType?.unit === "hours" ? 0.25 : rule.allowHalfDay ? 0.5 : 1;
-        if (!Number.isInteger(rule.documentRequiredFromUnits / documentIncrement)) {
-          return `${code} document threshold must use valid ${leaveType?.unit || "day"} increments.`;
-        }
-        if (
-          rule.documentSubmissionMode === "allow_later" &&
-          (!Number.isInteger(rule.documentDueDaysAfterLeaveEnd) ||
-            rule.documentDueDaysAfterLeaveEnd < 0 ||
-            rule.documentDueDaysAfterLeaveEnd > 365)
-        ) {
-          return `${code} document due period must be a whole number from 0 to 365 days.`;
-        }
-      }
-      if (rule.carryForwardEnabled && rule.maxCarryForward <= 0) {
-        return `${code} maximum carry-forward must be greater than zero.`;
-      }
-      if (rule.encashmentEnabled && rule.maxEncashmentPerYear <= 0) {
-        return `${code} annual encashment limit must be greater than zero.`;
-      }
-      if (rule.encashmentEnabled && !rule.encashmentApprovalWorkflow) {
-        return `${code} must select a published leave-encashment approval workflow.`;
-      }
-      if (rule.negativeBalanceAllowed && rule.maxNegativeBalance <= 0) {
-        return `${code} maximum negative balance must be greater than zero.`;
-      }
-      if (leaveType?.unit === "hours") {
-        if (!Number.isInteger(rule.minimumRequestDays * 4)) {
-          return `${code} minimum request must use 15-minute increments.`;
-        }
-        if (
-          rule.maximumRequestDays !== null &&
-          rule.maximumRequestDays !== undefined &&
-          !Number.isInteger(rule.maximumRequestDays * 4)
-        ) {
-          return `${code} maximum request must use 15-minute increments.`;
-        }
-      } else if (rule.allowHalfDay) {
-        if (rule.minimumRequestDays !== 0.5) {
-          return `${code} minimum request must be 0.5 day when half-day leave is allowed.`;
-        }
-        if (
-          rule.maximumRequestDays !== null &&
-          rule.maximumRequestDays !== undefined &&
-          !Number.isInteger(rule.maximumRequestDays * 2)
-        ) {
-          return `${code} maximum request must use half-day increments.`;
-        }
-      } else {
-        if (rule.minimumRequestDays < 1 || !Number.isInteger(rule.minimumRequestDays)) {
-          return `${code} minimum request must be a whole day when half-day leave is disabled.`;
-        }
-        if (
-          rule.maximumRequestDays !== null &&
-          rule.maximumRequestDays !== undefined &&
-          !Number.isInteger(rule.maximumRequestDays)
-        ) {
-          return `${code} maximum request must be a whole day when half-day leave is disabled.`;
-        }
-      }
-    }
-    return "";
-  }, [leaveTypes, rules, validationError]);
+  const fieldErrors = useMemo(() => leavePolicyFieldErrors({ mode, name, code, effectiveFrom, ruleCount: rules.length, changeReason }), [changeReason, code, effectiveFrom, mode, name, rules.length]);
+  const ruleErrors = useMemo(() => rules.map((rule) => leavePolicyRuleFieldErrors(rule, leaveTypes.find((item) => item._id === rule.leaveType))), [leaveTypes, rules]);
+  const validationError = Object.values(fieldErrors)[0] || "";
+  const publishValidationError = validationError || ruleErrors.flatMap((errors) => Object.values(errors))[0] || "";
 
   const updateRule = (index: number, patch: Partial<LeavePolicyRule>) => {
     setRules((current) =>
@@ -700,13 +597,15 @@ export default function LeavePolicyDrawer({
             ) : (
               <>
                 <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                  <FormControl isRequired>
+                  <FormControl isRequired isInvalid={Boolean(fieldErrors.name)}>
                     <FormLabel fontSize="sm">Policy name</FormLabel>
                     <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="India Standard Leave Policy" />
+                    <FormErrorMessage>{fieldErrors.name}</FormErrorMessage>
                   </FormControl>
-                  <FormControl isRequired>
+                  <FormControl isRequired isInvalid={Boolean(fieldErrors.code)}>
                     <FormLabel fontSize="sm">Policy code</FormLabel>
                     <Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="IND-LEAVE" />
+                    <FormErrorMessage>{fieldErrors.code}</FormErrorMessage>
                   </FormControl>
                 </SimpleGrid>
                 <FormControl>
@@ -719,9 +618,10 @@ export default function LeavePolicyDrawer({
             <Box>
               <Text fontWeight="800">Effective period</Text>
               <SimpleGrid mt={3} columns={{ base: 1, md: 3 }} spacing={4}>
-                <FormControl isRequired>
+                <FormControl isRequired isInvalid={Boolean(fieldErrors.effectiveFrom)}>
                   <FormLabel fontSize="sm">Effective from</FormLabel>
                   <Input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} />
+                  <FormErrorMessage>{fieldErrors.effectiveFrom}</FormErrorMessage>
                 </FormControl>
                 <FormControl>
                   <FormLabel fontSize="sm">Leave year starts in</FormLabel>
@@ -746,12 +646,16 @@ export default function LeavePolicyDrawer({
                   <Text fontWeight="800">Leave allowances and rules</Text>
                   <Text mt={1} fontSize="sm" color="gray.500">Add each leave type once, then configure how it is credited and requested.</Text>
                 </Box>
-                <HStack align="end">
-                  <Select size="sm" value={leaveTypeToAdd} onChange={(event) => setLeaveTypeToAdd(event.target.value)} placeholder="Select leave type" minW="190px">
-                    {availableLeaveTypes.map((item) => <option key={item._id} value={item._id}>{item.name} ({item.code})</option>)}
-                  </Select>
-                  <Button size="sm" leftIcon={<FiPlus />} onClick={addLeaveType} isDisabled={!leaveTypeToAdd}>Add</Button>
-                </HStack>
+                <FormControl isRequired isInvalid={Boolean(fieldErrors.rules)} minW={0} maxW={{ sm: "320px" }}>
+                  <FormLabel fontSize="sm">Leave type</FormLabel>
+                  <HStack>
+                    <Select size="sm" value={leaveTypeToAdd} onChange={(event) => setLeaveTypeToAdd(event.target.value)} placeholder="Select leave type" minW={0}>
+                      {availableLeaveTypes.map((item) => <option key={item._id} value={item._id}>{item.name} ({item.code})</option>)}
+                    </Select>
+                    <Button size="sm" leftIcon={<FiPlus />} onClick={addLeaveType} isDisabled={!leaveTypeToAdd}>Add</Button>
+                  </HStack>
+                  <FormErrorMessage>{fieldErrors.rules}</FormErrorMessage>
+                </FormControl>
               </Flex>
 
               {rules.length === 0 ? (
@@ -765,11 +669,13 @@ export default function LeavePolicyDrawer({
                     const balanceTracked = leaveType?.balanceTracked ?? rule.balanceTracked !== false;
                     const ruleUnit = leaveType?.unit === "hours" ? "hours" : "days";
                     const requestStep = ruleUnit === "hours" ? 0.25 : rule.allowHalfDay ? 0.5 : 1;
+                    const errors = ruleErrors[index];
                     return (
                       <AccordionItem key={rule.leaveType} borderWidth="1px" borderRadius="md" mb={3} overflow="hidden">
                         <AccordionButton py={3}>
-                          <Box flex="1" textAlign="left">
+                          <Box flex="1" minW={0} textAlign="left">
                             <Text fontWeight="800">{leaveType?.name || rule.leaveTypeNameSnapshot} ({leaveType?.code || rule.leaveTypeCodeSnapshot})</Text>
+                            {Object.keys(errors).length ? <Badge colorScheme="red">{Object.keys(errors).length} {Object.keys(errors).length === 1 ? "issue" : "issues"}</Badge> : null}
                             <Text fontSize="xs" color="gray.500">{accrualSummary(rule, leaveType)}</Text>
                           </Box>
                           <Button as="span" size="xs" variant="ghost" colorScheme="red" mr={2} aria-label="Remove leave type" onClick={(event) => { event.stopPropagation(); setRules((current) => current.filter((_, ruleIndex) => ruleIndex !== index)); }}>
@@ -824,7 +730,7 @@ export default function LeavePolicyDrawer({
 
                             {balanceTracked && rule.entitlementMode === "fixed" ? (
                               <Stack spacing={4}>
-                                <FormControl maxW={{ md: "280px" }}>
+                                <FormControl maxW={{ md: "280px" }} isInvalid={Boolean(errors.annualEntitlement)}>
                                   <FormLabel fontSize="sm">
                                     {rule.creditComponents.length ? "Scheduled annual credit" : "Annual allowance"} ({ruleUnit})
                                   </FormLabel>
@@ -845,6 +751,7 @@ export default function LeavePolicyDrawer({
                                       })}
                                     />
                                   )}
+                                  <FormErrorMessage>{errors.annualEntitlement}</FormErrorMessage>
                                   <Text mt={1} fontSize="xs" color="gray.500">
                                     {rule.creditComponents.length
                                       ? "Calculated from all automatic credits below."
@@ -904,7 +811,7 @@ export default function LeavePolicyDrawer({
                                                   <option value="quarterly">Quarterly</option>
                                                 </Select>
                                               </FormControl>
-                                              <FormControl isRequired>
+                                              <FormControl isRequired isInvalid={Boolean(errors[`creditComponents.${componentIndex}.amount`])}>
                                                 <FormLabel mb={1} fontSize="xs">
                                                   {component.frequency === "monthly"
                                                     ? `Amount each month (${ruleUnit})`
@@ -919,6 +826,7 @@ export default function LeavePolicyDrawer({
                                                   onValueChange={(amount) => updateCreditComponent(index, componentIndex, { amount })}
                                                   placeholder={component.frequency === "monthly" ? "e.g. 0.25" : "e.g. 10"}
                                                 />
+                                                <FormErrorMessage>{errors[`creditComponents.${componentIndex}.amount`]}</FormErrorMessage>
                                               </FormControl>
                                               {component.frequency === "upfront" ? (
                                                 <FormControl>
@@ -982,7 +890,7 @@ export default function LeavePolicyDrawer({
                                   Employees claim credit after completing attendance on a weekly off or mandatory holiday.
                                 </Text>
                                 <SimpleGrid mt={4} columns={{ base: 1, md: 3 }} spacing={4}>
-                                  <FormControl isRequired>
+                                  <FormControl isRequired isInvalid={Boolean(errors.compOffValidityDays)}>
                                     <FormLabel fontSize="sm">Credit valid for (days)</FormLabel>
                                     <Input
                                       type="number"
@@ -991,9 +899,10 @@ export default function LeavePolicyDrawer({
                                       value={rule.compOffValidityDays}
                                       onChange={(event) => updateRule(index, { compOffValidityDays: Number(event.target.value || 0) })}
                                     />
+                                    <FormErrorMessage>{errors.compOffValidityDays}</FormErrorMessage>
                                     <Text mt={1} fontSize="xs" color="gray.500">Also expires at the leave-year end, whichever comes first.</Text>
                                   </FormControl>
-                                  <FormControl isRequired>
+                                  <FormControl isRequired isInvalid={Boolean(errors.compOffFullDayMinutes)}>
                                     <FormLabel fontSize="sm">Full-day credit after (minutes)</FormLabel>
                                     <Input
                                       type="number"
@@ -1002,9 +911,10 @@ export default function LeavePolicyDrawer({
                                       value={rule.compOffFullDayMinutes}
                                       onChange={(event) => updateRule(index, { compOffFullDayMinutes: Number(event.target.value || 0) })}
                                     />
+                                    <FormErrorMessage>{errors.compOffFullDayMinutes}</FormErrorMessage>
                                     <Text mt={1} fontSize="xs" color="gray.500">Example: 480 minutes gives 1 day.</Text>
                                   </FormControl>
-                                  <FormControl isRequired>
+                                  <FormControl isRequired isInvalid={Boolean(errors.compOffHalfDayMinutes)}>
                                     <FormLabel fontSize="sm">Half-day credit after (minutes)</FormLabel>
                                     <Input
                                       type="number"
@@ -1013,6 +923,7 @@ export default function LeavePolicyDrawer({
                                       value={rule.compOffHalfDayMinutes}
                                       onChange={(event) => updateRule(index, { compOffHalfDayMinutes: Number(event.target.value || 0) })}
                                     />
+                                    <FormErrorMessage>{errors.compOffHalfDayMinutes}</FormErrorMessage>
                                     <Text mt={1} fontSize="xs" color="gray.500">Example: 240 minutes gives 0.5 day.</Text>
                                   </FormControl>
                                 </SimpleGrid>
@@ -1035,7 +946,7 @@ export default function LeavePolicyDrawer({
                                 Published workflow versions are snapshotted when a request is submitted.
                               </Text>
                               <SimpleGrid mt={4} columns={{ base: 1, md: rule.entitlementMode === "earned" || rule.encashmentEnabled ? 2 : 1 }} spacing={4}>
-                                <FormControl isRequired>
+                                <FormControl isRequired isInvalid={Boolean(errors.requestApprovalWorkflow)}>
                                   <FormLabel fontSize="sm">Leave request approval</FormLabel>
                                   <Select
                                     value={rule.requestApprovalWorkflow || ""}
@@ -1048,10 +959,11 @@ export default function LeavePolicyDrawer({
                                       </option>
                                     ))}
                                   </Select>
+                                  <FormErrorMessage>{errors.requestApprovalWorkflow}</FormErrorMessage>
                                   <Text mt={1} fontSize="xs" color="gray.500">Used when an employee applies for this leave type.</Text>
                                 </FormControl>
                                 {rule.entitlementMode === "earned" ? (
-                                  <FormControl isRequired>
+                                  <FormControl isRequired isInvalid={Boolean(errors.compOffClaimApprovalWorkflow)}>
                                     <FormLabel fontSize="sm">Comp-off earning claim approval</FormLabel>
                                     <Select
                                       value={rule.compOffClaimApprovalWorkflow || ""}
@@ -1064,11 +976,12 @@ export default function LeavePolicyDrawer({
                                         </option>
                                       ))}
                                     </Select>
+                                    <FormErrorMessage>{errors.compOffClaimApprovalWorkflow}</FormErrorMessage>
                                     <Text mt={1} fontSize="xs" color="gray.500">Used before earned comp-off is credited to the balance ledger.</Text>
                                   </FormControl>
                                 ) : null}
                                 {rule.encashmentEnabled ? (
-                                  <FormControl isRequired>
+                                  <FormControl isRequired isInvalid={Boolean(errors.encashmentApprovalWorkflow)}>
                                     <FormLabel fontSize="sm">Leave encashment approval</FormLabel>
                                     <Select
                                       value={rule.encashmentApprovalWorkflow || ""}
@@ -1081,6 +994,7 @@ export default function LeavePolicyDrawer({
                                         </option>
                                       ))}
                                     </Select>
+                                    <FormErrorMessage>{errors.encashmentApprovalWorkflow}</FormErrorMessage>
                                     <Text mt={1} fontSize="xs" color="gray.500">Used before leave units are converted into a payable encashment.</Text>
                                   </FormControl>
                                 ) : null}
@@ -1088,7 +1002,7 @@ export default function LeavePolicyDrawer({
                             </Box>
 
                             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
-                              <FormControl isRequired>
+                              <FormControl isRequired isInvalid={Boolean(errors.minimumRequestDays)}>
                                 <FormLabel fontSize="sm">Minimum leave per request ({ruleUnit})</FormLabel>
                                 <OptionalPositiveNumberInput
                                   min={requestStep}
@@ -1097,6 +1011,7 @@ export default function LeavePolicyDrawer({
                                   onValueChange={(value) => updateRule(index, { minimumRequestDays: value })}
                                   placeholder={ruleUnit === "hours" ? "e.g. 1" : rule.allowHalfDay ? "0.5" : "1"}
                                 />
+                                <FormErrorMessage>{errors.minimumRequestDays}</FormErrorMessage>
                                 <Text mt={1} fontSize="xs" color="gray.500">
                                   {ruleUnit === "hours"
                                     ? "Smallest request allowed, in 15-minute increments."
@@ -1105,7 +1020,7 @@ export default function LeavePolicyDrawer({
                                       : "Half-day requests are disabled, so use whole days."}
                                 </Text>
                               </FormControl>
-                              <FormControl>
+                              <FormControl isInvalid={Boolean(errors.maximumRequestDays)}>
                                 <FormLabel fontSize="sm">Maximum leave per request ({ruleUnit})</FormLabel>
                                 <OptionalPositiveNumberInput
                                   min={requestStep}
@@ -1114,6 +1029,7 @@ export default function LeavePolicyDrawer({
                                   onValueChange={(value) => updateRule(index, { maximumRequestDays: value > 0 ? value : null })}
                                   placeholder="No limit"
                                 />
+                                <FormErrorMessage>{errors.maximumRequestDays}</FormErrorMessage>
                               </FormControl>
                               <FormControl>
                                 <FormLabel fontSize="sm">Advance notice days</FormLabel>
@@ -1146,7 +1062,7 @@ export default function LeavePolicyDrawer({
                               </Checkbox>
                               {rule.documentRequiredFromUnits !== null && rule.documentRequiredFromUnits !== undefined ? (
                                 <SimpleGrid mt={4} columns={{ base: 1, md: 3 }} spacing={4}>
-                                  <FormControl isRequired>
+                                  <FormControl isRequired isInvalid={Boolean(errors.documentRequiredFromUnits)}>
                                     <FormLabel fontSize="sm">Required from ({ruleUnit})</FormLabel>
                                     <OptionalPositiveNumberInput
                                       min={requestStep}
@@ -1157,6 +1073,7 @@ export default function LeavePolicyDrawer({
                                       })}
                                       placeholder={leaveType?.unit === "hours" ? "e.g. 4" : "e.g. 2"}
                                     />
+                                    <FormErrorMessage>{errors.documentRequiredFromUnits}</FormErrorMessage>
                                     <Text mt={1} fontSize="xs" color="gray.500">
                                       Required when charged leave is this amount or more.
                                     </Text>
@@ -1174,7 +1091,7 @@ export default function LeavePolicyDrawer({
                                     </Select>
                                   </FormControl>
                                   {rule.documentSubmissionMode === "allow_later" ? (
-                                    <FormControl isRequired>
+                                    <FormControl isRequired isInvalid={Boolean(errors.documentDueDaysAfterLeaveEnd)}>
                                       <FormLabel fontSize="sm">Due after leave ends (days)</FormLabel>
                                       <Input
                                         type="number"
@@ -1186,6 +1103,7 @@ export default function LeavePolicyDrawer({
                                           documentDueDaysAfterLeaveEnd: Math.max(0, Number(event.target.value || 0)),
                                         })}
                                       />
+                                      <FormErrorMessage>{errors.documentDueDaysAfterLeaveEnd}</FormErrorMessage>
                                       <Text mt={1} fontSize="xs" color="gray.500">
                                         Use 0 when the document is due on the leave end date.
                                       </Text>
@@ -1226,13 +1144,14 @@ export default function LeavePolicyDrawer({
                                   <Checkbox isChecked={rule.carryForwardEnabled} onChange={(event) => updateRule(index, { carryForwardEnabled: event.target.checked })}>Carry forward unused balance</Checkbox>
                                   {rule.carryForwardEnabled ? (
                                     <Stack mt={4} spacing={4}>
-                                      <FormControl isRequired>
+                                      <FormControl isRequired isInvalid={Boolean(errors.maxCarryForward)}>
                                         <FormLabel mb={1} fontSize="xs">Maximum carry-forward ({ruleUnit})</FormLabel>
                                         <OptionalPositiveNumberInput
                                           value={rule.maxCarryForward}
                                           onValueChange={(value) => updateRule(index, { maxCarryForward: value })}
                                           placeholder="e.g. 5"
                                         />
+                                        <FormErrorMessage>{errors.maxCarryForward}</FormErrorMessage>
                                         <Text mt={1} fontSize="xs" color="gray.500">Largest unused balance moved into the next leave year.</Text>
                                       </FormControl>
                                       <FormControl>
@@ -1253,13 +1172,14 @@ export default function LeavePolicyDrawer({
                                 <Box borderWidth="1px" borderRadius="md" p={3}>
                                   <Checkbox isChecked={rule.encashmentEnabled} isDisabled={leaveType?.paid === false} onChange={(event) => updateRule(index, { encashmentEnabled: event.target.checked })}>Allow encashment</Checkbox>
                                   {rule.encashmentEnabled ? (
-                                    <FormControl mt={4} isRequired>
+                                    <FormControl mt={4} isRequired isInvalid={Boolean(errors.maxEncashmentPerYear)}>
                                       <FormLabel mb={1} fontSize="xs">Annual encashment limit ({ruleUnit})</FormLabel>
                                       <OptionalPositiveNumberInput
                                         value={rule.maxEncashmentPerYear}
                                         onValueChange={(value) => updateRule(index, { maxEncashmentPerYear: value })}
                                         placeholder="e.g. 10"
                                       />
+                                      <FormErrorMessage>{errors.maxEncashmentPerYear}</FormErrorMessage>
                                       <Text mt={1} fontSize="xs" color="gray.500">Maximum unused balance that can be converted to pay each leave year.</Text>
                                     </FormControl>
                                   ) : null}
@@ -1267,13 +1187,14 @@ export default function LeavePolicyDrawer({
                                 <Box borderWidth="1px" borderRadius="md" p={3}>
                                   <Checkbox isChecked={rule.negativeBalanceAllowed} onChange={(event) => updateRule(index, { negativeBalanceAllowed: event.target.checked })}>Allow negative balance</Checkbox>
                                   {rule.negativeBalanceAllowed ? (
-                                    <FormControl mt={4} isRequired>
+                                    <FormControl mt={4} isRequired isInvalid={Boolean(errors.maxNegativeBalance)}>
                                       <FormLabel mb={1} fontSize="xs">Maximum negative balance ({ruleUnit})</FormLabel>
                                       <OptionalPositiveNumberInput
                                         value={rule.maxNegativeBalance}
                                         onValueChange={(value) => updateRule(index, { maxNegativeBalance: value })}
                                         placeholder="e.g. 2"
                                       />
+                                      <FormErrorMessage>{errors.maxNegativeBalance}</FormErrorMessage>
                                       <Text mt={1} fontSize="xs" color="gray.500">
                                         {rule.maxNegativeBalance > 0
                                           ? `The employee balance may fall as low as -${formatCreditNumber(rule.maxNegativeBalance)} ${ruleUnit}.`
@@ -1293,18 +1214,23 @@ export default function LeavePolicyDrawer({
               )}
             </Box>
 
-            <FormControl isRequired={mode === "new_version"}>
+            <FormControl isRequired={mode === "new_version"} isInvalid={Boolean(fieldErrors.changeReason)}>
               <FormLabel fontSize="sm">Change reason</FormLabel>
               <Textarea value={changeReason} onChange={(event) => setChangeReason(event.target.value)} rows={3} placeholder="Why this configuration is being introduced or changed" />
+              <FormErrorMessage>{fieldErrors.changeReason}</FormErrorMessage>
             </FormControl>
           </Stack>
         </DrawerBody>
         <DrawerFooter borderTopWidth="1px" gap={3} flexWrap="wrap">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="outline" onClick={saveDraft} isLoading={workforcePolicyStore.submitting && !publishing} isDisabled={Boolean(validationError)}>Save draft</Button>
-          <Button colorScheme="blue" onClick={publish} isLoading={publishing} isDisabled={Boolean(publishValidationError)}>
-            {mode === "new_version" || resource?.assignmentCount ? "Publish version" : "Publish and assign"}
-          </Button>
+          <Tooltip label={validationError} isDisabled={!validationError} shouldWrapChildren hasArrow>
+            <Button variant="outline" onClick={saveDraft} isLoading={workforcePolicyStore.submitting && !publishing} isDisabled={Boolean(validationError)}>Save draft</Button>
+          </Tooltip>
+          <Tooltip label={publishValidationError} isDisabled={!publishValidationError} shouldWrapChildren hasArrow>
+            <Button colorScheme="blue" onClick={publish} isLoading={publishing} isDisabled={Boolean(publishValidationError)}>
+              {mode === "new_version" || resource?.assignmentCount ? "Publish version" : "Publish and assign"}
+            </Button>
+          </Tooltip>
         </DrawerFooter>
       </DrawerContent>
     </Drawer>
