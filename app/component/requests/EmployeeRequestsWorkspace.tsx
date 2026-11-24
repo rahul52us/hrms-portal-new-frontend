@@ -2,6 +2,7 @@
 
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
 import DocumentDownloadButton from "@/app/component/common/DocumentDownloadButton";
+import { useLeaveRequestSetup } from "@/app/component/leave/useLeaveRequestSetup";
 import {
   EligibleLeaveItem,
   LeaveAttachment,
@@ -246,6 +247,7 @@ export default function EmployeeRequestsWorkspace() {
   const isCompOffClaim = form.leaveTypeId === COMP_OFF_CLAIM_OPTION;
   const isRegularization = form.leaveTypeId === ATTENDANCE_CORRECTION_OPTION;
   const isLeave = !isWfh && !isCompOffClaim && !isRegularization;
+  const leaveSetup = useLeaveRequestSetup(isRequestDrawerOpen && isLeave, form.fromDate, form.toDate);
 
   const selectedLeave = useMemo(
     () => requestEligible.find((item) => item.leaveType._id === form.leaveTypeId) || null,
@@ -483,6 +485,7 @@ export default function EmployeeRequestsWorkspace() {
   });
 
   const review = async () => {
+    if (isLeave && !leaveSetup.ready) return;
     if (isCompOffClaim) {
       await checkCompOffEligibility();
       return;
@@ -497,6 +500,7 @@ export default function EmployeeRequestsWorkspace() {
       setPreview(isWfh ? await previewRemoteWorkRequest(wfhPayload()) : await previewLeaveRequest(leavePayload()));
     } catch (error: any) {
       setPreview(null);
+      if (isLeave) leaveSetup.recheck();
       toast({
         title: getApiErrorMessage(error?.response?.data || error, isWfh ? "Could not validate WFH request" : "Could not calculate leave"),
         status: "error",
@@ -508,6 +512,7 @@ export default function EmployeeRequestsWorkspace() {
   };
 
   const submit = async () => {
+    if (isLeave && !leaveSetup.ready) return;
     setSubmitting(true);
     try {
       if (isWfh) {
@@ -532,6 +537,7 @@ export default function EmployeeRequestsWorkspace() {
       closeRequestDrawer();
       await load();
     } catch (error: any) {
+      if (isLeave) { setPreview(null); leaveSetup.recheck(); }
       toast({ title: getApiErrorMessage(error?.response?.data || error, "Could not submit request"), status: "error", duration: 5000 });
     } finally {
       setSubmitting(false);
@@ -696,7 +702,7 @@ export default function EmployeeRequestsWorkspace() {
       ? Boolean(form.fromDate)
       : isRegularization
         ? Boolean(form.fromDate && regularizationEligibility && regularizationFieldsValid && regularizationReasonValid)
-        : Boolean(selectedLeave && form.reason.trim());
+        : Boolean(selectedLeave && form.reason.trim() && leaveSetup.ready);
   const canSubmitCompOff = Boolean(
     selectedCompOff && selectedCompOff.eligibleUnits > 0 && !selectedCompOff.existingClaim && form.reason.trim().length >= 3
   );
@@ -907,6 +913,19 @@ export default function EmployeeRequestsWorkspace() {
                 </SimpleGrid>
               )}
 
+              {isLeave && leaveSetup.loading ? <Text role="status" fontSize="sm" color={muted}>Checking your work schedule...</Text> : null}
+              {isLeave && (leaveSetup.error || leaveSetup.issues.length > 0) ? (
+                <Alert status={leaveSetup.error ? "error" : "warning"} borderRadius="md" alignItems="flex-start">
+                  <AlertIcon />
+                  <Box minW={0}>
+                    <AlertDescription>
+                      {leaveSetup.error || `A work schedule is not assigned for ${leaveSetup.issues.slice(0, 3).map((issue) => formatDate(issue.date)).join(", ")}${leaveSetup.issues.length > 3 ? ` and ${leaveSetup.issues.length - 3} more date(s)` : ""}. Contact HR to assign an effective work schedule before requesting leave.`}
+                    </AlertDescription>
+                    <Button mt={2} size="sm" variant="outline" onClick={leaveSetup.recheck}>Check again</Button>
+                  </Box>
+                </Alert>
+              ) : null}
+
               {isLeave && selectedLeave?.leaveType.unit === "hours" ? (
                 <FormControl isRequired><FormLabel>Hours requested</FormLabel><Input type="number" min="0.25" step="0.25" value={form.requestedHours} placeholder="For example, 2.5" onChange={(event) => { setForm((current) => ({ ...current, requestedHours: event.target.value })); setPreview(null); }} /></FormControl>
               ) : isLeave && selectedLeave?.rule?.allowHalfDay ? (
@@ -1060,7 +1079,7 @@ export default function EmployeeRequestsWorkspace() {
             {isCompOffClaim && compOffEligibility ? (
               <Button colorScheme="blue" onClick={submit} isLoading={submitting} isDisabled={!canSubmitCompOff}>Submit request</Button>
             ) : preview ? (
-              <Button colorScheme="blue" onClick={submit} isLoading={submitting} isDisabled={documentRequiredAtSubmission}>Submit request</Button>
+              <Button colorScheme="blue" onClick={submit} isLoading={submitting} isDisabled={documentRequiredAtSubmission || (isLeave && !leaveSetup.ready)}>Submit request</Button>
             ) : (
               <Button colorScheme="blue" onClick={review} isLoading={submitting || checking || uploading} isDisabled={!canReview}>{isCompOffClaim ? "Check eligibility" : "Review request"}</Button>
             )}

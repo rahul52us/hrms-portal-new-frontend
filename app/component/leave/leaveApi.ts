@@ -217,6 +217,18 @@ export async function previewLeaveRequest(payload: Record<string, any>) {
   return response.data?.data;
 }
 
+export type LeaveRequestSetup = {
+  fromDate: string;
+  toDate: string;
+  ready: boolean;
+  issues: Array<{ date: string; code: "work_schedule_missing" }>;
+};
+
+export async function fetchLeaveRequestSetup(params: { fromDate: string; toDate: string }, signal?: AbortSignal) {
+  const response = await axios.get("/leave/requests/setup", { params, signal });
+  return response.data?.data as LeaveRequestSetup;
+}
+
 export async function submitLeaveRequest(payload: Record<string, any>) {
   const response = await axios.post("/leave/requests", payload);
   return response.data?.data as LeaveRequest;
