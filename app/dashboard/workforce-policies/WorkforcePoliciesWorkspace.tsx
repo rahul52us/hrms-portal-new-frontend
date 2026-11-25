@@ -103,6 +103,9 @@ const WorkforcePoliciesWorkspace = observer(() => {
     PERMISSION_KEYS.MANAGE_WORKFORCE_POLICIES
   );
   const [tabIndex, setTabIndex] = useState(0);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "approval-flows") setTabIndex(4);
+  }, []);
   const [search, setSearch] = useState("");
   const [editor, setEditor] = useState<EditorState>({
     type: "attendance_policy",

@@ -28,6 +28,7 @@ import {
   FormLabel,
   HStack,
   Input,
+  Link,
   Select,
   SimpleGrid,
   Stack,
@@ -48,6 +49,7 @@ import {
   workforcePolicyStore,
 } from "@/app/store/workforcePolicyStore/workforcePolicyStore";
 import { leavePolicyFieldErrors, leavePolicyRuleFieldErrors } from "./leaveFormValidation";
+import { APPROVAL_FLOWS_URL, isApprovalWorkflowSetupError, requiredLeaveApprovalFlows } from "./leaveApprovalSetup";
 
 type EditorMode = "create" | "edit_draft" | "new_version";
 
@@ -114,6 +116,7 @@ function OptionalPositiveNumberInput({
   step = 0.25,
   placeholder,
   isDisabled = false,
+  isReadOnly = false,
 }: {
   value: number;
   onValueChange: (value: number) => void;
@@ -122,6 +125,7 @@ function OptionalPositiveNumberInput({
   step?: number;
   placeholder: string;
   isDisabled?: boolean;
+  isReadOnly?: boolean;
 }) {
   const [inputValue, setInputValue] = useState(value > 0 ? String(value) : "");
 
@@ -138,6 +142,7 @@ function OptionalPositiveNumberInput({
       value={inputValue}
       placeholder={placeholder}
       isDisabled={isDisabled}
+      isReadOnly={isReadOnly}
       onChange={(event) => {
         const nextValue = event.target.value;
         setInputValue(nextValue);
@@ -243,7 +248,11 @@ function emptyRule(leaveType: LeaveTypeItem): LeavePolicyRule {
   };
 }
 
-function normalizeSourceRule(rule: any): LeavePolicyRule {
+function normalizeSourceRule(rule: any, leaveType?: LeaveTypeItem): LeavePolicyRule {
+  const unit = leaveType?.unit || rule.leaveType?.unit || "days";
+  const allowHalfDay = unit === "days" && (leaveType?.allowHalfDay ?? true) && (rule.allowHalfDay ?? leaveType?.allowHalfDay ?? true);
+  // Only the editable copy is aligned; stored/published policy history is not rewritten.
+  const minimumRequestDays = allowHalfDay ? 0.5 : Number(rule.minimumRequestDays ?? (unit === "hours" ? 0.25 : 1));
   const entitlementMode = String(
     rule.entitlementMode || (rule.balanceTracked === false ? "untracked" : "fixed")
   ) as LeavePolicyRule["entitlementMode"];
@@ -300,7 +309,8 @@ function normalizeSourceRule(rule: any): LeavePolicyRule {
     encashmentApprovalWorkflowVersion: String(rule.encashmentApprovalWorkflowVersion?._id || rule.encashmentApprovalWorkflowVersion || "") || null,
     encashmentApprovalWorkflowVersionNumber: Number(rule.encashmentApprovalWorkflowVersionNumber || 0) || null,
     maxNegativeBalance: Number(rule.maxNegativeBalance || 0),
-    minimumRequestDays: Number(rule.minimumRequestDays || 1),
+    allowHalfDay,
+    minimumRequestDays,
     maximumRequestDays: rule.maximumRequestDays ?? null,
     minimumNoticeDays: Number(rule.minimumNoticeDays || 0),
     documentRequiredFromUnits:
@@ -343,6 +353,9 @@ export default function LeavePolicyDrawer({
   const [rules, setRules] = useState<LeavePolicyRule[]>([]);
   const [leaveTypeToAdd, setLeaveTypeToAdd] = useState("");
   const [publishing, setPublishing] = useState(false);
+  const [refreshingWorkflows, setRefreshingWorkflows] = useState(false);
+  const [workflowSetupError, setWorkflowSetupError] = useState("");
+  const [workflowRefreshError, setWorkflowRefreshError] = useState("");
   const [persistedDraft, setPersistedDraft] = useState<{
     policyId: string;
     versionId: string;
@@ -361,8 +374,11 @@ export default function LeavePolicyDrawer({
     setLeaveYearStartMonth(String(version?.leaveYearStartMonth || 1));
     setLeaveYearStartDay(String(version?.leaveYearStartDay || 1));
     setChangeReason(mode === "create" ? "Initial leave policy configuration" : "");
-    setRules(Array.isArray(version?.rules) ? version.rules.map(normalizeSourceRule) : []);
+    // Use the leave-type snapshot when opening; refreshing options must not reset unsaved edits.
+    setRules(Array.isArray(version?.rules) ? version.rules.map((rule: any) => normalizeSourceRule(rule, leaveTypes.find((item) => item._id === String(rule.leaveType?._id || rule.leaveType)))) : []);
     setLeaveTypeToAdd("");
+    setWorkflowSetupError("");
+    setWorkflowRefreshError("");
     setPersistedDraft(
       mode === "edit_draft" && resource?._id && version?._id
         ? { policyId: resource._id, versionId: version._id }
@@ -384,6 +400,24 @@ export default function LeavePolicyDrawer({
   const encashmentApprovalWorkflows = workforcePolicyStore.approvalWorkflows.filter(
     (workflow) => approvalWorkflowSupportsRequestType(workflow, "leave_encashment_request")
   );
+  const missingWorkflowKinds = requiredLeaveApprovalFlows(rules).filter((kind) =>
+    !(kind === "leave requests" ? leaveApprovalWorkflows : kind === "leave encashment" ? encashmentApprovalWorkflows : compOffApprovalWorkflows).length
+  );
+  const workflowSetupMessage = workflowSetupError || (missingWorkflowKinds.length
+    ? `No active, published approval flow is available for ${missingWorkflowKinds.join(", ")}.`
+    : "");
+
+  const refreshApprovalFlows = async () => {
+    setRefreshingWorkflows(true);
+    setWorkflowRefreshError("");
+    try {
+      // Reuse the workspace refresh without closing or reinitializing the policy editor.
+      await onSaved();
+      setWorkflowSetupError("");
+    } catch {
+      setWorkflowRefreshError("Approval flows could not be refreshed. Please try again.");
+    } finally { setRefreshingWorkflows(false); }
+  };
 
   const fieldErrors = useMemo(() => leavePolicyFieldErrors({ mode, name, code, effectiveFrom, ruleCount: rules.length, changeReason }), [changeReason, code, effectiveFrom, mode, name, rules.length]);
   const ruleErrors = useMemo(() => rules.map((rule) => leavePolicyRuleFieldErrors(rule, leaveTypes.find((item) => item._id === rule.leaveType))), [leaveTypes, rules]);
@@ -565,6 +599,17 @@ export default function LeavePolicyDrawer({
       if (mode !== "new_version" && !resource?.assignmentCount) onPublished?.(policyId);
     } catch (error: any) {
       await Promise.resolve(onSaved()).catch(() => undefined);
+      if (isApprovalWorkflowSetupError(String(error?.message || ""))) {
+        const target = / for (.+)$/.exec(String(error?.message || ""))?.[1];
+        const message = `The approval flow${target ? ` for ${target}` : ""} is missing, inactive, or not published for the policy's Effective from date. Configure an active flow for the required request type, then refresh and select it below. Your policy draft has not been published.`;
+        setWorkflowSetupError(message);
+        toast({
+          title: "Approval flow setup needs attention",
+          description: <Box><Text>{message}</Text><Link href={APPROVAL_FLOWS_URL} isExternal textDecoration="underline">Configure approval flows</Link></Box>,
+          status: "error", duration: 10000, isClosable: true,
+        });
+        return;
+      }
       if (!savedDraft && /existing draft/i.test(String(error?.message || ""))) {
         onClose();
       }
@@ -589,6 +634,21 @@ export default function LeavePolicyDrawer({
         </DrawerHeader>
         <DrawerBody py={5}>
           <Stack spacing={6}>
+            {workflowSetupMessage ? (
+              <Alert status="warning" borderRadius="md" alignItems="flex-start">
+                <AlertIcon />
+                <Box minW={0}>
+                  <Text fontWeight="700">Approval flow setup needs attention</Text>
+                  <AlertDescription>{workflowSetupMessage}</AlertDescription>
+                  <Text mt={2} fontSize="sm">The flow must support the request type and be effective on the policy's Effective from date. Save a draft to continue configuring it later.</Text>
+                  <HStack mt={3} spacing={3} flexWrap="wrap">
+                    <Link href={APPROVAL_FLOWS_URL} isExternal textDecoration="underline" fontWeight="600">Configure approval flows</Link>
+                    <Button size="sm" variant="outline" onClick={refreshApprovalFlows} isLoading={refreshingWorkflows}>Refresh approval flows</Button>
+                  </HStack>
+                  {workflowRefreshError ? <Text mt={2} color="red.600" role="alert">{workflowRefreshError}</Text> : null}
+                </Box>
+              </Alert>
+            ) : null}
             {mode !== "create" ? (
               <Alert status="info" borderRadius="md">
                 <AlertIcon />
@@ -941,7 +1001,11 @@ export default function LeavePolicyDrawer({
                             )}
 
                             <Box borderWidth="1px" borderRadius="md" p={4}>
-                              <Text fontSize="sm" fontWeight="700">Approval workflows</Text>
+                              <Flex justify="space-between" align="center" gap={3} wrap="wrap">
+                                <Text fontSize="sm" fontWeight="700">Approval workflows</Text>
+                                {!workflowSetupMessage ? <HStack spacing={3} flexWrap="wrap"><Link href={APPROVAL_FLOWS_URL} isExternal textDecoration="underline" fontSize="sm">Configure approval flows</Link><Button size="xs" variant="outline" onClick={refreshApprovalFlows} isLoading={refreshingWorkflows}>Refresh approval flows</Button></HStack> : null}
+                              </Flex>
+                              {!workflowSetupMessage && workflowRefreshError ? <Text mt={2} color="red.600" role="alert">{workflowRefreshError}</Text> : null}
                               <Text mt={1} fontSize="xs" color="gray.500">
                                 Published workflow versions are snapshotted when a request is submitted.
                               </Text>
@@ -1008,6 +1072,7 @@ export default function LeavePolicyDrawer({
                                   min={requestStep}
                                   step={requestStep}
                                   value={rule.minimumRequestDays}
+                                  isReadOnly={ruleUnit === "days" && rule.allowHalfDay}
                                   onValueChange={(value) => updateRule(index, { minimumRequestDays: value })}
                                   placeholder={ruleUnit === "hours" ? "e.g. 1" : rule.allowHalfDay ? "0.5" : "1"}
                                 />
