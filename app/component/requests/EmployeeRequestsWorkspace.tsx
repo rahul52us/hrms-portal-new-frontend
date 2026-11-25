@@ -242,6 +242,8 @@ export default function EmployeeRequestsWorkspace() {
   const [encashmentReason, setEncashmentReason] = useState("");
   const [encashmentSubmitting, setEncashmentSubmitting] = useState(false);
   const calendarApplyHandled = useRef(false);
+  const loadSequence = useRef(0);
+  const loadInFlight = useRef(false);
 
   const isWfh = form.leaveTypeId === WFH_OPTION;
   const isCompOffClaim = form.leaveTypeId === COMP_OFF_CLAIM_OPTION;
@@ -269,19 +271,28 @@ export default function EmployeeRequestsWorkspace() {
     (left, right) => new Date(right.submittedAt).getTime() - new Date(left.submittedAt).getTime()
   ), [compOffClaims, encashmentRequests, leaveRequests, regularizationRequests, remoteWorkRequests]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (background = false) => {
+    if (background && loadInFlight.current) return;
+    const sequence = ++loadSequence.current;
+    loadInFlight.current = true;
+    if (!background) setLoading(true);
     try {
       const [eligibleResult, encashmentEligibilityResult, leaveResult, transactionResult, remoteResult, compOffResult, encashmentResult, regularizationResult] = await Promise.all([
         fetchEligibleLeave({ at: localToday() })
           .then((data) => ({ data, error: "" }))
-          .catch((error) => ({
-            data: { items: [] as EligibleLeaveItem[] } as any,
-            error: getApiErrorMessage(error?.response?.data || error, "No effective leave policy is assigned"),
-          })),
+          .catch((error) => {
+            if (background) throw error;
+            return {
+              data: { items: [] as EligibleLeaveItem[] } as any,
+              error: getApiErrorMessage(error?.response?.data || error, "No effective leave policy is assigned"),
+            };
+          }),
         fetchLeaveEncashmentEligibility({ at: localToday() })
           .then((data) => data.items || [])
-          .catch(() => [] as LeaveEncashmentEligibilityItem[]),
+          .catch((error) => {
+            if (background) throw error;
+            return [] as LeaveEncashmentEligibilityItem[];
+          }),
         fetchLeaveRequests({ scope: "mine", page: 1, limit: 50 }),
         fetchLeaveTransactions({ page: 1, limit: 50 }),
         fetchRemoteWorkRequests({ scope: "mine", page: 1, limit: 50 }),
@@ -289,6 +300,8 @@ export default function EmployeeRequestsWorkspace() {
         fetchLeaveEncashmentRequests({ scope: "mine", page: 1, limit: 50 }),
         fetchAttendanceRegularizationRequests({ scope: "mine", page: 1, limit: 50 }),
       ]);
+      // A post-action/manual reload takes precedence over an older background read.
+      if (sequence !== loadSequence.current) return;
       setEligible(eligibleResult.data.items || []);
       setEncashmentEligibility(encashmentEligibilityResult);
       setEligibleError(eligibleResult.error);
@@ -299,13 +312,39 @@ export default function EmployeeRequestsWorkspace() {
       setEncashmentRequests(encashmentResult.items || []);
       setRegularizationRequests(regularizationResult.items || []);
     } catch (error: any) {
-      toast({ title: getApiErrorMessage(error?.response?.data || error, "Could not load requests"), status: "error" });
+      if (!background && sequence === loadSequence.current) {
+        toast({ title: getApiErrorMessage(error?.response?.data || error, "Could not load requests"), status: "error" });
+      }
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) {
+        loadInFlight.current = false;
+        setLoading(false);
+      }
     }
   }, [toast]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    // Approvals happen in another session; refresh only this visible, online page.
+    const refresh = () => {
+      if (document.visibilityState === "visible" && navigator.onLine !== false) {
+        void load(true);
+      }
+    };
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("online", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      // Ignore responses that finish after navigation or an effect restart.
+      loadSequence.current += 1;
+      loadInFlight.current = false;
+    };
+  }, [load]);
 
   const loadRemoteEligibility = useCallback(async (date: string) => {
     setChecking(true);
@@ -731,7 +770,7 @@ export default function EmployeeRequestsWorkspace() {
             <Text mt={1} color={muted} fontSize="sm">Apply and track leave, work-from-home, comp-off, attendance, and encashment requests.</Text>
           </Box>
           <HStack>
-            <Button variant="outline" leftIcon={<FiRefreshCw />} onClick={load} isLoading={loading}>Refresh</Button>
+            <Button variant="outline" leftIcon={<FiRefreshCw />} onClick={() => { void load(); }} isLoading={loading}>Refresh</Button>
             <Button colorScheme="blue" leftIcon={<FiPlus />} onClick={() => openRequest()} isDisabled={loading}>New request</Button>
           </HStack>
         </Flex>
