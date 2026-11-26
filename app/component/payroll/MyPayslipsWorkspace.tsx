@@ -23,7 +23,7 @@ import {
   useColorModeValue,
   useToast,
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FiCreditCard, FiDownload, FiFileText, FiRefreshCw } from "react-icons/fi";
 
 type Payslip = {
@@ -72,6 +72,7 @@ export default function MyPayslipsWorkspace() {
   const [items, setItems] = useState<Payslip[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState("");
+  const downloadInFlight = useRef(false);
   const [page, setPage] = useState(1);
   const [periodKey, setPeriodKey] = useState("");
   const [total, setTotal] = useState(0);
@@ -104,6 +105,8 @@ export default function MyPayslipsWorkspace() {
   useEffect(() => { void load(); }, [load]);
 
   const download = async (item: Payslip) => {
+    if (downloadInFlight.current) return;
+    downloadInFlight.current = true;
     setDownloadingId(item._id);
     try {
       const response = await axios.get(`/payroll/payslips/me/${item._id}/download`, { responseType: "blob" });
@@ -115,9 +118,11 @@ export default function MyPayslipsWorkspace() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      toast({ title: "Payslip downloaded", status: "success" });
     } catch (error) {
       toast({ title: "Unable to download payslip", description: getApiErrorMessage(error), status: "error" });
     } finally {
+      downloadInFlight.current = false;
       setDownloadingId("");
     }
   };
@@ -183,7 +188,7 @@ export default function MyPayslipsWorkspace() {
               <Box><Text fontSize="xs" color={muted}>DEDUCTIONS</Text><Text fontWeight="700">{formatMoney(item.amountsSnapshot.totalDeductionsMinor, item.currency, item.currencyMinorUnits)}</Text></Box>
             </SimpleGrid>
             <Text fontSize="xs" color={muted}>Issued {new Date(item.issuedAt).toLocaleDateString()} | Payroll finalization v{item.finalizationVersion}</Text>
-            <Button leftIcon={<FiDownload />} colorScheme="blue" isLoading={downloadingId === item._id} onClick={() => void download(item)}>Download PDF</Button>
+            <Button leftIcon={<FiDownload />} colorScheme="blue" isLoading={downloadingId === item._id} isDisabled={Boolean(downloadingId) && downloadingId !== item._id} loadingText="Preparing PDF" onClick={() => void download(item)}>Download PDF</Button>
           </Stack>
         </Box>)}</SimpleGrid>
       </>}

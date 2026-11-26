@@ -1,6 +1,10 @@
 "use client";
 
 import { getApiErrorMessage } from "@/app/config/utils/apiError";
+import { hasPermission, PERMISSION_KEYS } from "@/app/config/utils/permissions";
+import stores from "@/app/store/stores";
+import Link from "next/link";
+import { hasInsufficientAttendanceHours } from "./attendanceFeedback";
 import {
   TodayAttendance,
   fetchTodayAttendance,
@@ -153,6 +157,7 @@ export default function TodayPunchCard({
         void Promise.resolve(onAttendanceChanged()).catch(() => undefined);
       }
     } catch (requestError: any) {
+      setError(getApiErrorMessage(requestError?.response?.data || requestError, `Could not punch ${action}`));
       toast({
         title: getApiErrorMessage(
           requestError?.response?.data || requestError,
@@ -206,6 +211,7 @@ export default function TodayPunchCard({
   const lastSession = record?.punchSessions?.[record.punchSessions.length - 1];
   const firstSession = record?.punchSessions?.find((session) => session.punchIn);
   const hasPunchOut = Boolean(lastSession?.punchOut);
+  const canManagePolicies = hasPermission(stores.auth.user, PERMISSION_KEYS.MANAGE_WORKFORCE_POLICIES);
 
   return (
     <Stack spacing={3}>
@@ -303,6 +309,18 @@ export default function TodayPunchCard({
                 <AlertDescription>
                   Attendance setup is incomplete:{" "}
                   {today.context.missingPolicies.map(titleCase).join(", ")}.
+                  {" "}Contact HR to publish and assign the missing configuration for your work date.
+                  {canManagePolicies ? <Button as={Link} href="/dashboard/workforce-policies?tab=assignments" size="sm" variant="link" ml={2}>Manage policy assignments</Button> : null}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {hasInsufficientAttendanceHours(record) ? (
+              <Alert status="warning" borderRadius="md">
+                <AlertIcon />
+                <AlertDescription>
+                  Your punches were saved, but the recorded work does not meet your attendance policy's minimum hours. The calculated status is Absent.
+                  {today.actions.canPunchOut ? " If you are still working, update punch-out when you finish; the last permitted punch-out is used." : " If the punches are incorrect, request an attendance correction or contact HR."}
+                  <Button as={Link} href={`/dashboard/requests?applyDate=${record!.attendanceDate}&requestType=attendance_correction`} size="sm" variant="link" ml={2}>Request correction</Button>
                 </AlertDescription>
               </Alert>
             ) : null}

@@ -8,6 +8,9 @@ import PayrollEmployeeSnapshotsPanel from "./PayrollEmployeeSnapshotsPanel";
 import PayrollOneTimeInputsPanel from "./PayrollOneTimeInputsPanel";
 import PayrollValidationPanel from "./PayrollValidationPanel";
 import axios from "axios";
+import Link from "next/link";
+import { hasPermission, PERMISSION_KEYS } from "@/app/config/utils/permissions";
+import stores from "@/app/store/stores";
 import {
   Alert,
   AlertDescription,
@@ -201,6 +204,7 @@ function organization(input: PayrollEmployeeInput) {
 }
 
 export default function PayrollRunsWorkspace({ companyId, canManage, canApprove, canFinalize, canReopen, currentUserId }: Props) {
+  const canManageAttendance = hasPermission(stores.auth.user, PERMISSION_KEYS.VIEW_ATTENDANCE) && hasPermission(stores.auth.user, PERMISSION_KEYS.MANAGE_ATTENDANCE_PAYROLL);
   const toast = useToast();
   const createDialog = useDisclosure();
   const inputDrawer = useDisclosure();
@@ -213,6 +217,7 @@ export default function PayrollRunsWorkspace({ companyId, canManage, canApprove,
   const [totalPages, setTotalPages] = useState(1);
   const [status, setStatus] = useState("all");
   const [periodKey, setPeriodKey] = useState(currentPeriodKey());
+  const attendanceUrl = `/dashboard/attendance?tab=payroll&periodKey=${encodeURIComponent(periodKey)}`;
   const [reason, setReason] = useState("");
   const [source, setSource] = useState<PayrollSource | null>(null);
   const [sourceLoading, setSourceLoading] = useState(false);
@@ -408,7 +413,7 @@ export default function PayrollRunsWorkspace({ companyId, canManage, canApprove,
     <Stack spacing={4}>
       <Alert status="info" borderRadius="md" alignItems="flex-start">
         <AlertIcon mt={1} />
-        <AlertDescription>Create a run only after the matching cycle is locked under Attendance &gt; Payroll. The run snapshots that immutable attendance handoff.</AlertDescription>
+        <AlertDescription>Create a run only after the matching cycle is locked under Attendance &gt; Payroll. The run snapshots that immutable attendance handoff.{" "}{canManageAttendance ? <Button as={Link} href={attendanceUrl} variant="link" size="sm">Open attendance payroll</Button> : "Ask an attendance payroll administrator to lock the matching cycle."}</AlertDescription>
       </Alert>
 
       <Flex bg={surface} borderWidth="1px" borderColor={border} borderRadius="md" p={4} gap={3} direction={{ base: "column", md: "row" }} justify="space-between" align={{ base: "stretch", md: "center" }}>
@@ -538,7 +543,7 @@ export default function PayrollRunsWorkspace({ companyId, canManage, canApprove,
                 <Text mt={1} fontSize="xs" color={muted}>Attendance version {source.input.attendancePeriodVersion} | {source.input.adjustmentCount} carried adjustments</Text>
                 {source.blocker ? <Text mt={2} fontSize="sm" color="orange.500">{source.blocker}</Text> : null}
               </Box>
-            ) : source?.blocker ? <Alert status="warning"><AlertIcon /><AlertDescription>{source.blocker}</AlertDescription></Alert> : null}
+            ) : source?.blocker ? <Alert status="warning"><AlertIcon /><AlertDescription>{source.blocker}{" "}{canManageAttendance ? <Button as={Link} href={attendanceUrl} target="_blank" rel="noopener noreferrer" variant="link" size="sm">Open attendance payroll</Button> : "Ask an attendance payroll administrator to lock this cycle."}</AlertDescription></Alert> : null}
             <FormControl isRequired><FormLabel>Preparation reason</FormLabel><Textarea value={reason} maxLength={500} onChange={(event) => setReason(event.target.value)} placeholder="Example: Prepare the September 2026 monthly payroll" /><FormHelperText>Minimum 3 characters. Stored permanently in payroll audit history.</FormHelperText></FormControl>
           </Stack></ModalBody>
           <ModalFooter gap={3}><Button variant="ghost" onClick={createDialog.onClose}>Cancel</Button><Button colorScheme="blue" isLoading={submitting} isDisabled={!source?.canCreate || reason.trim().length < 3} onClick={() => void createRun()}>Create draft run</Button></ModalFooter>

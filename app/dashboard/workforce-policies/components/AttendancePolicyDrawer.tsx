@@ -11,10 +11,12 @@ import {
   Checkbox,
   Flex,
   FormControl,
+  FormErrorMessage,
   FormHelperText,
   FormLabel,
   HStack,
   Input,
+  Link,
   NumberInput,
   NumberInputField,
   Select,
@@ -138,9 +140,12 @@ export default function AttendancePolicyDrawer({
   const [changeReason, setChangeReason] = useState("");
   const [rules, setRules] = useState<AttendanceRules>(DEFAULT_RULES);
   const [allowedNetworksText, setAllowedNetworksText] = useState("");
+  const [workflowSetupError, setWorkflowSetupError] = useState("");
+  const [refreshingWorkflows, setRefreshingWorkflows] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
+    setWorkflowSetupError("");
     const sourceRules = (version?.rules ||
       resource?.latestPublishedVersion?.rules ||
       DEFAULT_RULES) as AttendanceRules;
@@ -207,13 +212,13 @@ export default function AttendancePolicyDrawer({
       return "Select at least one attendance correction type.";
     }
     if (rules.regularization.enabled && !rules.regularization.approvalWorkflowVersion) {
-      return "Select a published approval workflow for attendance corrections.";
+      return "Publish an approval flow enabled for Attendance corrections first, then refresh and select it here.";
     }
     if (rules.overtimeApproval.required && !rules.overtimeEnabled) {
       return "Enable overtime calculation before requiring overtime approval.";
     }
     if (rules.overtimeApproval.required && !rules.overtimeApproval.approvalWorkflowVersion) {
-      return "Select a published approval workflow for overtime reviews.";
+      return "Publish an approval flow enabled for Overtime reviews first, then refresh and select it here.";
     }
     if (rules.punchNetwork.enabled && !allowedNetworks.length) {
       return "Add at least one allowed IP address or CIDR for punch network restriction.";
@@ -362,6 +367,7 @@ export default function AttendancePolicyDrawer({
       });
       onClose();
     } catch (error: any) {
+      if (/approval workflow|approval flow/i.test(error?.message || "")) setWorkflowSetupError(error.message);
       toast({
         title: error?.message || "Could not save attendance policy",
         status: "error",
@@ -391,6 +397,24 @@ export default function AttendancePolicyDrawer({
       }
     >
       <Stack spacing={6}>
+        {rules.regularization.enabled || rules.overtimeApproval.required || workflowSetupError ? (
+          <Alert status="info" borderRadius="md" alignItems="flex-start">
+            <AlertIcon />
+            <Box>
+              <AlertDescription>Attendance corrections and overtime reviews require an active approval flow with a published version for the corresponding request type. Publish that flow first, then refresh and select it below. Draft-only flows cannot be used.</AlertDescription>
+              {workflowSetupError ? <Text mt={2} fontSize="sm" color="red.500" role="alert">{workflowSetupError}</Text> : null}
+              <HStack mt={3} flexWrap="wrap">
+                <Link href="/dashboard/workforce-policies?tab=approval-flows" isExternal>Configure approval flows</Link>
+                <Button size="sm" variant="outline" isLoading={refreshingWorkflows} onClick={async () => {
+                  setRefreshingWorkflows(true);
+                  try { await onSaved(); setWorkflowSetupError(""); }
+                  catch { setWorkflowSetupError("Approval flows could not be refreshed. Try again."); }
+                  finally { setRefreshingWorkflows(false); }
+                }}>Refresh approval flows</Button>
+              </HStack>
+            </Box>
+          </Alert>
+        ) : null}
         {mode !== "create" ? (
           <Alert status="info" borderRadius="md">
             <AlertIcon />
@@ -646,7 +670,7 @@ export default function AttendancePolicyDrawer({
                     <option value="required">Required with request</option>
                   </Select>
                 </FormControl>
-                <FormControl isRequired>
+                <FormControl isRequired isInvalid={!rules.regularization.approvalWorkflowVersion}>
                   <FormLabel fontSize="sm" fontWeight="600">Approval workflow</FormLabel>
                   <Select value={String(rules.regularization.approvalWorkflow || "")} onChange={(event) => selectRegularizationWorkflow(event.target.value)} bg={inputBg}>
                     <option value="">Select published workflow</option>
@@ -656,6 +680,7 @@ export default function AttendancePolicyDrawer({
                     })}
                   </Select>
                   {!regularizationWorkflows.length ? <FormHelperText>Create and publish an approval workflow enabled for Attendance corrections first.</FormHelperText> : null}
+                  {!rules.regularization.approvalWorkflowVersion ? <FormErrorMessage>Publish an Attendance corrections approval flow first, then refresh and select it.</FormErrorMessage> : null}
                 </FormControl>
               </SimpleGrid>
             </Stack>
@@ -725,7 +750,7 @@ export default function AttendancePolicyDrawer({
                   />
                 </HStack>
                 {rules.overtimeApproval.required ? (
-                  <FormControl isRequired>
+                  <FormControl isRequired isInvalid={!rules.overtimeApproval.approvalWorkflowVersion}>
                     <FormLabel fontSize="sm" fontWeight="600">Overtime approval workflow</FormLabel>
                     <Select value={String(rules.overtimeApproval.approvalWorkflow || "")} onChange={(event) => selectOvertimeWorkflow(event.target.value)} bg={inputBg}>
                       <option value="">Select published workflow</option>
@@ -735,6 +760,7 @@ export default function AttendancePolicyDrawer({
                       })}
                     </Select>
                     {!overtimeWorkflows.length ? <FormHelperText>Create and publish an approval workflow enabled for Overtime reviews first.</FormHelperText> : null}
+                    {!rules.overtimeApproval.approvalWorkflowVersion ? <FormErrorMessage>Publish an Overtime reviews approval flow first, then refresh and select it.</FormErrorMessage> : null}
                   </FormControl>
                 ) : null}
               </Stack>

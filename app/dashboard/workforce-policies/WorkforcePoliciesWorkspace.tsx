@@ -104,7 +104,9 @@ const WorkforcePoliciesWorkspace = observer(() => {
   );
   const [tabIndex, setTabIndex] = useState(0);
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("tab") === "approval-flows") setTabIndex(4);
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    if (requested === "approval-flows") setTabIndex(4);
+    if (requested === "assignments") setTabIndex(5);
   }, []);
   const [search, setSearch] = useState("");
   const [editor, setEditor] = useState<EditorState>({

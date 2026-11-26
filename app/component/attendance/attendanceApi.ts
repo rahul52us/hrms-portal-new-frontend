@@ -38,6 +38,7 @@ export type AttendanceRecord = {
   timezone: string;
   state: "open" | "calculated" | "finalized";
   status: string;
+  source?: "punch" | "import" | "manual" | "system" | "recalculation";
   workMode: "office" | "remote" | "hybrid" | "field";
   workModeSource?: "default" | "work_schedule" | "remote_work_request" | "manual" | "import";
   punchSessions: AttendancePunchSession[];
@@ -219,6 +220,7 @@ export async function downloadMyAttendanceStatement(month: string) {
     params: { month },
     responseType: "blob",
   });
+  if (response.headers?.["x-export-row-count"] === "0") return { empty: true };
   const disposition = String(response.headers?.["content-disposition"] || "");
   const encodedName = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
   const regularName = /filename="?([^";]+)"?/i.exec(disposition)?.[1];
@@ -233,5 +235,6 @@ export async function downloadMyAttendanceStatement(month: string) {
   link.click();
   link.remove();
   window.URL.revokeObjectURL(url);
+  return { empty: false };
 }
 

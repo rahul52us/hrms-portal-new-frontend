@@ -60,6 +60,11 @@ export default function AttendancePayrollPanel() {
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
 
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("periodKey") || "";
+    if (/^\d{4}-(0[1-9]|1[0-2])$/.test(requested)) setPeriodKey(requested);
+  }, []);
+
   const load = useCallback(() => {
     const controller = new AbortController();
     setLoading(true);

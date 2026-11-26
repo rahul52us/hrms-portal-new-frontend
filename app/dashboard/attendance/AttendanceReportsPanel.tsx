@@ -25,7 +25,7 @@ import {
   useColorModeValue,
   useToast,
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiDownload } from "react-icons/fi";
 import {
   AttendanceMonthlySummary,
@@ -85,6 +85,7 @@ export default function AttendanceReportsPanel({ canExport }: { canExport: boole
   const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const exportInFlight = useRef(false);
   const [error, setError] = useState("");
 
   const selectedDepartment = options.departments.find((item) => item.id === filters.departmentId);
@@ -145,9 +146,11 @@ export default function AttendanceReportsPanel({ canExport }: { canExport: boole
   useEffect(() => setPage(1), [date, exceptionType, periodKey, range.fromDate, range.toDate, reportType]);
 
   const exportReport = async (format: "csv" | "xlsx") => {
+    if (exportInFlight.current) return;
+    exportInFlight.current = true;
     setExporting(true);
     try {
-      await downloadAttendanceReport({
+      const result = await downloadAttendanceReport({
         report: reportType,
         format,
         ...(reportType === "daily" ? { date } : {}),
@@ -157,9 +160,11 @@ export default function AttendanceReportsPanel({ canExport }: { canExport: boole
         page: undefined,
         limit: undefined,
       });
+      toast({ title: result.empty ? "No report rows match these filters" : "Attendance report downloaded", status: result.empty ? "info" : "success" });
     } catch (requestError: any) {
       toast({ title: "Report could not be downloaded", description: getApiErrorMessage(requestError?.response?.data || requestError), status: "error" });
     } finally {
+      exportInFlight.current = false;
       setExporting(false);
     }
   };
@@ -173,8 +178,8 @@ export default function AttendanceReportsPanel({ canExport }: { canExport: boole
         </Box>
         {canExport ? (
           <HStack>
-            <Button leftIcon={<FiDownload />} variant="outline" isLoading={exporting} onClick={() => exportReport("csv")}>CSV</Button>
-            <Button leftIcon={<FiDownload />} colorScheme="blue" isLoading={exporting} onClick={() => exportReport("xlsx")}>XLSX</Button>
+            <Button leftIcon={<FiDownload />} variant="outline" isLoading={exporting} loadingText="Preparing export" onClick={() => exportReport("csv")}>CSV</Button>
+            <Button leftIcon={<FiDownload />} colorScheme="blue" isLoading={exporting} loadingText="Preparing export" onClick={() => exportReport("xlsx")}>XLSX</Button>
           </HStack>
         ) : null}
       </Flex>

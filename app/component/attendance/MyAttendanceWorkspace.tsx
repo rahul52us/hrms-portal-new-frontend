@@ -23,8 +23,10 @@ import {
   Text,
   Tooltip,
   useColorModeValue,
+  useToast,
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { hasInsufficientAttendanceHours } from "./attendanceFeedback";
 import {
   FiAlertCircle,
   FiCalendar,
@@ -156,6 +158,8 @@ function Metric({ label, value, helper, icon }: { label: string; value: string |
 }
 
 export default function MyAttendanceWorkspace() {
+  const toast = useToast();
+  const downloadInFlight = useRef(false);
   const surface = useColorModeValue("white", "gray.800");
   const pageBg = useColorModeValue("gray.50", "gray.900");
   const border = useColorModeValue("gray.200", "gray.700");
@@ -226,13 +230,17 @@ export default function MyAttendanceWorkspace() {
   const changeMonth = (offset: number) => chooseMonth(moveMonth(month, offset));
 
   const download = async () => {
+    if (downloadInFlight.current) return;
+    downloadInFlight.current = true;
     setDownloading(true);
     setError("");
     try {
-      await downloadMyAttendanceStatement(month);
+      const result = await downloadMyAttendanceStatement(month);
+      toast({ title: result.empty ? "No attendance records for this month" : "Attendance statement downloaded", status: result.empty ? "info" : "success" });
     } catch (requestError: any) {
       setError(getApiErrorMessage(requestError?.response?.data || requestError, "Could not download attendance statement"));
     } finally {
+      downloadInFlight.current = false;
       setDownloading(false);
     }
   };
@@ -294,7 +302,7 @@ export default function MyAttendanceWorkspace() {
                   <Button leftIcon={<FiList />} colorScheme={view === "list" ? "blue" : undefined} variant={view === "list" ? "solid" : "outline"} onClick={() => chooseView("list")}>List</Button>
                   <Button leftIcon={<FiGrid />} colorScheme={view === "calendar" ? "blue" : undefined} variant={view === "calendar" ? "solid" : "outline"} onClick={() => chooseView("calendar")}>Calendar</Button>
                 </ButtonGroup>
-                <Button size="sm" variant="outline" leftIcon={<FiDownload />} onClick={download} isLoading={downloading}>Download CSV</Button>
+                <Button size="sm" variant="outline" leftIcon={<FiDownload />} onClick={download} isLoading={downloading} loadingText="Preparing CSV">Download CSV</Button>
               </HStack>
             </Flex>
             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={3}>
@@ -336,6 +344,7 @@ export default function MyAttendanceWorkspace() {
                       {item.record ? (
                         <Stack mt={2} spacing={1}>
                           <Badge alignSelf="flex-start" colorScheme={statusColor(item.record.status)} fontSize="10px">{titleCase(item.record.status)}</Badge>
+                          {hasInsufficientAttendanceHours(item.record) ? <Badge colorScheme="orange" fontSize="9px">Insufficient hours</Badge> : null}
                           {item.record.regularization ? <Badge alignSelf="flex-start" colorScheme={item.record.regularization.status === "approved" ? "green" : item.record.regularization.status === "rejected" ? "red" : "orange"} fontSize="9px">Correction {titleCase(item.record.regularization.status)}</Badge> : null}
                           <Text fontSize="xs" color={muted}>{formatMinutes(item.record.workedMinutes)}</Text>
                         </Stack>
@@ -363,6 +372,7 @@ export default function MyAttendanceWorkspace() {
                   </SimpleGrid>
                   <HStack justify={{ base: "space-between", md: "flex-end" }} minW={{ md: "155px" }}>
                     <Badge colorScheme={statusColor(item.status)}>{titleCase(item.status)}</Badge>
+                    {hasInsufficientAttendanceHours(item) ? <Badge colorScheme="orange">Insufficient hours</Badge> : null}
                     {item.regularization ? <Badge colorScheme={item.regularization.status === "approved" ? "green" : item.regularization.status === "rejected" ? "red" : "orange"}>Correction {titleCase(item.regularization.status)}</Badge> : null}
                     <Tooltip label="View attendance details"><IconButton aria-label={`View attendance for ${item.attendanceDate}`} size="sm" variant="ghost" icon={<FiEye />} onClick={() => { setSelectedDate(item.attendanceDate); setSelectedRecord(item); }} /></Tooltip>
                   </HStack>

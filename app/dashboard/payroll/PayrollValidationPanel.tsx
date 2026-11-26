@@ -39,7 +39,7 @@ import {
   useDisclosure,
   useToast,
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FiCheck, FiRefreshCw, FiRotateCcw } from "react-icons/fi";
 
 type PayrollRun = {
@@ -140,6 +140,9 @@ export default function PayrollValidationPanel({ companyId, run, onRunChanged }:
   const [selectedIssue, setSelectedIssue] = useState<ValidationItem | null>(null);
   const [decisionAction, setDecisionAction] = useState<"acknowledge" | "reopen">("acknowledge");
   const [reason, setReason] = useState("");
+  const [bulkDecision, setBulkDecision] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
+  const decisionInFlight = useRef(false);
   const border = useColorModeValue("gray.200", "gray.700");
   const muted = useColorModeValue("gray.600", "gray.400");
   const subtle = useColorModeValue("gray.50", "whiteAlpha.50");
@@ -178,6 +181,7 @@ export default function PayrollValidationPanel({ companyId, run, onRunChanged }:
   }, [loadValidation]);
 
   const openDecision = (item: ValidationItem) => {
+    setBulkDecision(false);
     const action = item.resolutionStatus === "acknowledged" ? "reopen" : "acknowledge";
     setSelectedIssue(item);
     setDecisionAction(action);
@@ -186,15 +190,37 @@ export default function PayrollValidationPanel({ companyId, run, onRunChanged }:
   };
 
   const submitDecision = async () => {
-    if (!selectedIssue) return;
+    if (decisionInFlight.current || reason.trim().length < 3 || (!bulkDecision && !selectedIssue)) return;
+    decisionInFlight.current = true;
     setSubmitting(true);
+    let acknowledged = 0;
     try {
+      if (bulkDecision) {
+        let current = run;
+        // Every batch checks both versions; never continue into a recalculated run.
+        let hasMore = true;
+        while (hasMore) {
+          const { data } = await axios.post(`/payroll/runs/${run._id}/validation/acknowledge-open`, {
+            companyId, expectedVersion: current.version, expectedCalculationVersion: run.calculationVersion, reason: reason.trim(),
+          });
+          current = data.data;
+          acknowledged += Number(data.acknowledgedCount || 0);
+          setBulkProgress(acknowledged);
+          hasMore = data.hasMore === true;
+          if (hasMore && !data.acknowledgedCount) throw new Error("No progress acknowledging warnings. Refresh and try again.");
+        }
+        onRunChanged(current);
+        toast({ title: `${acknowledged} payroll warning(s) acknowledged`, status: "success" });
+        decisionDialog.onClose();
+        await loadValidation();
+        return;
+      }
       const { data } = await axios.post(
-        `/payroll/runs/${run._id}/validation/${selectedIssue.employeePayrollResult}/issues/${encodeURIComponent(selectedIssue.issue.code)}/decision`,
+        `/payroll/runs/${run._id}/validation/${selectedIssue!.employeePayrollResult}/issues/${encodeURIComponent(selectedIssue!.issue.code)}/decision`,
         {
           companyId,
           expectedVersion: run.version,
-          issueCategory: selectedIssue.issue.category,
+          issueCategory: selectedIssue!.issue.category,
           action: decisionAction,
           reason: reason.trim(),
         }
@@ -204,8 +230,10 @@ export default function PayrollValidationPanel({ companyId, run, onRunChanged }:
       decisionDialog.onClose();
       await loadValidation();
     } catch (error) {
-      toast({ title: "Unable to save validation decision", description: message(error), status: "error" });
+      toast({ title: acknowledged ? `${acknowledged} warnings acknowledged; remaining warnings need review` : "Unable to save validation decision", description: message(error), status: "error" });
+      if (bulkDecision) { decisionDialog.onClose(); await loadValidation(); }
     } finally {
+      decisionInFlight.current = false;
       setSubmitting(false);
     }
   };
@@ -234,6 +262,7 @@ export default function PayrollValidationPanel({ companyId, run, onRunChanged }:
           <Select value={category} maxW="190px" onChange={(event) => { setCategory(event.target.value); setPage(1); }}><option value="all">All categories</option>{CATEGORIES.map((value) => <option key={value} value={value}>{value.replaceAll("_", " ")}</option>)}</Select>
           <Select value={resolution} maxW="180px" onChange={(event) => { setResolution(event.target.value); setPage(1); }}><option value="all">All resolution</option><option value="open">Open</option><option value="acknowledged">Acknowledged</option></Select>
           <IconButton aria-label="Refresh payroll validation" icon={<FiRefreshCw />} variant="outline" isLoading={loading} onClick={() => void loadValidation()} />
+          <Button leftIcon={<FiCheck />} colorScheme="blue" variant="outline" isDisabled={loading || submitting || run.status !== "draft" || run.calculationStatus !== "calculated" || !summary.openWarnings} onClick={() => { setSelectedIssue(null); setBulkDecision(true); setDecisionAction("acknowledge"); setBulkProgress(0); setReason(""); decisionDialog.onOpen(); }}>Acknowledge all open warnings</Button>
         </Flex>
 
         <Box borderWidth="1px" borderColor={border} borderRadius="md" overflow="hidden">
@@ -251,10 +280,10 @@ export default function PayrollValidationPanel({ companyId, run, onRunChanged }:
         </Box>
       </Stack> : null}
 
-      <Modal isOpen={decisionDialog.isOpen} onClose={decisionDialog.onClose} isCentered size="lg">
-        <ModalOverlay /><ModalContent><ModalHeader>{decisionAction === "acknowledge" ? "Acknowledge payroll warning" : "Reopen payroll warning"}</ModalHeader><ModalCloseButton />
-          <ModalBody><Stack spacing={4}>{selectedIssue ? <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}><Text fontWeight="800">{selectedIssue.identity.name}</Text><Text mt={1} fontSize="sm">{selectedIssue.issue.message}</Text></Box> : null}<FormControl isRequired><FormLabel>Reason</FormLabel><Textarea value={reason} maxLength={500} rows={4} placeholder={decisionAction === "acknowledge" ? "Explain why payroll may proceed with this warning" : "Explain why this warning needs review again"} onChange={(event) => setReason(event.target.value)} /><FormHelperText>Minimum 3 characters. The decision and actor are stored permanently.</FormHelperText></FormControl></Stack></ModalBody>
-          <ModalFooter gap={3}><Button variant="ghost" onClick={decisionDialog.onClose}>Cancel</Button><Button colorScheme="blue" isLoading={submitting} isDisabled={reason.trim().length < 3} onClick={() => void submitDecision()}>{decisionAction === "acknowledge" ? "Acknowledge warning" : "Reopen warning"}</Button></ModalFooter>
+      <Modal isOpen={decisionDialog.isOpen} onClose={submitting ? () => undefined : decisionDialog.onClose} closeOnOverlayClick={!submitting} closeOnEsc={!submitting} isCentered size="lg">
+        <ModalOverlay /><ModalContent><ModalHeader>{bulkDecision ? "Acknowledge all open warnings" : decisionAction === "acknowledge" ? "Acknowledge payroll warning" : "Reopen payroll warning"}</ModalHeader><ModalCloseButton isDisabled={submitting} />
+          <ModalBody><Stack spacing={4}>{bulkDecision ? <Alert status="warning"><AlertIcon /><AlertDescription>Review and acknowledge all {summary.openWarnings} open warnings in this run, across every page, regardless of the current filters. The same reason is recorded for each warning. Blocking errors are never acknowledged.{submitting ? ` ${bulkProgress} acknowledged so far.` : ""}</AlertDescription></Alert> : selectedIssue ? <Box borderWidth="1px" borderColor={border} borderRadius="md" p={4}><Text fontWeight="800">{selectedIssue.identity.name}</Text><Text mt={1} fontSize="sm">{selectedIssue.issue.message}</Text></Box> : null}<FormControl isRequired><FormLabel>Reason</FormLabel><Textarea value={reason} isDisabled={submitting} maxLength={500} rows={4} placeholder={decisionAction === "acknowledge" ? "Explain why payroll may proceed with these warnings" : "Explain why this warning needs review again"} onChange={(event) => setReason(event.target.value)} /><FormHelperText>Minimum 3 characters. The decision and actor are stored permanently.</FormHelperText></FormControl></Stack></ModalBody>
+          <ModalFooter gap={3}><Button variant="ghost" isDisabled={submitting} onClick={decisionDialog.onClose}>Cancel</Button><Button colorScheme="blue" isLoading={submitting} loadingText={bulkDecision ? `Acknowledged ${bulkProgress}` : "Saving"} isDisabled={reason.trim().length < 3} onClick={() => void submitDecision()}>{bulkDecision ? "Acknowledge all warnings" : decisionAction === "acknowledge" ? "Acknowledge warning" : "Reopen warning"}</Button></ModalFooter>
         </ModalContent>
       </Modal>
     </Stack>

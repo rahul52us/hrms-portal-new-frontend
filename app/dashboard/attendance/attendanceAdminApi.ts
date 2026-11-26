@@ -536,7 +536,9 @@ function downloadBlob(blob: Blob, fallbackName: string, contentDisposition?: str
 
 export async function downloadAttendanceReport(params: Record<string, unknown>) {
   const response = await axios.get("/attendance/reports/export", { params, responseType: "blob" });
+  if (response.headers?.["x-export-row-count"] === "0") return { empty: true };
   downloadBlob(response.data, `attendance-report.${params.format || "csv"}`, response.headers["content-disposition"]);
+  return { empty: false };
 }
 
 export type AttendancePayrollView = {

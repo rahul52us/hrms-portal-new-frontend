@@ -5,6 +5,7 @@ import { hasPermission, PERMISSION_KEYS } from "@/app/config/utils/permissions";
 import stores from "@/app/store/stores";
 import { Box, Tab, TabList, TabPanel, TabPanels, Tabs } from "@chakra-ui/react";
 import { observer } from "mobx-react-lite";
+import { useEffect, useState } from "react";
 import AttendancePayrollPanel from "./AttendancePayrollPanel";
 import AttendanceReportsPanel from "./AttendanceReportsPanel";
 import AttendanceTrustedDevicesPanel from "./AttendanceTrustedDevicesPanel";
@@ -22,11 +23,15 @@ const AttendanceModuleWorkspace = observer(function AttendanceModuleWorkspace() 
     ...(canManagePayroll ? [{ key: "payroll", label: "Payroll", content: <AttendancePayrollPanel /> }] : []),
     ...(canManageTrustedDevices ? [{ key: "trusted-devices", label: "Trusted browsers", content: <AttendanceTrustedDevicesPanel /> }] : []),
   ];
+  const [selectedTab, setSelectedTab] = useState("daily");
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "payroll") setSelectedTab("payroll");
+  }, []);
 
   return (
     <PermissionGate allowed={canView} title="Attendance access required" description="Your role does not have permission to view organization attendance.">
       <Box maxW="1500px" mx="auto">
-        <Tabs variant="enclosed" colorScheme="blue" isLazy>
+        <Tabs index={Math.max(0, tabs.findIndex((tab) => tab.key === selectedTab))} onChange={(index) => setSelectedTab(tabs[index]?.key || "daily")} variant="enclosed" colorScheme="blue" isLazy>
           <TabList overflowX="auto">{tabs.map((item) => <Tab key={item.key} whiteSpace="nowrap">{item.label}</Tab>)}</TabList>
           <TabPanels>{tabs.map((item) => <TabPanel key={item.key} px={{ base: 0, md: 1 }} pt={5}>{item.content}</TabPanel>)}</TabPanels>
         </Tabs>
