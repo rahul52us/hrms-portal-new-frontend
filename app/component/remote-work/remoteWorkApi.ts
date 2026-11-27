@@ -31,7 +31,7 @@ export async function fetchRemoteWorkEligibility(params: Record<string, any>) {
 }
 
 export async function fetchRemoteWorkRequests(params: Record<string, any>) {
-  const response = await axios.get("/remote-work/requests", { params });
+  const response = await axios.get("/remote-work/requests", { params, timeout: 30_000 });
   return {
     items: (response.data?.data || []) as RemoteWorkRequest[],
     pagination: response.data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 1 },

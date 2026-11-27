@@ -19,9 +19,10 @@ import {
   Textarea,
   useToast,
 } from "@chakra-ui/react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   PolicyResourceType,
+  PolicyCatalogKey,
   PolicyScopeType,
   WorkforcePolicyAssignment,
   WorkforcePolicyItem,
@@ -88,6 +89,19 @@ export default function PolicyAssignmentDrawer({
   const [effectiveFrom, setEffectiveFrom] = useState(todayValue());
   const [effectiveTo, setEffectiveTo] = useState("");
   const [reason, setReason] = useState("");
+  const [resourcesLoading, setResourcesLoading] = useState(false);
+  const [resourcesError, setResourcesError] = useState("");
+  const resourceRequestSequence = useRef(0);
+  const catalogKey = ({ attendance_policy: "attendancePolicies", work_schedule: "workSchedules", holiday_calendar: "holidayCalendars", leave_policy: "leavePolicies", remote_work_policy: "remoteWorkPolicies", timesheet_policy: "timesheetPolicies" } as Record<PolicyResourceType, PolicyCatalogKey>)[resourceType];
+  const loadResources = useCallback(async (force = false) => {
+    if (!isOpen || isEnding || !companyId) return;
+    const sequence = ++resourceRequestSequence.current;
+    setResourcesLoading(true); setResourcesError("");
+    try { await workforcePolicyStore.fetchCatalogs(companyId, [catalogKey], force); }
+    catch { if (sequence === resourceRequestSequence.current) setResourcesError("Could not load published configurations. Try again."); }
+    finally { if (sequence === resourceRequestSequence.current) setResourcesLoading(false); }
+  }, [catalogKey, companyId, isEnding, isOpen]);
+  useEffect(() => { void loadResources(); return () => { resourceRequestSequence.current += 1; }; }, [loadResources]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -132,6 +146,7 @@ export default function PolicyAssignmentDrawer({
   }, [effectiveFrom, effectiveTo, isEnding, reason, resourceId, scopeId, scopeType]);
 
   const save = async () => {
+    if (!isEnding && resourcesLoading) return;
     if (validationError) {
       toast({ title: validationError, status: "warning", duration: 3500 });
       return;
@@ -178,13 +193,14 @@ export default function PolicyAssignmentDrawer({
       footerContent={
         <Flex w="full" justify="flex-end" gap={3}>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button colorScheme={isEnding ? "orange" : "blue"} onClick={save} isLoading={workforcePolicyStore.submitting} isDisabled={Boolean(validationError)}>
+          <Button colorScheme={isEnding ? "orange" : "blue"} onClick={save} isLoading={workforcePolicyStore.submitting} isDisabled={Boolean(validationError) || (!isEnding && resourcesLoading)}>
             {isEnding ? "End assignment" : "Create assignment"}
           </Button>
         </Flex>
       }
     >
       <Stack spacing={5} maxW="900px" mx="auto">
+        {resourcesError ? <Alert status="error"><AlertIcon /><AlertDescription>{resourcesError}</AlertDescription><Button ml="auto" size="sm" onClick={() => { void loadResources(true); }}>Retry</Button></Alert> : null}
         {!isEnding && resourceType === "timesheet_policy" && resourceId ? <TimesheetImpactPreview companyId={companyId} policyId={resourceId} at={effectiveFrom} scopeType={scopeType} scopeId={scopeId} /> : null}
         {isEnding && assignment ? (
           <Alert status="warning" borderRadius="md">
@@ -230,7 +246,7 @@ export default function PolicyAssignmentDrawer({
             </FormControl>
             <FormControl isRequired>
               <FormLabel fontSize="sm">Published configuration</FormLabel>
-              <Select value={resourceId} onChange={(event) => setResourceId(event.target.value)} placeholder="Select configuration">
+              <Select value={resourceId} isDisabled={resourcesLoading} onChange={(event) => setResourceId(event.target.value)} placeholder={resourcesLoading ? "Loading configurations..." : "Select configuration"}>
                 {availableResources.map((resource) => (
                   <option key={resource._id} value={resource._id}>{resource.name} ({resource.code})</option>
                 ))}

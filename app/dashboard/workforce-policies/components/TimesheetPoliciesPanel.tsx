@@ -35,6 +35,15 @@ function PolicyEditor({ companyId, selection, onClose, onSaved }: {
   const [savedDraft, setSavedDraft] = useState<{ policyId: string; version: PolicyVersion } | null>(mode === "edit" && source && policy ? { policyId: policy._id, version: source } : null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [loadingWorkflows, setLoadingWorkflows] = useState(true);
+  const [workflowError, setWorkflowError] = useState("");
+  const loadWorkflows = useCallback(async (force = false) => {
+    setLoadingWorkflows(true); setWorkflowError("");
+    try { await workforcePolicyStore.fetchCatalogs(companyId, ["approvalWorkflows"], force); }
+    catch (err) { setWorkflowError(message(err)); }
+    finally { setLoadingWorkflows(false); }
+  }, [companyId]);
+  useEffect(() => { void loadWorkflows(); }, [loadWorkflows]);
   const setRule = <K extends keyof RuleForm>(key: K, value: RuleForm[K]) => setRules((current) => ({ ...current, [key]: value }));
   async function save(publish: boolean) {
     setError(""); setBusy(true);
@@ -120,7 +129,7 @@ function PolicyEditor({ companyId, selection, onClose, onSaved }: {
       </SimpleGrid></Box>
       <Checkbox id="timesheet-extra-hours" isChecked={rules.allowExtraHours} onChange={(e) => setRules((r) => ({ ...r, allowExtraHours: e.target.checked, maximumExtraMinutes: e.target.checked ? "120" : "0" }))}>Allow logging beyond required hours</Checkbox>
       {rules.allowExtraHours ? numberField("maximumExtraMinutes", "Maximum extra minutes per day", 1, 720, "This does not approve overtime or award comp-off.") : null}
-      <FormControl id="timesheet-approval-flow"><FormLabel>Approval flow</FormLabel><Select value={rules.approvalWorkflowId || ""} onChange={(e) => setRule("approvalWorkflowId", e.target.value || null)}><option value="">Reporting manager</option>{workforcePolicyStore.approvalWorkflows.filter((workflow) => approvalWorkflowSupportsRequestType(workflow, "timesheet_submission")).map((workflow) => <option key={workflow._id} value={workflow._id}>{workflow.name}</option>)}</Select><FormHelperText>Choose a published Daily timesheets workflow for multiple levels. Existing submissions retain their resolved approvers.</FormHelperText></FormControl>
+      <FormControl id="timesheet-approval-flow"><FormLabel>Approval flow</FormLabel><Select isDisabled={loadingWorkflows} value={rules.approvalWorkflowId || ""} onChange={(e) => setRule("approvalWorkflowId", e.target.value || null)}><option value="">{loadingWorkflows ? "Loading approval flows..." : "Reporting manager"}</option>{workforcePolicyStore.approvalWorkflows.filter((workflow) => approvalWorkflowSupportsRequestType(workflow, "timesheet_submission")).map((workflow) => <option key={workflow._id} value={workflow._id}>{workflow.name}</option>)}</Select><FormHelperText>Choose a published Daily timesheets workflow for multiple levels. Existing submissions retain their resolved approvers.</FormHelperText>{workflowError ? <Text color="red.500" fontSize="sm" role="alert">{workflowError}</Text> : null}<Button size="xs" mt={2} variant="outline" isLoading={loadingWorkflows} onClick={() => { void loadWorkflows(true); }}>Refresh approval flows</Button></FormControl>
       <Checkbox id="timesheet-reminders-enabled" isChecked={rules.remindersEnabled} onChange={(e) => setRule("remindersEnabled", e.target.checked)}>Send timesheet reminders</Checkbox>
       {rules.remindersEnabled ? <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>{numberField("remindBeforeHours", "Remind before due (hours)", 0, 168)}{numberField("reminderEveryDays", "Repeat reminders every (days)", 1, 7)}{numberField("approverEscalationDays", "Approval follow-up after (days)", 1, 31, "Used when there is no payroll-cycle approval deadline.")}</SimpleGrid> : null}
       <FormControl id="timesheet-payroll-mode"><FormLabel>Payroll treatment</FormLabel><Select value={rules.payrollMode} onChange={(e) => setRule("payrollMode", e.target.value as TimesheetRules["payrollMode"])}><option value="report_only">Report only</option><option value="block">Block payroll until resolved</option><option value="shortfall">Additional loss of pay for short hours</option></Select><FormHelperText>Salary impact requires an audited Timesheet payroll-cycle lock. Pending approvals block locking; attendance LOP is not charged twice.</FormHelperText></FormControl>

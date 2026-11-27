@@ -230,6 +230,10 @@ export default function EmployeeRequestsWorkspace() {
   const [eligibilityErrorMessage, setEligibilityErrorMessage] = useState("");
   const [preview, setPreview] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [balancesLoading, setBalancesLoading] = useState(true);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
+  const [readErrors, setReadErrors] = useState<Record<string, string>>({});
   const [checking, setChecking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -275,46 +279,42 @@ export default function EmployeeRequestsWorkspace() {
     if (background && loadInFlight.current) return;
     const sequence = ++loadSequence.current;
     loadInFlight.current = true;
-    if (!background) setLoading(true);
+    if (!background) {
+      setLoading(true);
+      setBalancesLoading(true);
+      setRequestsLoading(true);
+      setTransactionsLoading(true);
+    }
+    let remainingRequestReads = 5;
+    let errorReported = false;
+    const isCurrent = () => sequence === loadSequence.current;
+    const finishRequest = () => { if (--remainingRequestReads === 0) setRequestsLoading(false); };
+    // Publish each completed section without waiting for unrelated request categories.
+    const read = async (key: string, fetchData: () => Promise<any>, apply: (value: any) => void, finish?: () => void) => {
+      try {
+        const data = await fetchData();
+        if (!isCurrent()) return;
+        apply(data);
+        setReadErrors((previous) => { const next = { ...previous }; delete next[key]; return next; });
+      } catch (error: any) {
+        if (!isCurrent() || background) return;
+        const message = getApiErrorMessage(error?.response?.data || error, `Could not load ${key}`);
+        setReadErrors((previous) => ({ ...previous, [key]: message }));
+        if (key === "leave balances") setEligibleError(message);
+        if (!errorReported) { toast({ title: message, status: "error" }); errorReported = true; }
+      } finally { if (isCurrent()) finish?.(); }
+    };
     try {
-      const [eligibleResult, encashmentEligibilityResult, leaveResult, transactionResult, remoteResult, compOffResult, encashmentResult, regularizationResult] = await Promise.all([
-        fetchEligibleLeave({ at: localToday() })
-          .then((data) => ({ data, error: "" }))
-          .catch((error) => {
-            if (background) throw error;
-            return {
-              data: { items: [] as EligibleLeaveItem[] } as any,
-              error: getApiErrorMessage(error?.response?.data || error, "No effective leave policy is assigned"),
-            };
-          }),
-        fetchLeaveEncashmentEligibility({ at: localToday() })
-          .then((data) => data.items || [])
-          .catch((error) => {
-            if (background) throw error;
-            return [] as LeaveEncashmentEligibilityItem[];
-          }),
-        fetchLeaveRequests({ scope: "mine", page: 1, limit: 50 }),
-        fetchLeaveTransactions({ page: 1, limit: 50 }),
-        fetchRemoteWorkRequests({ scope: "mine", page: 1, limit: 50 }),
-        fetchCompOffClaims({ scope: "self", page: 1, limit: 50 }),
-        fetchLeaveEncashmentRequests({ scope: "mine", page: 1, limit: 50 }),
-        fetchAttendanceRegularizationRequests({ scope: "mine", page: 1, limit: 50 }),
+      await Promise.all([
+        read("leave balances", () => fetchEligibleLeave({ at: localToday() }), (data) => { setEligible(data.items || []); setEligibleError(""); }, () => setBalancesLoading(false)),
+        read("encashment eligibility", () => fetchLeaveEncashmentEligibility({ at: localToday() }), (data) => setEncashmentEligibility(data.items || [])),
+        read("leave requests", () => fetchLeaveRequests({ scope: "mine", page: 1, limit: 50 }), (data) => setLeaveRequests(data.items || []), finishRequest),
+        read("balance history", () => fetchLeaveTransactions({ page: 1, limit: 50 }), (data) => setTransactions(data.items || []), () => setTransactionsLoading(false)),
+        read("WFH requests", () => fetchRemoteWorkRequests({ scope: "mine", page: 1, limit: 50 }), (data) => setRemoteWorkRequests(data.items || []), finishRequest),
+        read("comp-off claims", () => fetchCompOffClaims({ scope: "self", page: 1, limit: 50 }), (data) => setCompOffClaims(data.items || []), finishRequest),
+        read("encashment requests", () => fetchLeaveEncashmentRequests({ scope: "mine", page: 1, limit: 50 }), (data) => setEncashmentRequests(data.items || []), finishRequest),
+        read("attendance corrections", () => fetchAttendanceRegularizationRequests({ scope: "mine", page: 1, limit: 50 }), (data) => setRegularizationRequests(data.items || []), finishRequest),
       ]);
-      // A post-action/manual reload takes precedence over an older background read.
-      if (sequence !== loadSequence.current) return;
-      setEligible(eligibleResult.data.items || []);
-      setEncashmentEligibility(encashmentEligibilityResult);
-      setEligibleError(eligibleResult.error);
-      setLeaveRequests(leaveResult.items || []);
-      setTransactions(transactionResult.items || []);
-      setRemoteWorkRequests(remoteResult.items || []);
-      setCompOffClaims(compOffResult.items || []);
-      setEncashmentRequests(encashmentResult.items || []);
-      setRegularizationRequests(regularizationResult.items || []);
-    } catch (error: any) {
-      if (!background && sequence === loadSequence.current) {
-        toast({ title: getApiErrorMessage(error?.response?.data || error, "Could not load requests"), status: "error" });
-      }
     } finally {
       if (sequence === loadSequence.current) {
         loadInFlight.current = false;
@@ -435,7 +435,7 @@ export default function EmployeeRequestsWorkspace() {
   }, [eligible, loadRegularizationEligibility, loadRemoteEligibility, openRequestDrawer, refreshLeaveEligibility]);
 
   useEffect(() => {
-    if (loading || calendarApplyHandled.current) return;
+    if (balancesLoading || calendarApplyHandled.current) return;
     const url = new URL(window.location.href);
     const applyDate = url.searchParams.get("applyDate");
     const requestType = url.searchParams.get("requestType");
@@ -450,7 +450,7 @@ export default function EmployeeRequestsWorkspace() {
     url.searchParams.delete("applyDate");
     url.searchParams.delete("requestType");
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [loading, openRequest]);
+  }, [balancesLoading, openRequest]);
 
   const selectRequestOption = (value: string) => {
     setForm((current) => ({
@@ -771,13 +771,15 @@ export default function EmployeeRequestsWorkspace() {
           </Box>
           <HStack>
             <Button variant="outline" leftIcon={<FiRefreshCw />} onClick={() => { void load(); }} isLoading={loading}>Refresh</Button>
-            <Button colorScheme="blue" leftIcon={<FiPlus />} onClick={() => openRequest()} isDisabled={loading}>New request</Button>
+            <Button colorScheme="blue" leftIcon={<FiPlus />} onClick={() => openRequest()} isDisabled={balancesLoading}>New request</Button>
           </HStack>
         </Flex>
 
+        {Object.keys(readErrors).length ? <Alert status="warning" borderRadius="md"><AlertIcon /><AlertDescription>Some data could not be loaded: {Object.keys(readErrors).join(", ")}. Other sections remain available. Use Refresh to retry.</AlertDescription></Alert> : null}
+
         <Box>
           <Text mb={3} fontSize="sm" fontWeight="800">Leave balances</Text>
-          {loading ? (
+          {balancesLoading && !eligible.length ? (
             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={3}><Skeleton h="118px" /><Skeleton h="118px" /><Skeleton h="118px" /></SimpleGrid>
           ) : eligible.length === 0 ? (
             <Alert status="warning" borderRadius="md"><AlertIcon /><AlertDescription>{eligibleError || "No effective leave policy is assigned for today."}</AlertDescription></Alert>
@@ -820,8 +822,9 @@ export default function EmployeeRequestsWorkspace() {
             <TabList px={4}><Tab>Requests</Tab><Tab>Balance history</Tab></TabList>
             <TabPanels>
               <TabPanel p={{ base: 3, md: 4 }}>
+                {requestsLoading ? <Text mb={3} fontSize="sm" color={muted}>Loading requests...</Text> : null}
                 <Stack spacing={0} borderWidth={requests.length ? "1px" : "0"} borderColor={border} borderRadius="md" overflow="hidden">
-                  {requests.length === 0 ? <Text py={12} textAlign="center" color={muted}>No requests yet.</Text> : requests.map((item, index) => {
+                  {requests.length === 0 ? requestsLoading ? <Skeleton h="100px" /> : <Text py={12} textAlign="center" color={muted}>{Object.keys(readErrors).some((key) => key !== "leave balances" && key !== "encashment eligibility" && key !== "balance history") ? "Request data is unavailable. Refresh to retry." : "No requests yet."}</Text> : requests.map((item, index) => {
                     const canWithdraw = item.kind === "wfh"
                       ? ["submitted", "manager_approved"].includes(item.request.status)
                       : item.request.status === "submitted";
@@ -893,7 +896,7 @@ export default function EmployeeRequestsWorkspace() {
               </TabPanel>
               <TabPanel p={{ base: 3, md: 4 }}>
                 <Stack spacing={0} borderWidth={transactions.length ? "1px" : "0"} borderColor={border} borderRadius="md" overflow="hidden">
-                  {transactions.length === 0 ? <Text py={12} textAlign="center" color={muted}>No posted balance transactions yet.</Text> : transactions.map((transaction, index) => (
+                  {transactions.length === 0 ? transactionsLoading ? <Skeleton h="100px" /> : <Text py={12} textAlign="center" color={muted}>{readErrors["balance history"] ? "Balance history is unavailable. Refresh to retry." : "No posted balance transactions yet."}</Text> : transactions.map((transaction, index) => (
                     <Flex key={transaction._id} justify="space-between" gap={3} p={4} borderBottomWidth={index === transactions.length - 1 ? "0" : "1px"}>
                       <Box><Text fontWeight="700">{transaction.leaveType?.name || "Leave"}</Text><Text fontSize="xs" color={muted}>{transaction.reason} | {formatDate(transaction.effectiveDate)}</Text></Box>
                       <Text fontWeight="800" color={transaction.units > 0 ? "green.500" : "red.500"}>{transaction.units > 0 ? "+" : ""}{transaction.units}</Text>

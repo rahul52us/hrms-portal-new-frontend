@@ -43,7 +43,7 @@ export async function fetchCompOffEligibility(params: Record<string, any>) {
 }
 
 export async function fetchCompOffClaims(params: Record<string, any>) {
-  const response = await axios.get("/comp-off/claims", { params });
+  const response = await axios.get("/comp-off/claims", { params, timeout: 30_000 });
   return {
     items: (response.data?.data || []) as CompOffClaim[],
     pagination: response.data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 1 },

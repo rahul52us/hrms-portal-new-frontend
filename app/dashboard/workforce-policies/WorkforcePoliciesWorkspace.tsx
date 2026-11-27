@@ -11,6 +11,7 @@ import {
   ApprovalWorkflowItem,
   ApprovalWorkflowVersion,
   PolicyResourceType,
+  PolicyCatalogKey,
   PolicyVersion,
   WorkforcePolicyAssignment,
   WorkforcePolicyItem,
@@ -120,6 +121,7 @@ const WorkforcePoliciesWorkspace = observer(() => {
     resource: WorkforcePolicyItem | null;
   }>({ type: "attendance_policy", resource: null });
   const [endingAssignment, setEndingAssignment] = useState<WorkforcePolicyAssignment | null>(null);
+  const [assignmentRevision, setAssignmentRevision] = useState(0);
   const [approvalEditor, setApprovalEditor] = useState<{
     mode: "create" | "edit_draft" | "new_version";
     workflow: ApprovalWorkflowItem | null;
@@ -153,27 +155,36 @@ const WorkforcePoliciesWorkspace = observer(() => {
     auth.user?.companyDetails ||
     null;
 
-  const refresh = useCallback(async () => {
+  const catalogKeys = Array.from(new Set<PolicyCatalogKey>([
+    ...(["attendancePolicies", "workSchedules", "holidayCalendars", "remoteWorkPolicies", "approvalWorkflows"] as PolicyCatalogKey[]).filter((_, index) => index === tabIndex),
+    ...(editorDisclosure.isOpen && ["attendance_policy", "remote_work_policy"].includes(editor.type) ? ["approvalWorkflows" as const] : []),
+  ])).sort().join(",");
+  const loadCatalogs = useCallback(async (force = false) => {
     if (!companyId || !canView) return;
-    await workforcePolicyStore.fetchWorkspace(companyId);
-  }, [canView, companyId, readContext]);
+    await workforcePolicyStore.fetchCatalogs(companyId, catalogKeys ? catalogKeys.split(",") as PolicyCatalogKey[] : [], force);
+  }, [canView, companyId, readContext, catalogKeys]);
+  const refresh = useCallback(async () => {
+    workforcePolicyStore.invalidateCatalogs();
+    await loadCatalogs(true);
+  }, [loadCatalogs]);
+  const assignmentSaved = async () => { await refresh(); setAssignmentRevision((value) => value + 1); };
 
   useEffect(() => {
     if (!companyId || !canView) {
       workforcePolicyStore.clear();
       return;
     }
-    refresh().catch(() => undefined);
-  }, [canView, companyId, refresh]);
+    loadCatalogs().catch(() => undefined);
+  }, [canView, companyId, loadCatalogs]);
 
   useEffect(() => {
-    if (!companyId || !canManage) return;
+    if (!companyId || !canManage || !assignmentDisclosure.isOpen || endingAssignment) return;
     Promise.all([
       departmentStore.fetchDepartments(companyId, 1, 100),
       locationStore.fetchLocations(companyId, 1, 100),
     ])
       .catch(() => undefined);
-  }, [canManage, companyId]);
+  }, [canManage, companyId, assignmentDisclosure.isOpen, endingAssignment]);
 
   const scopeOptions: AssignmentScopeOption[] = (() => {
     const locationOptions: AssignmentScopeOption[] = locationStore.locations.map((location) => ({
@@ -266,7 +277,8 @@ const WorkforcePoliciesWorkspace = observer(() => {
             : "WFH policies";
     const createLabel =
       type === "attendance_policy" ? "policy" : type === "work_schedule" ? "schedule" : type === "holiday_calendar" ? "calendar" : "WFH policy";
-    if (workforcePolicyStore.loading) {
+    const catalog = ({ attendance_policy: "attendancePolicies", work_schedule: "workSchedules", holiday_calendar: "holidayCalendars", remote_work_policy: "remoteWorkPolicies" } as Record<string, PolicyCatalogKey>)[type];
+    if (workforcePolicyStore.catalogIsLoading(catalog)) {
       return <Stack spacing={3}><Skeleton h="72px" /><Skeleton h="72px" /><Skeleton h="72px" /></Stack>;
     }
     if (!items.length) {
@@ -361,13 +373,13 @@ const WorkforcePoliciesWorkspace = observer(() => {
               titleHighlight="POLICIES"
               subtitle={`EFFECTIVE-DATED POLICIES FOR ${activeCompany?.company_name?.toUpperCase() || "YOUR COMPANY"}`}
               icon={FiBriefcase}
-              statLabel={`${activeAssignments} ACTIVE SCOPE`}
+              statLabel={`${workforcePolicyStore.assignmentsLoaded ? activeAssignments : "--"} ACTIVE ON PAGE`}
               statIcon={FiLink}
               showBackButton={true}
               colorScheme="blue"
             />
             <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4} w="full">
-              {[{ label: "Policies", value: workforcePolicyStore.attendancePolicies.length, icon: FiClock }, { label: "Schedules", value: workforcePolicyStore.workSchedules.length, icon: FiBriefcase }, { label: "Approval flows", value: workforcePolicyStore.approvalWorkflows.length, icon: FiCheckSquare }, { label: "Active scope", value: activeAssignments, icon: FiLink }].map((stat) => (
+              {[{ label: "Policies", value: workforcePolicyStore.catalogState.attendancePolicies.loaded ? workforcePolicyStore.attendancePolicies.length : "--", icon: FiClock }, { label: "Schedules", value: workforcePolicyStore.catalogState.workSchedules.loaded ? workforcePolicyStore.workSchedules.length : "--", icon: FiBriefcase }, { label: "Approval flows", value: workforcePolicyStore.catalogState.approvalWorkflows.loaded ? workforcePolicyStore.approvalWorkflows.length : "--", icon: FiCheckSquare }, { label: "Active on page", value: workforcePolicyStore.assignmentsLoaded ? activeAssignments : "--", icon: FiLink }].map((stat) => (
                 <HStack key={stat.label} bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={4} minW={0} shadow="sm">
                   <Center bg={useColorModeValue("blue.50", "blue.900")} color="blue.500" w={12} h={12} borderRadius="lg" flexShrink={0}>
                     <Icon as={stat.icon} boxSize={5} />
@@ -384,12 +396,12 @@ const WorkforcePoliciesWorkspace = observer(() => {
           {!companyId ? (
             <Alert status="warning" borderRadius="md"><AlertIcon /><AlertDescription>Select a company before managing workforce policies.</AlertDescription></Alert>
           ) : null}
-          {workforcePolicyStore.error ? (
-            <Alert status="error" borderRadius="md"><AlertIcon /><AlertDescription>{workforcePolicyStore.error}</AlertDescription></Alert>
+          {(catalogKeys.split(",") as PolicyCatalogKey[]).some((key) => workforcePolicyStore.catalogState[key]?.error) ? (
+            <Alert status="error" borderRadius="md"><AlertIcon /><AlertDescription>{(catalogKeys.split(",") as PolicyCatalogKey[]).map((key) => workforcePolicyStore.catalogState[key]?.error).filter(Boolean).join(" ")}</AlertDescription><Button ml="auto" size="sm" variant="outline" onClick={() => { void loadCatalogs(true).catch(() => undefined); }}>Retry</Button></Alert>
           ) : null}
 
           <Box bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="xl" overflow="hidden" shadow="sm">
-            <Tabs index={tabIndex} onChange={setTabIndex} variant="soft-rounded" colorScheme="blue" size="sm" isLazy>
+            <Tabs index={tabIndex} onChange={setTabIndex} variant="soft-rounded" colorScheme="blue" size="sm" isLazy lazyBehavior="unmount">
               <Box px={5} pt={5} pb={3} borderBottomWidth="1px" borderColor={borderColor} overflowX="auto" css={{ "&::-webkit-scrollbar": { display: "none" } }}>
                 <TabList
                   gap={2}
@@ -459,7 +471,7 @@ const WorkforcePoliciesWorkspace = observer(() => {
                   <ApprovalWorkflowsPanel canManage={canManage} borderColor={borderColor} muted={muted} tableHeadBg={tableHeadBg} onEdit={openApprovalEditor} onHistory={openApprovalHistory} />
                 </TabPanel>
                 <TabPanel>
-                  <PolicyAssignmentsPanel companyId={companyId} canManage={canManage} borderColor={borderColor} muted={muted} onEndAssignment={openAssignment} />
+                  <PolicyAssignmentsPanel companyId={companyId} canManage={canManage} borderColor={borderColor} muted={muted} onEndAssignment={openAssignment} refreshKey={assignmentRevision} />
                 </TabPanel>
                 <TabPanel>
                   <PolicyCoveragePanel
@@ -483,7 +495,7 @@ const WorkforcePoliciesWorkspace = observer(() => {
         <ApprovalWorkflowDrawer isOpen={approvalEditorDisclosure.isOpen} onClose={approvalEditorDisclosure.onClose} companyId={companyId} mode={approvalEditor.mode} workflow={approvalEditor.workflow} version={approvalEditor.version} onSaved={refresh} />
         <ApprovalWorkflowHistoryDrawer isOpen={approvalHistoryDisclosure.isOpen} onClose={approvalHistoryDisclosure.onClose} companyId={companyId} workflow={approvalHistory} canManage={canManage} onSaved={refresh} />
         <PolicyHistoryDrawer isOpen={historyDisclosure.isOpen} onClose={historyDisclosure.onClose} resourceType={history.type} resource={history.resource} />
-        <PolicyAssignmentDrawer isOpen={assignmentDisclosure.isOpen} onClose={assignmentDisclosure.onClose} companyId={companyId} attendancePolicies={workforcePolicyStore.attendancePolicies} workSchedules={workforcePolicyStore.workSchedules} holidayCalendars={workforcePolicyStore.holidayCalendars} leavePolicies={workforcePolicyStore.leavePolicies} remoteWorkPolicies={workforcePolicyStore.remoteWorkPolicies} timesheetPolicies={workforcePolicyStore.timesheetPolicies} scopeOptions={scopeOptions} assignment={endingAssignment} onSaved={refresh} />
+        <PolicyAssignmentDrawer isOpen={assignmentDisclosure.isOpen} onClose={assignmentDisclosure.onClose} companyId={companyId} attendancePolicies={workforcePolicyStore.attendancePolicies} workSchedules={workforcePolicyStore.workSchedules} holidayCalendars={workforcePolicyStore.holidayCalendars} leavePolicies={workforcePolicyStore.leavePolicies} remoteWorkPolicies={workforcePolicyStore.remoteWorkPolicies} timesheetPolicies={workforcePolicyStore.timesheetPolicies} scopeOptions={scopeOptions} assignment={endingAssignment} onSaved={assignmentSaved} />
       </Box>
     </PermissionGate>
   );

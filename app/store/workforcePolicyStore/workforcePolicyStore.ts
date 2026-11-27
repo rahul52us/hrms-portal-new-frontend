@@ -344,11 +344,29 @@ type PaginationState = {
 
 const EMPTY_PAGINATION: PaginationState = { page: 1, limit: 20, total: 0, totalPages: 1 };
 
+export const POLICY_CATALOG_PATHS = {
+  attendancePolicies: "/workforce-policies/attendance",
+  workSchedules: "/workforce-policies/work-schedules",
+  holidayCalendars: "/workforce-policies/holiday-calendars",
+  leaveTypes: "/workforce-policies/leave-types",
+  leavePolicies: "/workforce-policies/leave-policies",
+  remoteWorkPolicies: "/workforce-policies/remote-work-policies",
+  approvalWorkflows: "/approval-workflows",
+  timesheetPolicies: "/workforce-policies/timesheet-policies",
+} as const;
+export type PolicyCatalogKey = keyof typeof POLICY_CATALOG_PATHS;
+type CatalogState = { loaded: boolean; loading: boolean; loadedAt: number; error: string | null };
+const emptyCatalogState = () => Object.fromEntries(Object.keys(POLICY_CATALOG_PATHS).map((key) => [key, { loaded: false, loading: false, loadedAt: 0, error: null }])) as Record<PolicyCatalogKey, CatalogState>;
+
 export function policyReadContextKey(user: any, role = user?.role) {
   return JSON.stringify([user?._id, role, user?.role, user?.company, user?.department, user?.hrScope, user?.effectivePermissions, user?.permissions, user?.accessRole]);
 }
 
 class WorkforcePolicyStore {
+  private catalogEpoch = 0;
+  private catalogSequences = Object.fromEntries(Object.keys(POLICY_CATALOG_PATHS).map((key) => [key, 0])) as Record<PolicyCatalogKey, number>;
+  private catalogRequests = new Map<PolicyCatalogKey, Promise<void>>();
+  catalogState = emptyCatalogState();
   private detailRequestSequence = 0;
   private readSequences = { workspace: 0, assignments: 0, coverage: 0, audit: 0 };
   attendancePolicies: WorkforcePolicyItem[] = [];
@@ -362,6 +380,7 @@ class WorkforcePolicyStore {
   assignments: WorkforcePolicyAssignment[] = [];
   assignmentsPagination: PaginationState = { ...EMPTY_PAGINATION };
   assignmentsLoading = false;
+  assignmentsLoaded = false;
   auditLogs: PolicyAuditLog[] = [];
   auditPagination: PaginationState = { ...EMPTY_PAGINATION };
   auditLoading = false;
@@ -391,6 +410,9 @@ class WorkforcePolicyStore {
   }
 
   clear = () => {
+    this.catalogEpoch += 1;
+    this.catalogRequests.clear();
+    this.catalogState = emptyCatalogState();
     this.detailRequestSequence += 1;
     for (const key of Object.keys(this.readSequences) as Array<keyof typeof this.readSequences>) this.readSequences[key] += 1;
     this.loading = this.detailLoading = this.assignmentsLoading = this.coverageLoading = this.auditLoading = false;
@@ -403,6 +425,7 @@ class WorkforcePolicyStore {
     this.timesheetPolicies = [];
     this.approvalWorkflows = [];
     this.assignments = [];
+    this.assignmentsLoaded = false;
     this.assignmentsPagination = { ...EMPTY_PAGINATION };
     this.auditLogs = [];
     this.auditPagination = { ...EMPTY_PAGINATION };
@@ -421,41 +444,67 @@ class WorkforcePolicyStore {
     return error?.response?.data?.message || error?.response?.data?.error || error?.message || fallback;
   }
 
+  private useCompany(companyId: string) {
+    if (this.activeCompanyId !== companyId) this.clear();
+    this.activeCompanyId = companyId;
+  }
+
+  catalogIsLoading = (key: PolicyCatalogKey) => !this.catalogState[key].loaded && !this.catalogState[key].error;
+
+  invalidateCatalogs = () => {
+    for (const state of Object.values(this.catalogState)) state.loadedAt = 0;
+  };
+
+  fetchCatalogs = async (companyId: string, keys: PolicyCatalogKey[], force = false) => {
+    if (!companyId) return;
+    this.useCompany(companyId);
+    await Promise.all(Array.from(new Set(keys)).map((key) => this.fetchCatalog(companyId, key, force)));
+  };
+
+  private fetchCatalog = (companyId: string, key: PolicyCatalogKey, force: boolean): Promise<void> => {
+    const state = this.catalogState[key];
+    if (!force && this.catalogRequests.has(key)) return this.catalogRequests.get(key)!;
+    if (!force && state.loaded && Date.now() - state.loadedAt < 30_000) return Promise.resolve();
+    const epoch = this.catalogEpoch, sequence = ++this.catalogSequences[key];
+    state.loading = true;
+    state.error = null;
+    const isCurrent = () => epoch === this.catalogEpoch && sequence === this.catalogSequences[key] && companyId === this.activeCompanyId;
+    // Each catalog commits independently; a slow or failed unrelated tab cannot block it.
+    const request = axios.get(POLICY_CATALOG_PATHS[key], { params: { companyId, limit: 100 }, timeout: 30_000 })
+      .then((response) => runInAction(() => {
+        if (!isCurrent()) return;
+        this[key] = response.data?.data || [];
+        this.catalogState[key] = { loaded: true, loading: false, loadedAt: Date.now(), error: null };
+      }))
+      .catch((error) => {
+        runInAction(() => { if (isCurrent()) this.catalogState[key].error = this.getError(error, "Could not load policy data"); });
+        throw error;
+      })
+      .finally(() => runInAction(() => {
+        if (!isCurrent()) return;
+        this.catalogState[key].loading = false;
+        if (this.catalogRequests.get(key) === request) this.catalogRequests.delete(key);
+      }));
+    this.catalogRequests.set(key, request);
+    return request;
+  };
+
   fetchWorkspace = async (companyId: string) => {
     if (!companyId) {
       this.clear();
       return;
     }
-    if (this.activeCompanyId !== companyId) this.clear();
+    this.useCompany(companyId);
     const sequence = ++this.readSequences.workspace;
     this.loading = true;
     this.error = null;
     this.activeCompanyId = companyId;
     try {
-      const [attendance, schedules, calendars, leaveTypes, leavePolicies, remoteWorkPolicies, approvalWorkflows, assignments, timesheetPolicies] = await Promise.all([
-        axios.get("/workforce-policies/attendance", { params: { companyId, limit: 100 } }),
-        axios.get("/workforce-policies/work-schedules", { params: { companyId, limit: 100 } }),
-        axios.get("/workforce-policies/holiday-calendars", { params: { companyId, limit: 100 } }),
-        axios.get("/workforce-policies/leave-types", { params: { companyId, limit: 100 } }),
-        axios.get("/workforce-policies/leave-policies", { params: { companyId, limit: 100 } }),
-        axios.get("/workforce-policies/remote-work-policies", { params: { companyId, limit: 100 } }),
-        axios.get("/approval-workflows", { params: { companyId, limit: 100 } }),
-        axios.get("/workforce-policies/assignments", { params: { companyId, limit: 100 } }),
-        axios.get("/workforce-policies/timesheet-policies", { params: { companyId, limit: 100 } }),
+      // Retain explicit full refresh for callers that need it; page entry uses selected catalogs.
+      await Promise.all([
+        this.fetchCatalogs(companyId, Object.keys(POLICY_CATALOG_PATHS) as PolicyCatalogKey[], true),
+        this.fetchAssignments(companyId, { page: 1, limit: 100 }),
       ]);
-      runInAction(() => {
-        if (sequence !== this.readSequences.workspace) return;
-        this.attendancePolicies = attendance.data?.data || [];
-        this.workSchedules = schedules.data?.data || [];
-        this.holidayCalendars = calendars.data?.data || [];
-        this.leaveTypes = leaveTypes.data?.data || [];
-        this.leavePolicies = leavePolicies.data?.data || [];
-        this.remoteWorkPolicies = remoteWorkPolicies.data?.data || [];
-        this.timesheetPolicies = timesheetPolicies.data?.data || [];
-        this.approvalWorkflows = approvalWorkflows.data?.data || [];
-        this.assignments = assignments.data?.data || [];
-        this.assignmentsPagination = assignments.data?.pagination || { ...EMPTY_PAGINATION };
-      });
     } catch (error: any) {
       runInAction(() => {
         if (sequence !== this.readSequences.workspace) return;
@@ -479,6 +528,7 @@ class WorkforcePolicyStore {
       state?: string;
     } = {}
   ) => {
+    this.useCompany(companyId);
     const sequence = ++this.readSequences.assignments;
     this.assignmentsLoading = true;
     try {
@@ -488,6 +538,7 @@ class WorkforcePolicyStore {
       runInAction(() => {
         if (sequence !== this.readSequences.assignments) return;
         this.assignments = response.data?.data || [];
+        this.assignmentsLoaded = true;
         this.assignmentsPagination = response.data?.pagination || { ...EMPTY_PAGINATION };
       });
       return response.data;
@@ -521,6 +572,7 @@ class WorkforcePolicyStore {
       resourceType?: PolicyResourceType;
     }
   ) => {
+    this.useCompany(companyId);
     const sequence = ++this.readSequences.coverage;
     this.coverageLoading = true;
     this.coverageError = null;
@@ -558,6 +610,7 @@ class WorkforcePolicyStore {
     companyId: string,
     params: { page?: number; limit?: number; entityType?: string; search?: string; fromDate?: string; toDate?: string; timezone?: string } = {}
   ) => {
+    this.useCompany(companyId);
     const sequence = ++this.readSequences.audit;
     this.auditLoading = true;
     this.auditError = null;
@@ -592,6 +645,7 @@ class WorkforcePolicyStore {
     resourceId: string,
     companyId: string
   ) => {
+    this.useCompany(companyId);
     const requestSequence = ++this.detailRequestSequence;
     this.detailLoading = true;
     this.detailError = null;

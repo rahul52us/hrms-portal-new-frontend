@@ -190,7 +190,7 @@ class AuthStore {
       const response = await axios.post("/auth/login/password", {
         username: payload.username,
         password: payload.password,
-      });
+      }, { timeout: 30_000 });
       const token =
         response?.data?.data?.authorization_token ||
         response?.data?.data?.accessToken ||
@@ -247,6 +247,7 @@ class AuthStore {
           headers: {
             Authorization: `Bearer ${this.token}`,
           },
+          timeout: 30_000,
         }
       );
 

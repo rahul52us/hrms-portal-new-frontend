@@ -48,6 +48,7 @@ const PolicyAssignmentsPanel = observer(({
   muted,
   onEndAssignment,
   lockedResourceType,
+  refreshKey = 0,
 }: {
   companyId: string;
   canManage: boolean;
@@ -55,6 +56,7 @@ const PolicyAssignmentsPanel = observer(({
   muted: string;
   onEndAssignment: (assignment: WorkforcePolicyAssignment) => void;
   lockedResourceType?: string;
+  refreshKey?: number;
 }) => {
   const [resourceType, setResourceType] = useState(lockedResourceType || "");
   const [scopeType, setScopeType] = useState("");
@@ -74,7 +76,7 @@ const PolicyAssignmentsPanel = observer(({
         state,
       })
       .catch((requestError: any) => setError(requestError?.message || "Failed to load assignments"));
-  }, [companyId, page, resourceType, scopeType, state]);
+  }, [companyId, page, resourceType, scopeType, state, refreshKey]);
 
   useEffect(() => {
     setResourceType(lockedResourceType || "");

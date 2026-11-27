@@ -191,12 +191,12 @@ export type LeaveYearEndClosure = {
 };
 
 export async function fetchEligibleLeave(params: Record<string, any> = {}) {
-  const response = await axios.get("/leave/eligible", { params });
+  const response = await axios.get("/leave/eligible", { params, timeout: 30_000 });
   return response.data?.data as { employee: any; at: string; items: EligibleLeaveItem[] };
 }
 
 export async function fetchLeaveRequests(params: Record<string, any>) {
-  const response = await axios.get("/leave/requests", { params });
+  const response = await axios.get("/leave/requests", { params, timeout: 30_000 });
   return {
     items: (response.data?.data || []) as LeaveRequest[],
     pagination: response.data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 1 },
@@ -204,7 +204,7 @@ export async function fetchLeaveRequests(params: Record<string, any>) {
 }
 
 export async function fetchLeaveTransactions(params: Record<string, any>) {
-  const response = await axios.get("/leave/transactions", { params });
+  const response = await axios.get("/leave/transactions", { params, timeout: 30_000 });
   return {
     employee: response.data?.data?.employee,
     items: response.data?.data?.items || [],
@@ -320,7 +320,7 @@ export async function actOnLeaveCancellationRequest(
 }
 
 export async function fetchLeaveEncashmentEligibility(params: Record<string, any> = {}) {
-  const response = await axios.get("/leave/encashments/eligible", { params });
+  const response = await axios.get("/leave/encashments/eligible", { params, timeout: 30_000 });
   return response.data?.data as {
     employee: any;
     at: string;
@@ -335,7 +335,7 @@ export async function submitLeaveEncashmentRequest(payload: Record<string, any>)
 }
 
 export async function fetchLeaveEncashmentRequests(params: Record<string, any>) {
-  const response = await axios.get("/leave/encashments", { params });
+  const response = await axios.get("/leave/encashments", { params, timeout: 30_000 });
   return {
     items: (response.data?.data || []) as LeaveEncashmentRequest[],
     pagination: response.data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 1 },

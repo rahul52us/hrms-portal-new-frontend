@@ -10,6 +10,7 @@ import stores from "@/app/store/stores";
 import {
   LeaveTypeItem,
   PolicyVersion,
+  PolicyCatalogKey,
   WorkforcePolicyAssignment,
   WorkforcePolicyItem,
   workforcePolicyStore,
@@ -97,6 +98,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
   const [policyEditor, setPolicyEditor] = useState<PolicyEditor>({ mode: "create", resource: null, version: null });
   const [historyResource, setHistoryResource] = useState<WorkforcePolicyItem | null>(null);
   const [endingAssignment, setEndingAssignment] = useState<WorkforcePolicyAssignment | null>(null);
+  const [assignmentRevision, setAssignmentRevision] = useState(0);
   const [assignmentResourceId, setAssignmentResourceId] = useState("");
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget>(null);
   const [draftCancelTarget, setDraftCancelTarget] = useState<WorkforcePolicyItem | null>(null);
@@ -121,24 +123,34 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
   const companies = companyStore.companies.data || [];
   const activeCompany = companies.find((company: any) => company._id === companyId) || auth.user?.companyDetails || null;
 
+  const catalogKeys = Array.from(new Set<PolicyCatalogKey>([
+    ...(canViewConfiguration && tabIndex === 0 ? ["leaveTypes" as const] : []),
+    ...(canViewConfiguration && tabIndex === 1 ? ["leavePolicies" as const] : []),
+    ...(policyDisclosure.isOpen ? ["leaveTypes", "approvalWorkflows"] as PolicyCatalogKey[] : []),
+  ])).sort().join(",");
+  const loadCatalogs = useCallback(async (force = false) => {
+    if (!companyId || !canViewConfiguration) return;
+    await workforcePolicyStore.fetchCatalogs(companyId, catalogKeys ? catalogKeys.split(",") as PolicyCatalogKey[] : [], force);
+  }, [canViewConfiguration, companyId, readContext, catalogKeys]);
   const refresh = useCallback(async () => {
-    if (!companyId || !canViewConfiguration) return;
-    await workforcePolicyStore.fetchWorkspace(companyId);
-  }, [canViewConfiguration, companyId, readContext]);
+    workforcePolicyStore.invalidateCatalogs();
+    await loadCatalogs(true);
+  }, [loadCatalogs]);
+  const assignmentSaved = async () => { await refresh(); setAssignmentRevision((value) => value + 1); };
 
   useEffect(() => {
     if (!companyId || !canViewConfiguration) return;
-    refresh().catch(() => undefined);
-  }, [canViewConfiguration, companyId, refresh]);
+    loadCatalogs().catch(() => undefined);
+  }, [canViewConfiguration, companyId, loadCatalogs]);
 
   useEffect(() => {
-    if (!companyId || !canManage) return;
+    if (!companyId || !canManage || !assignmentDisclosure.isOpen || endingAssignment) return;
     Promise.all([
       departmentStore.fetchDepartments(companyId, 1, 100),
       locationStore.fetchLocations(companyId, 1, 100),
     ])
       .catch(() => undefined);
-  }, [canManage, companyId]);
+  }, [canManage, companyId, assignmentDisclosure.isOpen, endingAssignment]);
 
   const scopeOptions: AssignmentScopeOption[] = [
     ...locationStore.locations.map((location) => ({
@@ -235,7 +247,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
     }
   };
 
-  const LeaveTypeList = () => workforcePolicyStore.loading ? (
+  const LeaveTypeList = () => workforcePolicyStore.catalogIsLoading("leaveTypes") ? (
     <Stack><Skeleton h="88px" /><Skeleton h="88px" /></Stack>
   ) : filteredTypes.length === 0 ? (
     <Box py={12} borderWidth="1px" borderStyle="dashed" borderColor={borderColor} borderRadius="md" textAlign="center">
@@ -272,7 +284,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
     </SimpleGrid>
   );
 
-  const LeavePolicyList = () => workforcePolicyStore.loading ? (
+  const LeavePolicyList = () => workforcePolicyStore.catalogIsLoading("leavePolicies") ? (
     <Stack><Skeleton h="110px" /><Skeleton h="110px" /></Stack>
   ) : filteredPolicies.length === 0 ? (
     <Box py={12} borderWidth="1px" borderStyle="dashed" borderColor={borderColor} borderRadius="md" textAlign="center">
@@ -332,9 +344,9 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
             />
             <SimpleGrid columns={{ base: 2, md: 3 }} spacing={4} w="full">
               {[
-                { label: "Leave types", value: workforcePolicyStore.leaveTypes.filter((item) => item.status === "active").length, icon: FiTag },
-                { label: "Leave policies", value: workforcePolicyStore.leavePolicies.filter((item) => item.status === "active").length, icon: FiCalendar },
-                { label: "Active scope", value: activeAssignments, icon: FiLink },
+                { label: "Leave types", value: workforcePolicyStore.catalogState.leaveTypes.loaded ? workforcePolicyStore.leaveTypes.filter((item) => item.status === "active").length : "--", icon: FiTag },
+                { label: "Leave policies", value: workforcePolicyStore.catalogState.leavePolicies.loaded ? workforcePolicyStore.leavePolicies.filter((item) => item.status === "active").length : "--", icon: FiCalendar },
+                { label: "Active on page", value: workforcePolicyStore.assignmentsLoaded ? activeAssignments : "--", icon: FiLink },
               ].map((stat) => (
                 <HStack key={stat.label} bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="xl" p={4} minW={0} shadow="sm">
                   <Center bg={useColorModeValue("blue.50", "blue.900")} color="blue.500" w={12} h={12} borderRadius="lg" flexShrink={0}>
@@ -350,10 +362,10 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
           </Stack>
 
           {!companyId ? <Alert status="warning" borderRadius="md"><AlertIcon /><AlertDescription>Select a company before managing leave policies.</AlertDescription></Alert> : null}
-          {workforcePolicyStore.error ? <Alert status="error" borderRadius="md"><AlertIcon /><AlertDescription>{workforcePolicyStore.error}</AlertDescription></Alert> : null}
+          {(catalogKeys.split(",") as PolicyCatalogKey[]).some((key) => workforcePolicyStore.catalogState[key]?.error) ? <Alert status="error" borderRadius="md"><AlertIcon /><AlertDescription>{(catalogKeys.split(",") as PolicyCatalogKey[]).map((key) => workforcePolicyStore.catalogState[key]?.error).filter(Boolean).join(" ")}</AlertDescription><Button ml="auto" size="sm" variant="outline" onClick={() => { void loadCatalogs(true).catch(() => undefined); }}>Retry</Button></Alert> : null}
 
           <Box bg={surface} borderWidth="1px" borderColor={borderColor} borderRadius="xl" overflow="hidden" shadow="sm">
-            <Tabs index={tabIndex} onChange={setTabIndex} variant="soft-rounded" colorScheme="blue" size="sm" isLazy>
+            <Tabs index={tabIndex} onChange={setTabIndex} variant="soft-rounded" colorScheme="blue" size="sm" isLazy lazyBehavior="unmount">
               <Box px={5} pt={5} pb={3} borderBottomWidth="1px" borderColor={borderColor} overflowX="auto" css={{ "&::-webkit-scrollbar": { display: "none" } }}>
                 <Flex direction={{ base: "column", md: "row" }} justify="space-between" align={{ md: "center" }} gap={4}>
                   <TabList
@@ -388,7 +400,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
               <TabPanels>
                 {canViewConfiguration ? <TabPanel><LeaveTypeList /></TabPanel> : null}
                 {canViewConfiguration ? <TabPanel><LeavePolicyList /></TabPanel> : null}
-                {canViewConfiguration ? <TabPanel><PolicyAssignmentsPanel companyId={companyId} canManage={canManage} borderColor={borderColor} muted={muted} lockedResourceType="leave_policy" onEndAssignment={(assignment) => openAssignment(assignment)} /></TabPanel> : null}
+                {canViewConfiguration ? <TabPanel><PolicyAssignmentsPanel companyId={companyId} canManage={canManage} borderColor={borderColor} muted={muted} lockedResourceType="leave_policy" onEndAssignment={(assignment) => openAssignment(assignment)} refreshKey={assignmentRevision} /></TabPanel> : null}
                 {canViewConfiguration ? <TabPanel><LeaveCoveragePanel companyId={companyId} borderColor={borderColor} muted={muted} onManageAssignments={() => setTabIndex(2)} /></TabPanel> : null}
                 {canViewOperations ? <TabPanel><LeaveRequestsPanel companyId={companyId} borderColor={borderColor} muted={muted} /></TabPanel> : null}
                 {canViewOperations ? <TabPanel><LeaveEncashmentsPanel companyId={companyId} canSettle={canSettleEncashments} borderColor={borderColor} muted={muted} /></TabPanel> : null}
@@ -403,7 +415,7 @@ const LeaveManagementWorkspace = observer(function LeaveManagementWorkspace() {
         <LeaveTypeDrawer isOpen={typeDisclosure.isOpen} onClose={typeDisclosure.onClose} companyId={companyId} leaveType={editingLeaveType} onSaved={refresh} />
         <LeavePolicyDrawer isOpen={policyDisclosure.isOpen} onClose={policyDisclosure.onClose} companyId={companyId} mode={policyEditor.mode} resource={policyEditor.resource} version={policyEditor.version} leaveTypes={workforcePolicyStore.leaveTypes} onSaved={refresh} onPublished={(policyId) => openAssignment(null, policyId)} />
         <PolicyHistoryDrawer isOpen={historyDisclosure.isOpen} onClose={historyDisclosure.onClose} resourceType="leave_policy" resource={historyResource} />
-        <PolicyAssignmentDrawer isOpen={assignmentDisclosure.isOpen} onClose={assignmentDisclosure.onClose} companyId={companyId} attendancePolicies={[]} workSchedules={[]} holidayCalendars={[]} leavePolicies={workforcePolicyStore.leavePolicies} allowedResourceTypes={LEAVE_RESOURCE_TYPES as any} initialResourceType="leave_policy" initialResourceId={assignmentResourceId} scopeOptions={scopeOptions} assignment={endingAssignment} onSaved={refresh} />
+        <PolicyAssignmentDrawer isOpen={assignmentDisclosure.isOpen} onClose={assignmentDisclosure.onClose} companyId={companyId} attendancePolicies={[]} workSchedules={[]} holidayCalendars={[]} leavePolicies={workforcePolicyStore.leavePolicies} allowedResourceTypes={LEAVE_RESOURCE_TYPES as any} initialResourceType="leave_policy" initialResourceId={assignmentResourceId} scopeOptions={scopeOptions} assignment={endingAssignment} onSaved={assignmentSaved} />
         <ArchiveLeaveDialog isOpen={archiveDisclosure.isOpen} onClose={archiveDisclosure.onClose} title={archiveTarget?.kind === "type" ? `Archive ${archiveTarget.item.name}` : archiveTarget?.kind === "policy" ? `Archive ${archiveTarget.item.name}` : "Archive configuration"} description={archiveTarget?.kind === "type" ? "Existing published policy versions keep their historical rule snapshot. This type cannot be used in new versions after archiving." : "Active or scheduled assignments must be ended before this policy can be archived."} submitting={workforcePolicyStore.submitting} onConfirm={archive} />
         <ArchiveLeaveDialog isOpen={draftCancelDisclosure.isOpen} onClose={draftCancelDisclosure.onClose} title={draftCancelTarget ? `Discard draft v${draftCancelTarget.draftVersion?.versionNumber}` : "Discard leave policy draft"} description="The published policy remains unchanged. This draft stays in version history as cancelled and cannot be edited or published afterward." reasonLabel="Reason for discarding" confirmLabel="Discard draft" submitting={workforcePolicyStore.submitting} onConfirm={cancelDraft} />
       </Box>

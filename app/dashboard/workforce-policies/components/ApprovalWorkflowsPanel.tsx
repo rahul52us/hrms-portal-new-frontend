@@ -36,7 +36,7 @@ type Props = {
 
 export default function ApprovalWorkflowsPanel({ canManage, borderColor, muted, tableHeadBg, onEdit, onHistory }: Props) {
   const items = workforcePolicyStore.approvalWorkflows;
-  if (workforcePolicyStore.loading) {
+  if (workforcePolicyStore.catalogIsLoading("approvalWorkflows")) {
     return <Stack spacing={3}><Skeleton h="72px" /><Skeleton h="72px" /><Skeleton h="72px" /></Stack>;
   }
   if (!items.length) {

@@ -51,7 +51,7 @@ export async function fetchAttendanceRegularizationEligibility(attendanceDate: s
 }
 
 export async function fetchAttendanceRegularizationRequests(params: Record<string, any>) {
-  const response = await axios.get("/attendance/regularization/requests", { params });
+  const response = await axios.get("/attendance/regularization/requests", { params, timeout: 30_000 });
   return {
     items: (response.data?.data || []) as AttendanceRegularizationRequest[],
     pagination: response.data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 1 },
